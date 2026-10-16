@@ -3,6 +3,10 @@
 import type { Table } from "../i18n";
 
 export const ur: Table = {
+	"Text encoding": "متن کی انکوڈنگ",
+	"Page breaks may differ from Word.":
+		"صفحات کی تقسیم Word سے مختلف ہو سکتی ہے۔",
+	"Chart preview unavailable": "چارٹ کا پیش منظر دستیاب نہیں",
 	Cancel: "منسوخ کریں",
 	Close: "بند کریں",
 	OK: "ٹھیک ہے",

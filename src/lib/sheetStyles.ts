@@ -13,6 +13,11 @@
 import { unzipSync } from "fflate";
 
 export interface CellStyle {
+	font?: string;
+	fontSize?: number;
+	vertical?: "top" | "center" | "bottom";
+	rotation?: number;
+	indent?: number;
 	bold?: boolean;
 	italic?: boolean;
 	underline?: boolean;
@@ -229,6 +234,11 @@ function readTheme(xml: string | undefined): string[] {
 
 function readStyleTable(xml: string, theme: string[]): CellStyle[] {
 	const fonts = section(xml, "fonts", "font").map((font) => ({
+		font: decodeXml(attr(tagOf(font, "name") ?? "", "val") ?? "") || undefined,
+		fontSize:
+			Number(attr(tagOf(font, "sz") ?? "", "val")) > 0
+				? (Number(attr(tagOf(font, "sz") ?? "", "val")) * 4) / 3
+				: undefined,
 		bold: truthy(tagOf(font, "b")) || undefined,
 		italic: truthy(tagOf(font, "i")) || undefined,
 		underline:
@@ -294,7 +304,16 @@ function readStyleTable(xml: string, theme: string[]): CellStyle[] {
 						: horizontal === "left"
 							? "left"
 							: undefined,
-			wrap: (alignment && attr(alignment, "wrapText") === "1") || undefined,
+			vertical: ["top", "center", "bottom"].includes(
+				attr(alignment ?? "", "vertical") ?? "",
+			)
+				? (attr(alignment ?? "", "vertical") as CellStyle["vertical"])
+				: undefined,
+			rotation: Number(attr(alignment ?? "", "textRotation")) || undefined,
+			indent: Number(attr(alignment ?? "", "indent")) || undefined,
+			wrap:
+				(alignment && /^(1|true)$/.test(attr(alignment, "wrapText") ?? "")) ||
+				undefined,
 			border: borders[Number(attr(head, "borderId") ?? 0)],
 		};
 		for (const k of Object.keys(style) as Array<keyof CellStyle>)

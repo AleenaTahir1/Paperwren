@@ -320,15 +320,32 @@ export default function DocxView({
 			}
 			onPrint={
 				status === "ready"
-					? (root) => {
-							const source = host.current;
-							if (!source) return;
+					? async (root) => {
+							// Re-render with the file's paper dimensions even in Reading view.
+							const source = document.createElement("div");
+							source.className = s.docx;
+							root.appendChild(source);
+							const docx = await import("docx-preview");
+							await docx.renderAsync(data.slice(0), source, source, {
+								inWrapper: true,
+								breakPages: true,
+								ignoreWidth: false,
+								ignoreHeight: false,
+								ignoreLastRenderedPageBreak: false,
+								experimental: true,
+								useBase64URL: true,
+								renderComments: comments,
+							});
 							let widest = 1;
 							for (const page of source.querySelectorAll<HTMLElement>(
 								"section.docx",
 							))
-								widest = Math.max(widest, page.offsetWidth);
-							root.appendChild(fitted(source.cloneNode(true), widest, s.docx));
+								widest = Math.max(
+									widest,
+									page.offsetWidth,
+									Number.parseFloat(getComputedStyle(page).width) || 0,
+								);
+							root.appendChild(fitted(source, widest, s.docx));
 						}
 					: undefined
 			}
@@ -396,6 +413,11 @@ export default function DocxView({
 			}
 		>
 			<div ref={scroller} className={s.scroller} data-testid="doc-scroll">
+				{status === "ready" && !reading && (
+					<p className={s.banner} data-testid="doc-layout-notice">
+						{t("Page breaks may differ from Word.")}
+					</p>
+				)}
 				<div ref={stage} className={`${s.stage} ${reading ? s.reflow : ""}`}>
 					<div
 						ref={pages}

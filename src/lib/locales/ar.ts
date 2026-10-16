@@ -3,6 +3,9 @@
 import type { Table } from "../i18n";
 
 export const ar: Table = {
+	"Text encoding": "ترميز النص",
+	"Page breaks may differ from Word.": "قد تختلف فواصل الصفحات عن Word.",
+	"Chart preview unavailable": "معاينة المخطط غير متاحة",
 	Cancel: "إلغاء",
 	Close: "إغلاق",
 	OK: "موافق",

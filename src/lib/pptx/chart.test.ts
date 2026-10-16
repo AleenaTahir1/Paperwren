@@ -68,7 +68,10 @@ describe("slide charts", () => {
 		const radar = deck().slides[5].elements;
 		expect(radar.some((e) => e.kind === "chart")).toBe(false);
 		expect(
-			radar.some((e) => e.kind === "placeholder" && e.label === "Chart"),
+			radar.some(
+				(e) =>
+					e.kind === "placeholder" && e.label === "Chart preview unavailable",
+			),
 		).toBe(true);
 	});
 });

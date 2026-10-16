@@ -1,13 +1,14 @@
 import { isDesktop } from "@/lib/env";
 import { extensionOf } from "@/lib/formats";
 import { t } from "@/lib/i18n";
+import { prettyJson } from "@/lib/json";
 import { sheet } from "@/lib/print";
 import { decodeText } from "@/lib/text";
 import { prettyXml } from "@/lib/xml";
 import { useSettings } from "@/state/settings";
-import { Button, IconButton, SheetItem } from "@/ui";
+import { Button, IconButton, Sheet, SheetItem } from "@/ui";
 import DOMPurify from "dompurify";
-import { Code, ListOrdered, Search, WrapText } from "lucide-react";
+import { Code, Languages, ListOrdered, Search, WrapText } from "lucide-react";
 import { marked } from "marked";
 import { useMemo, useRef, useState } from "react";
 import {
@@ -46,8 +47,10 @@ export default function TextView({
 	const hud = useRef<HTMLDivElement>(null);
 	const content = useRef<HTMLDivElement>(null);
 	const [chromeHidden, setChromeHidden] = useState(false);
+	const [encoding, setEncoding] = useState("auto");
+	const [encodingOpen, setEncodingOpen] = useState(false);
 	const text = useMemo(() => {
-		const raw = decodeText(data);
+		const raw = decodeText(data, encoding);
 		// JSON and XML usually arrive on one line, written for machines:
 		// lay them out for reading. Anything that does not parse is shown
 		// as it is.
@@ -55,12 +58,8 @@ export default function TextView({
 		if (raw.length > PRETTY_MAX) return raw;
 		if (kind === "xml") return prettyXml(raw);
 		if (kind !== "json") return raw;
-		try {
-			return JSON.stringify(JSON.parse(raw), null, 2);
-		} catch {
-			return raw;
-		}
-	}, [data, name]);
+		return prettyJson(raw);
+	}, [data, name, encoding]);
 	const [all, setAll] = useState(text.length <= CHUNK);
 	const [zoom, commit] = useZoomLevel(position);
 	// Markdown can be read as it was written, too.
@@ -121,6 +120,16 @@ export default function TextView({
 			onFind={startFind}
 			menu={(close) => (
 				<>
+					<SheetItem
+						icon={<Languages size={20} />}
+						onClick={() => {
+							close();
+							setEncodingOpen(true);
+						}}
+						testId="text-encoding"
+					>
+						{t("Text encoding")}
+					</SheetItem>
 					{format === "md" && (
 						<SheetItem
 							icon={<Code size={20} />}
@@ -248,6 +257,36 @@ export default function TextView({
 					</div>
 				)}
 			</div>
+			<Sheet
+				open={encodingOpen}
+				title={t("Text encoding")}
+				onClose={() => setEncodingOpen(false)}
+			>
+				{[
+					"auto",
+					"utf-8",
+					"utf-16le",
+					"utf-16be",
+					"windows-1252",
+					"windows-1251",
+					"windows-1256",
+					"shift-jis",
+					"gb18030",
+					"big5",
+					"euc-kr",
+				].map((value) => (
+					<SheetItem
+						key={value}
+						checked={encoding === value}
+						onClick={() => {
+							setEncoding(value);
+							setEncodingOpen(false);
+						}}
+					>
+						{value === "auto" ? t("Automatic") : value.toUpperCase()}
+					</SheetItem>
+				))}
+			</Sheet>
 		</Shell>
 	);
 }

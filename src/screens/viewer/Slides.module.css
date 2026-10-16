@@ -49,7 +49,7 @@
 }
 .text p {
 	margin: 0;
-	white-space: pre-wrap;
+	white-space: inherit;
 }
 .bullet {
 	display: inline-block;
@@ -148,7 +148,7 @@
 }
 /* A slide the author hid: shown, and marked. */
 .hidden .slide {
-	opacity: 0.45;
+	opacity: 1;
 }
 .tag {
 	align-self: flex-start;

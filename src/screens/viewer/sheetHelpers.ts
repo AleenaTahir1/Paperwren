@@ -203,6 +203,21 @@ export function styleCss(st: CellStyle, dark = false): CSSProperties {
 			: (st.color ?? "#1b1b1f")
 		: undefined;
 	return {
+		fontFamily: st.font
+			? `'${st.font.replace(/[\\']/g, "")}', Calibri, Arial, sans-serif`
+			: undefined,
+		fontSize: st.fontSize,
+		lineHeight: st.fontSize ? 1.2 : undefined,
+		alignItems:
+			st.vertical === "top"
+				? "flex-start"
+				: st.vertical === "bottom"
+					? "flex-end"
+					: st.vertical === "center"
+						? "center"
+						: undefined,
+		verticalAlign: st.vertical === "center" ? "middle" : st.vertical,
+		paddingInlineStart: st.indent ? `${st.indent * 3}ch` : undefined,
 		fontWeight: st.bold ? 700 : undefined,
 		fontStyle: st.italic ? "italic" : undefined,
 		textDecoration: decoration || undefined,
@@ -226,19 +241,38 @@ export function styleCss(st: CellStyle, dark = false): CSSProperties {
 	};
 }
 
+/** Excel's 0..180 angle encoding, or 255 for vertically stacked text. */
+export function cellTextCss(rotation?: number): CSSProperties {
+	if (!rotation) return {};
+	return {
+		display: "inline-block",
+		transform:
+			rotation === 255
+				? undefined
+				: `rotate(${rotation <= 90 ? -rotation : rotation - 90}deg)`,
+		writingMode: rotation === 255 ? "vertical-rl" : undefined,
+		textOrientation: rotation === 255 ? "upright" : undefined,
+	};
+}
+
 // ---------- Text measuring (for spill and auto-fit) ----------
 
 let ruler: CanvasRenderingContext2D | null = null;
 const measured = new Map<string, number>();
 
 /** Width of `text` in the grid's font, in sheet pixels. */
-export function textWidth(text: string, bold: boolean, family: string): number {
-	const id = `${bold ? "b" : "n"}${text}`;
+export function textWidth(
+	text: string,
+	bold: boolean,
+	family: string,
+	size = 13,
+): number {
+	const id = `${family}|${size}|${bold ? "b" : "n"}|${text}`;
 	const hit = measured.get(id);
 	if (hit !== undefined) return hit;
 	ruler ??= document.createElement("canvas").getContext("2d");
 	if (!ruler) return text.length * 7;
-	ruler.font = `${bold ? 700 : 400} 13px ${family}`;
+	ruler.font = `${bold ? 700 : 400} ${size}px ${family}`;
 	const width = ruler.measureText(text).width;
 	if (measured.size > 8000) measured.clear();
 	measured.set(id, width);
@@ -335,6 +369,14 @@ export function printSheet(
 	sheet: Sheet,
 	widths: number[],
 	looks: CSSProperties[],
+	objects: Array<{
+		node: HTMLElement;
+		x: number;
+		y: number;
+		w: number;
+		h: number;
+	}> = [],
+	cellStyles: CellStyle[] = [],
 ) {
 	const table = document.createElement("table");
 	table.className = s.printTable;
@@ -373,19 +415,41 @@ export function printSheet(
 				td.colSpan = span.cols;
 			}
 			if (cell) {
-				td.textContent = cell.value;
+				const rotation =
+					cell.style !== undefined
+						? cellStyles[cell.style]?.rotation
+						: undefined;
+				if (rotation) {
+					const text = document.createElement("span");
+					text.textContent = cell.value;
+					Object.assign(text.style, cellTextCss(rotation));
+					td.appendChild(text);
+				} else td.textContent = cell.value;
 				const look = cell.style !== undefined ? looks[cell.style] : undefined;
 				if (look) {
 					Object.assign(td.style, {
 						fontWeight: look.fontWeight ?? "",
 						fontStyle: look.fontStyle ?? "",
+						fontFamily: look.fontFamily ?? "",
+						fontSize:
+							typeof look.fontSize === "number"
+								? `${look.fontSize}px`
+								: (look.fontSize ?? ""),
+						verticalAlign: look.verticalAlign ?? "",
+						whiteSpace: look.whiteSpace ?? "",
+						borderRight: look.borderRight ?? "",
+						borderBottom: look.borderBottom ?? "",
+						boxShadow: look.boxShadow ?? "",
 						textDecoration: look.textDecoration ?? "",
 						background: look.background ?? "",
 						color:
 							look.color ??
 							(look as Record<string, string | undefined>)["--ink"] ??
 							"",
-						textAlign: look.textAlign ?? "",
+						textAlign:
+							look.textAlign ?? (NUMERIC.test(cell.value) ? "right" : ""),
+						paddingInlineStart: look.paddingInlineStart ?? "",
+						lineHeight: look.lineHeight ?? "",
 					});
 				} else if (NUMERIC.test(cell.value)) td.style.textAlign = "right";
 			}
@@ -393,7 +457,26 @@ export function printSheet(
 		}
 		table.appendChild(tr);
 	}
-	const wrap = fitted(table, total + 2, "pw-sheet", 1);
+	const content = document.createElement("div");
+	content.style.position = "relative";
+	content.appendChild(table);
+	const cutoff = sheet.rowPrefix[rows] ?? 0;
+	let extent = cutoff;
+	for (const object of objects) {
+		if (sheet.rows > rows && object.y >= cutoff) continue;
+		Object.assign(object.node.style, {
+			position: "absolute",
+			left: `${object.x}px`,
+			top: `${object.y}px`,
+			width: `${object.w}px`,
+			height: `${object.h}px`,
+		});
+		content.appendChild(object.node);
+		total = Math.max(total, object.x + object.w);
+		extent = Math.max(extent, object.y + object.h);
+	}
+	content.style.minHeight = `${extent}px`;
+	const wrap = fitted(content, total + 2, "pw-sheet", 1);
 	const title = document.createElement("p");
 	title.className = s.printTitle;
 	title.textContent =

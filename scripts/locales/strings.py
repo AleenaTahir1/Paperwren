@@ -9,6 +9,9 @@ write src/lib/locales/*.ts from this file.
 LANGS = ["ur", "ar", "zh", "hi", "es", "fr"]
 
 ROWS = [
+    ("Text encoding", "متن کی انکوڈنگ", "ترميز النص", "文本编码", "टेक्स्ट एन्कोडिंग", "Codificación del texto", "Encodage du texte"),
+    ("Page breaks may differ from Word.", "صفحات کی تقسیم Word سے مختلف ہو سکتی ہے۔", "قد تختلف فواصل الصفحات عن Word.", "分页可能与 Word 不同。", "पृष्ठ विराम Word से अलग हो सकते हैं।", "Los saltos de página pueden diferir de Word.", "Les sauts de page peuvent différer de Word."),
+    ("Chart preview unavailable", "چارٹ کا پیش منظر دستیاب نہیں", "معاينة المخطط غير متاحة", "图表预览不可用", "चार्ट पूर्वावलोकन उपलब्ध नहीं है", "Vista previa del gráfico no disponible", "Aperçu du graphique indisponible"),
     # ---- common ----
     ("Cancel", "منسوخ کریں", "إلغاء", "取消", "रद्द करें", "Cancelar", "Annuler"),
     ("Close", "بند کریں", "إغلاق", "关闭", "बंद करें", "Cerrar", "Fermer"),

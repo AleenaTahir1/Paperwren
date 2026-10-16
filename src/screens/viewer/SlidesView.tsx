@@ -78,7 +78,13 @@ function Paragraph({ p }: { p: Para }) {
 				marginInlineStart: p.indent,
 				paddingTop: p.spaceBefore,
 				paddingBottom: p.spaceAfter,
-				lineHeight: p.lineHeight ? p.lineHeight * 1.2 : undefined,
+				lineHeight:
+					p.linePoints !== undefined
+						? `${p.linePoints}px`
+						: p.lineHeight
+							? p.lineHeight * 1.2
+							: undefined,
+				textIndent: !p.bullet ? p.hanging : undefined,
 				fontSize: p.runs.length ? undefined : p.endSize,
 				minHeight: p.runs.length ? undefined : `${p.endSize * 1.2}px`,
 			}}
@@ -102,6 +108,11 @@ function Paragraph({ p }: { p: Para }) {
 							.filter(Boolean)
 							.join(" ") || undefined,
 					color: r.color,
+					position: r.baseline ? "relative" : undefined,
+					top: r.baseline ? -r.baseline * r.size : undefined,
+					letterSpacing: r.tracking,
+					textTransform: r.caps === "all" ? "uppercase" : undefined,
+					fontVariant: r.caps === "small" ? "small-caps" : undefined,
 					fontFamily: r.font ? `'${r.font}'${FALLBACK_FONTS}` : undefined,
 				};
 				return r.href ? (
@@ -140,8 +151,25 @@ function Text({ body, flow = false }: { body: TextBody; flow?: boolean }) {
 						: body.anchor === "bottom"
 							? "flex-end"
 							: "flex-start",
-				whiteSpace: body.wrap ? undefined : "nowrap",
-				writingMode: body.vertical ? "vertical-rl" : undefined,
+				whiteSpace: body.wrap ? "pre-wrap" : "pre",
+				writingMode:
+					body.verticalMode === "vert270"
+						? "vertical-lr"
+						: body.vertical
+							? "vertical-rl"
+							: undefined,
+				transform:
+					[
+						body.verticalMode === "vert270" ? "rotate(180deg)" : "",
+						body.rotation ? `rotate(${body.rotation}deg)` : "",
+					]
+						.join(" ")
+						.trim() || undefined,
+				display: body.columns && body.columns > 1 ? "block" : undefined,
+				columnCount:
+					body.columns && body.columns > 1 ? body.columns : undefined,
+				columnGap: body.columnGap,
+				columnFill: "auto",
 			}}
 		>
 			{body.paras.map((p, i) => (
@@ -180,13 +208,38 @@ function Paint({ id, gradient }: { id: string; gradient: Gradient }) {
 
 function Geometry({ el }: { el: Extract<SlideElement, { kind: "shape" }> }) {
 	const paint = `pw${useId().replace(/:/g, "")}`;
-	if (!el.fill && !el.line) return null;
+	if (!el.fill && !el.line && !el.image) return null;
 	const { w, h } = el;
 	// A picture fill is painted by the box itself.
-	const fill = el.image ? undefined : el.gradient ? `url(#${paint})` : el.fill;
-	const defs = el.gradient && !el.image && (
+	const fill = el.image
+		? `url(#${paint}img)`
+		: el.gradient
+			? `url(#${paint})`
+			: el.fill;
+	const [cl, ct, cr, cb] = el.imageCrop ?? [0, 0, 0, 0];
+	const defs = el.image ? (
+		<defs>
+			<pattern
+				id={`${paint}img`}
+				patternUnits="userSpaceOnUse"
+				width={w}
+				height={h}
+			>
+				<image
+					href={el.image}
+					x={(-cl * w) / (1 - cl - cr)}
+					y={(-ct * h) / (1 - ct - cb)}
+					width={w / (1 - cl - cr)}
+					height={h / (1 - ct - cb)}
+					preserveAspectRatio="none"
+					opacity={el.imageOpacity}
+					style={{ filter: el.imageFilter }}
+				/>
+			</pattern>
+		</defs>
+	) : el.gradient ? (
 		<Paint id={paint} gradient={el.gradient} />
-	);
+	) : undefined;
 	const stroke = el.line?.color;
 	const sw = el.line?.width ?? 0;
 	const common = {
@@ -316,11 +369,14 @@ function Element({ el }: { el: SlideElement }) {
 		.join(" ")
 		.trim();
 	const style: CSSProperties = {
-		left: el.x,
-		top: el.y,
+		left: el.matrix ? 0 : el.x,
+		top: el.matrix ? 0 : el.y,
 		width: el.w,
 		height: el.h,
-		transform: transform || undefined,
+		transform: el.matrix
+			? `matrix(${el.matrix.join(",")})`
+			: transform || undefined,
+		transformOrigin: el.matrix ? "0 0" : undefined,
 	};
 	switch (el.kind) {
 		case "shape":
@@ -330,9 +386,7 @@ function Element({ el }: { el: SlideElement }) {
 					style={{
 						...style,
 						filter: el.shadow ? `drop-shadow(${el.shadow})` : undefined,
-						background: el.image
-							? `center / 100% 100% no-repeat url("${el.image}")`
-							: undefined,
+
 						borderRadius:
 							el.geom === "ellipse"
 								? "50%"
@@ -381,7 +435,11 @@ function Element({ el }: { el: SlideElement }) {
 								src={el.src}
 								alt=""
 								draggable={false}
-								style={el.crop ? cropStyle(el.crop) : undefined}
+								style={{
+									...(el.crop ? cropStyle(el.crop) : {}),
+									opacity: el.opacity,
+									filter: el.imageFilter,
+								}}
 							/>
 						) : (
 							<div className={s.missing}>{t("Image")}</div>
@@ -407,7 +465,13 @@ function Element({ el }: { el: SlideElement }) {
 												key={ci}
 												colSpan={c.span}
 												rowSpan={c.rowSpan}
-												style={{ background: c.fill }}
+												style={{
+													background: c.fill,
+													borderTop: c.borders?.top,
+													borderRight: c.borders?.right,
+													borderBottom: c.borders?.bottom,
+													borderLeft: c.borders?.left,
+												}}
 											>
 												<Text body={c.text} flow />
 											</td>

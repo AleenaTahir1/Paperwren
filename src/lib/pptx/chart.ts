@@ -27,7 +27,18 @@ export interface ChartPoint {
 	y: number;
 }
 
-export type Chart = { title?: string; legend: boolean } & (
+export interface ChartAxis {
+	min?: number;
+	max?: number;
+	reverse?: boolean;
+}
+export type Chart = {
+	title?: string;
+	legend: boolean;
+	valueAxis?: ChartAxis;
+	categoryReverse?: boolean;
+	blanks?: "gap" | "zero" | "span";
+} & (
 	| {
 			kind: "cartesian";
 			categories: string[];
@@ -70,6 +81,7 @@ export type RangeLookup = (formula: string) => string[] | null;
 
 /** Set for the duration of one readChart call. */
 let rangeLookup: RangeLookup | undefined;
+let truncated = false;
 
 /** Points of a c:cat / c:val / c:xVal reference, by index: the cache
  * the file stores, or failing that the cells its formula names. */
@@ -82,6 +94,7 @@ function cache(ref: Element | null): { values: string[]; format: string } {
 		path(ref, "multiLvlStrRef", "f")
 	)?.textContent;
 	const cells = formula ? rangeLookup(formula) : null;
+	if (cells && cells.length > MAX_POINTS) truncated = true;
 	return cells ? { values: cells.slice(0, MAX_POINTS), format: "" } : stored;
 }
 
@@ -140,8 +153,10 @@ export function readChart(
 	ranges?: RangeLookup,
 ): Chart | null {
 	rangeLookup = ranges;
+	truncated = false;
 	try {
-		return read(doc, colors);
+		const result = read(doc, colors);
+		return truncated ? null : result;
 	} finally {
 		rangeLookup = undefined;
 	}
@@ -151,6 +166,86 @@ function read(doc: Document, colors: ChartColors): Chart | null {
 	const chart = kid(doc.documentElement, "chart");
 	const plot = kid(chart, "plotArea");
 	if (!plot) return null;
+	const groups = kids(plot).filter((g) => g.localName.endsWith("Chart"));
+	const supported = new Set([
+		"barChart",
+		"lineChart",
+		"areaChart",
+		"pieChart",
+		"doughnutChart",
+		"scatterChart",
+	]);
+	// Never display only the supported series of a mixed chart, or flatten 3D.
+	if (groups.some((g) => !supported.has(g.localName))) return null;
+	if (
+		groups.length > 1 &&
+		groups.some((g) =>
+			["pieChart", "doughnutChart", "scatterChart"].includes(g.localName),
+		)
+	)
+		return null;
+	// Separate/logarithmic axes need a dedicated layout; don't silently use one linear axis.
+	const axes = kids(plot, "valAx");
+	if (
+		axes.length > (groups[0]?.localName === "scatterChart" ? 2 : 1) ||
+		axes.some((a) => path(a, "scaling", "logBase"))
+	)
+		return null;
+	if (
+		groups.length > 1 &&
+		groups.some((g) =>
+			["stacked", "percentStacked"].includes(
+				attrOf(kid(g, "grouping"), "val") ?? "",
+			),
+		)
+	)
+		return null;
+	const numeric = (el: Element | null) => {
+		const v = attrOf(el, "val");
+		return v !== null && Number.isFinite(Number(v)) ? Number(v) : undefined;
+	};
+	const axis = axes[0];
+	const valueAxis: ChartAxis | undefined = axis
+		? {
+				min: numeric(path(axis, "scaling", "min")),
+				max: numeric(path(axis, "scaling", "max")),
+				reverse:
+					attrOf(path(axis, "scaling", "orientation"), "val") === "maxMin" ||
+					undefined,
+			}
+		: undefined;
+	if (
+		valueAxis?.min !== undefined &&
+		valueAxis.max !== undefined &&
+		valueAxis.max <= valueAxis.min
+	)
+		return null;
+	// Scatter has independent numeric axes; reject authored scaling until both are supported.
+	if (
+		groups[0]?.localName === "scatterChart" &&
+		axes.some((a) =>
+			kids(kid(a, "scaling")).some(
+				(e) => e.localName !== "orientation" || attrOf(e, "val") === "maxMin",
+			),
+		)
+	)
+		return null;
+	const blanksValue = attrOf(kid(chart, "dispBlanksAs"), "val");
+	const blanks =
+		blanksValue === "span" || blanksValue === "zero" ? blanksValue : "gap";
+	const categoryReverse =
+		attrOf(path(kid(plot, "catAx"), "scaling", "orientation"), "val") ===
+			"maxMin" || undefined;
+	// A truncated plot is a different dataset: use the explicit placeholder instead.
+	if (
+		Array.from(plot.getElementsByTagNameNS("*", "ptCount")).some(
+			(p) => Number(attrOf(p, "val")) > MAX_POINTS,
+		) ||
+		Array.from(plot.getElementsByTagNameNS("*", "pt")).some(
+			(p) => Number(attrOf(p, "idx")) >= MAX_POINTS,
+		)
+	)
+		return null;
 	const title = richText(path(chart, "title", "tx", "rich"));
 	const legend = !!kid(chart, "legend");
 	// Every series in the plot gets the next theme accent unless the
@@ -186,7 +281,7 @@ function read(doc: Document, colors: ChartColors): Chart | null {
 			const slices = values
 				.map((value, i) => ({
 					label: labels[i] || `${i + 1}`,
-					value: Math.max(0, value ?? 0),
+					value: Math.abs(value ?? 0),
 					color: own.get(i) ?? colors.accent(i + 1),
 				}))
 				.filter((s) => s.value > 0);
@@ -236,10 +331,8 @@ function read(doc: Document, colors: ChartColors): Chart | null {
 						: null;
 		if (!kind) continue;
 		const grouping = attrOf(kid(group, "grouping"), "val");
-		if (kind !== "line") {
-			if (grouping === "stacked") stack = "stacked";
-			else if (grouping === "percentStacked") stack = "percent";
-		}
+		if (grouping === "stacked") stack = "stacked";
+		else if (grouping === "percentStacked") stack = "percent";
 		if (kind === "bar")
 			horizontal = attrOf(kid(group, "barDir"), "val") === "bar";
 		for (const ser of kids(group, "ser")) {
@@ -274,5 +367,8 @@ function read(doc: Document, colors: ChartColors): Chart | null {
 		horizontal,
 		stack,
 		percent,
+		valueAxis,
+		categoryReverse,
+		blanks,
 	};
 }

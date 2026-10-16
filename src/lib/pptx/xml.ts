@@ -38,3 +38,15 @@ export function relId(
 		if (a.localName === name && a.prefix === "r") return a.value;
 	return el.getAttribute(`r:${name}`);
 }
+
+/** OOXML uses both XML Schema boolean spellings. */
+export function xmlBool(
+	value: string | null | undefined,
+	fallback = false,
+): boolean {
+	return value === "1" || value === "true"
+		? true
+		: value === "0" || value === "false"
+			? false
+			: fallback;
+}

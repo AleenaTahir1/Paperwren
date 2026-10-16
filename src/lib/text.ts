@@ -1,7 +1,8 @@
 /** Decode text bytes: BOM-aware UTF-16/UTF-8, then strict UTF-8, then
  * Windows-1252 (the usual encoding of older .txt/.csv files). */
-export function decodeText(buffer: ArrayBuffer): string {
+export function decodeText(buffer: ArrayBuffer, encoding = "auto"): string {
 	const bytes = new Uint8Array(buffer);
+	if (encoding !== "auto") return new TextDecoder(encoding).decode(bytes);
 	if (bytes[0] === 0xff && bytes[1] === 0xfe)
 		return new TextDecoder("utf-16le").decode(bytes.subarray(2));
 	if (bytes[0] === 0xfe && bytes[1] === 0xff)

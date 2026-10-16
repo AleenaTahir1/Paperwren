@@ -1,5 +1,6 @@
 import { t } from "@/lib/i18n";
 import type { Chart } from "@/lib/pptx/parse";
+import { useId } from "react";
 
 /**
  * Draws a slide chart as plain SVG from the values the file cached.
@@ -67,6 +68,7 @@ export function SlideChart({
 	w,
 	h,
 }: { chart: Chart; w: number; h: number }) {
+	const plotId = useId();
 	const size = Math.max(9, Math.min(15, Math.min(w, h) / 24));
 	const pad = size * 0.8;
 	const titleH = chart.title ? size * 2.4 : 0;
@@ -99,7 +101,7 @@ export function SlideChart({
 			const inner = r * chart.hole;
 			const d =
 				chart.slices.length === 1
-					? `M${cx - r} ${cy}A${r} ${r} 0 1 1 ${cx + r} ${cy}A${r} ${r} 0 1 1 ${cx - r} ${cy}Z`
+					? `M${cx - r} ${cy}A${r} ${r} 0 1 1 ${cx + r} ${cy}A${r} ${r} 0 1 1 ${cx - r} ${cy}Z${inner ? `M${cx - inner} ${cy}A${inner} ${inner} 0 1 0 ${cx + inner} ${cy}A${inner} ${inner} 0 1 0 ${cx - inner} ${cy}Z` : ""}`
 					: inner
 						? `M${at(angle, r)}A${r} ${r} 0 ${large} 1 ${at(end, r)}L${at(end, inner)}A${inner} ${inner} 0 ${large} 0 ${at(angle, inner)}Z`
 						: `M${cx} ${cy}L${at(angle, r)}A${r} ${r} 0 ${large} 1 ${at(end, r)}Z`;
@@ -113,6 +115,10 @@ export function SlideChart({
 		const sideways = chart.kind === "cartesian" && chart.horizontal;
 		const percent = chart.kind === "cartesian" && chart.percent;
 		const stack = chart.kind === "cartesian" ? chart.stack : "none";
+		const stackedLines =
+			chart.kind === "cartesian" &&
+			stack !== "none" &&
+			chart.series.every((s) => s.kind === "line");
 		const count = chart.kind === "cartesian" ? chart.categories.length : 0;
 		const stacks = (kind: "bar" | "area") =>
 			chart.kind === "cartesian" && stack !== "none"
@@ -125,7 +131,7 @@ export function SlideChart({
 			let neg = 0;
 			if (chart.kind === "cartesian")
 				for (const s of chart.series) {
-					if (s.kind === "line") continue;
+					if (s.kind === "line" && !stackedLines) continue;
 					const v = s.values[i] ?? 0;
 					if (v >= 0) pos += v;
 					else neg += v;
@@ -147,7 +153,7 @@ export function SlideChart({
 			lo = totals.some((t) => t.neg < 0) ? -1 : 0;
 		} else {
 			for (const s of chart.series) {
-				if (stack !== "none" && s.kind !== "line") continue;
+				if (stack !== "none" && (s.kind !== "line" || stackedLines)) continue;
 				for (const v of s.values) {
 					if (v === null) continue;
 					lo = Math.min(lo, v);
@@ -161,9 +167,14 @@ export function SlideChart({
 				}
 		}
 		if (hi === lo) hi = lo + 1;
-		const ticks = niceTicks(lo, hi);
-		lo = Math.min(lo, ticks[0]);
-		hi = Math.max(hi, ticks[ticks.length - 1]);
+		lo = chart.valueAxis?.min ?? lo;
+		hi = chart.valueAxis?.max ?? hi;
+		if (hi <= lo) hi = lo + 1;
+		let ticks = niceTicks(lo, hi);
+		lo = chart.valueAxis?.min ?? Math.min(lo, ticks[0]);
+		hi = chart.valueAxis?.max ?? Math.max(hi, ticks[ticks.length - 1]);
+		ticks = ticks.filter((v) => v >= lo && v <= hi);
+		if (!ticks.length) ticks = [lo, hi];
 		const asPercent = percent || stack === "percent";
 		const tickLabels = ticks.map((t) => formatValue(t, asPercent));
 
@@ -193,17 +204,29 @@ export function SlideChart({
 		const plotW = Math.max(10, right - left);
 		const plotH = Math.max(10, base - top - size * 0.5);
 		const plotTop = base - plotH;
+		body.push(
+			<defs key="plot-clip">
+				<clipPath id={plotId}>
+					<rect x={left} y={plotTop} width={plotW} height={plotH} />
+				</clipPath>
+			</defs>,
+		);
 
 		/** Value -> position along the value axis. */
 		const scale = (v: number) => {
-			const t = (v - lo) / (hi - lo);
+			const fraction = (v - lo) / (hi - lo);
+			const t = chart.valueAxis?.reverse ? 1 - fraction : fraction;
 			return sideways ? left + t * plotW : base - t * plotH;
 		};
 		const band = count ? (sideways ? plotH : plotW) / count : 0;
 		/** Centre of category i along the category axis. PowerPoint lists
 		 * sideways bars bottom-up. */
-		const centre = (i: number) =>
-			sideways ? base - band * (i + 0.5) : left + band * (i + 0.5);
+		const centre = (i: number) => {
+			const index = chart.categoryReverse ? count - 1 - i : i;
+			return sideways
+				? base - band * (index + 0.5)
+				: left + band * (index + 0.5);
+		};
 
 		// Gridlines and value labels.
 		ticks.forEach((t, i) => {
@@ -294,6 +317,7 @@ export function SlideChart({
 				body.push(
 					<polygon
 						key={`a${si}`}
+						clipPath={`url(#${plotId})`}
 						points={[...upper, ...lower].join(" ")}
 						fill={s.color}
 						fillOpacity={stacked ? 1 : 0.75}
@@ -326,6 +350,7 @@ export function SlideChart({
 						sideways ? (
 							<rect
 								key={`b${bi}-${i}`}
+								clipPath={`url(#${plotId})`}
 								x={Math.min(a, b)}
 								y={across}
 								width={Math.abs(b - a)}
@@ -335,6 +360,7 @@ export function SlideChart({
 						) : (
 							<rect
 								key={`b${bi}-${i}`}
+								clipPath={`url(#${plotId})`}
 								x={across}
 								y={Math.min(a, b)}
 								width={thick}
@@ -346,16 +372,27 @@ export function SlideChart({
 				}
 			});
 
+			const linePositive = Array.from({ length: count }, () => 0);
+			const lineNegative = Array.from({ length: count }, () => 0);
 			chart.series.forEach((s, si) => {
 				if (s.kind !== "line") return;
 				// A gap in the data breaks the line instead of joining over it.
 				const runs: string[][] = [[]];
 				const dots: JSX.Element[] = [];
 				for (let i = 0; i < count; i++) {
-					const v = s.values[i];
+					let v = s.values[i];
 					if (v === null || v === undefined) {
-						runs.push([]);
-						continue;
+						if (chart.blanks === "zero") v = 0;
+						else {
+							if (chart.blanks !== "span") runs.push([]);
+							continue;
+						}
+					}
+					if (stackedLines) {
+						v = share(v, i);
+						const cumulative = v < 0 ? lineNegative : linePositive;
+						cumulative[i] += v;
+						v = cumulative[i];
 					}
 					const x = sideways ? scale(v) : centre(i);
 					const y = sideways ? centre(i) : scale(v);
@@ -366,7 +403,7 @@ export function SlideChart({
 						);
 				}
 				body.push(
-					<g key={`l${si}`}>
+					<g key={`l${si}`} clipPath={`url(#${plotId})`}>
 						{runs
 							.filter((run) => run.length > 1)
 							.map((run, ri) => (
@@ -433,7 +470,7 @@ export function SlideChart({
 			);
 			chart.series.forEach((s, si) =>
 				body.push(
-					<g key={`s${si}`}>
+					<g key={`s${si}`} clipPath={`url(#${plotId})`}>
 						{s.line && s.points.length > 1 && (
 							<polyline
 								points={s.points
@@ -461,6 +498,8 @@ export function SlideChart({
 
 	return (
 		<svg
+			width="100%"
+			height="100%"
 			viewBox={`0 0 ${Math.max(w, 1)} ${Math.max(h, 1)}`}
 			role="img"
 			aria-label={

@@ -2,7 +2,7 @@ import { hasRtl } from "@/lib/bidi";
 import { isDesktop } from "@/lib/env";
 import { locale, t } from "@/lib/i18n";
 import { type Chart, readChart } from "@/lib/pptx/chart";
-import { isDarkTheme } from "@/lib/settings";
+
 import {
 	DEFAULT_COL_WIDTH,
 	HEADER_HEIGHT,
@@ -51,6 +51,7 @@ import {
 	NUMERIC,
 	type Range,
 	type Sheet,
+	cellTextCss,
 	chartColors,
 	key,
 	parseCellAddress,
@@ -102,14 +103,14 @@ export default function SheetView({
 	onClose,
 	active,
 }: ViewerProps) {
-	const { settings, theme } = useSettings();
+	const { settings } = useSettings();
 	const [sheets, setSheets] = useState<Sheet[] | null>(null);
 	// The file's cell styles, and how each is drawn in this theme.
 	const [styles, setStyles] = useState<CellStyle[]>([]);
-	const dark = isDarkTheme(theme);
+
 	const looks = useMemo<CSSProperties[]>(
-		() => styles.map((st) => styleCss(st, dark)),
-		[styles, dark],
+		() => styles.map((st) => styleCss(st)),
+		[styles],
 	);
 	const [mediaUrls, setMediaUrls] = useState<string[]>([]);
 	const [accents, setAccents] = useState<string[]>([]);
@@ -575,9 +576,16 @@ export default function SheetView({
 		for (let r = Math.min(win.r0, frozenRows ? 0 : win.r0); r < win.r1; r++) {
 			const cell = sheet.cells.get(key(r, c));
 			if (!cell?.value) continue;
-			const bold =
-				cell.style !== undefined && looks[cell.style]?.fontWeight === 700;
-			widest = Math.max(widest, textWidth(cell.value, bold, FACE) + 16);
+			const look = cell.style !== undefined ? looks[cell.style] : undefined;
+			widest = Math.max(
+				widest,
+				textWidth(
+					cell.value,
+					look?.fontWeight === 700,
+					String(look?.fontFamily ?? FACE),
+					Number(look?.fontSize ?? 13),
+				) + 16,
+			);
 		}
 		setWidth(c, widest);
 	};
@@ -743,7 +751,13 @@ export default function SheetView({
 					look?.textAlign !== "right" &&
 					!hasRtl(value)
 				) {
-					const need = textWidth(value, look?.fontWeight === 700, FACE) + 14;
+					const need =
+						textWidth(
+							value,
+							look?.fontWeight === 700,
+							String(look?.fontFamily ?? FACE),
+							Number(look?.fontSize ?? 13),
+						) + 14;
 					if (need > w) {
 						let room = w;
 						for (
@@ -788,7 +802,13 @@ export default function SheetView({
 						dir={value && hasRtl(value) ? "rtl" : undefined}
 						title={value.length > 20 ? value : undefined}
 					>
-						{value}
+						{cell?.style !== undefined && styles[cell.style]?.rotation ? (
+							<span style={cellTextCss(styles[cell.style].rotation)}>
+								{value}
+							</span>
+						) : (
+							value
+						)}
 					</div>,
 				);
 			}
@@ -1071,14 +1091,39 @@ export default function SheetView({
 			}
 			onPrint={
 				sheet
-					? (root) =>
-							// Paper is light whatever the theme on screen.
+					? async (root) => {
+							const { renderToStaticMarkup } = await import("react-dom/server");
+							const objects = placed.map(({ object, left, w }, index) => {
+								const node = document.createElement("div");
+								if (object.image !== undefined && mediaUrls[object.image]) {
+									const image = new Image();
+									image.src = mediaUrls[object.image];
+									image.style.width = "100%";
+									image.style.height = "100%";
+									node.appendChild(image);
+								} else {
+									const chart = charts.get(object);
+									if (chart)
+										node.innerHTML = renderToStaticMarkup(
+											<SlideChart chart={chart} w={w} h={object.h} />,
+											{ identifierPrefix: `print-chart-${index}-` },
+										);
+									else
+										node.textContent = object.chartXml
+											? t("Chart preview unavailable")
+											: t("Image");
+								}
+								return { node, x: left, y: object.y, w, h: object.h };
+							});
 							printSheet(
 								root,
 								sheet,
 								widths,
 								styles.map((st) => styleCss(st)),
-							)
+								objects,
+								styles,
+							);
+						}
 					: undefined
 			}
 			actions={
@@ -1204,7 +1249,6 @@ export default function SheetView({
 								const chart = charts.get(object);
 								const src =
 									object.image !== undefined ? mediaUrls[object.image] : "";
-								if (!chart && !src) return null;
 								return (
 									<div
 										key={i}
@@ -1219,8 +1263,14 @@ export default function SheetView({
 									>
 										{chart ? (
 											<SlideChart chart={chart} w={w} h={object.h} />
-										) : (
+										) : src ? (
 											<img src={src} alt="" draggable={false} />
+										) : (
+											<div className={s.unavailable}>
+												{object.chartXml
+													? t("Chart preview unavailable")
+													: t("Image")}
+											</div>
 										)}
 									</div>
 								);

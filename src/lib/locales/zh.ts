@@ -3,6 +3,9 @@
 import type { Table } from "../i18n";
 
 export const zh: Table = {
+	"Text encoding": "文本编码",
+	"Page breaks may differ from Word.": "分页可能与 Word 不同。",
+	"Chart preview unavailable": "图表预览不可用",
 	Cancel: "取消",
 	Close: "关闭",
 	OK: "确定",

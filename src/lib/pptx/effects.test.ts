@@ -28,10 +28,10 @@ describe("shadows, gradients and SmartArt", () => {
 		expect(picture?.kind === "image" && picture.shadow).toBe(
 			"4.24px 4.24px 8px rgba(0, 0, 0, 0.450)",
 		);
-		// No effect list, no shadow.
-		expect(
-			shapes(0).find((s) => s.geom === "triangle")?.shadow,
-		).toBeUndefined();
+		// No direct effect list: effectRef idx=2 inherits the theme shadow.
+		expect(shapes(0).find((s) => s.geom === "triangle")?.shadow).toBe(
+			"0px 2.41px 4.2px rgba(0, 0, 0, 0.350)",
+		);
 	});
 
 	it("keeps a gradient's stops and angle, whatever the outline", () => {

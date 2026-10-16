@@ -1,4 +1,13 @@
 .scroller {
+	/* Document colors are independent of the surrounding app theme. */
+	--surface: #fff;
+	--surface-2: #f5f5f5;
+	--text: #222;
+	--text-3: #666;
+	--line: #ddd;
+	--line-strong: #bbb;
+	color: #222;
+	color-scheme: light;
 	position: absolute;
 	inset: 0;
 	overflow: auto;
@@ -131,13 +140,9 @@
 	color: var(--text);
 	background: var(--surface);
 }
-/* Authored text colour on an unfilled cell: as written on the light
- * themes, lifted towards white on the dark one so it stays legible. */
+/* Preserve authored ink on the sheet's white canvas in every app theme. */
 .ink {
 	color: var(--ink);
-}
-:global([data-theme="dark"]) .ink {
-	color: color-mix(in srgb, var(--ink) 55%, #fff);
 }
 .num {
 	justify-content: flex-end;
@@ -358,4 +363,15 @@
 /* What a cell holds can be selected and copied by hand too. */
 .value {
 	user-select: text;
+}
+
+.unavailable {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	height: 100%;
+	padding: 12px;
+	text-align: center;
+	color: #595959;
 }

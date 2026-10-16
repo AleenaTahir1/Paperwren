@@ -3,6 +3,9 @@
 import type { Table } from "../i18n";
 
 export const hi: Table = {
+	"Text encoding": "टेक्स्ट एन्कोडिंग",
+	"Page breaks may differ from Word.": "पृष्ठ विराम Word से अलग हो सकते हैं।",
+	"Chart preview unavailable": "चार्ट पूर्वावलोकन उपलब्ध नहीं है",
 	Cancel: "रद्द करें",
 	Close: "बंद करें",
 	OK: "ठीक है",

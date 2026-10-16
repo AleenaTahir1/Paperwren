@@ -3,6 +3,10 @@
 import type { Table } from "../i18n";
 
 export const es: Table = {
+	"Text encoding": "Codificación del texto",
+	"Page breaks may differ from Word.":
+		"Los saltos de página pueden diferir de Word.",
+	"Chart preview unavailable": "Vista previa del gráfico no disponible",
 	Cancel: "Cancelar",
 	Close: "Cerrar",
 	OK: "Aceptar",

@@ -19,7 +19,11 @@ import { hasRtl, startsRtl } from "../bidi";
 import { msg } from "../i18n";
 import { bulletGlyph } from "./bullets";
 import { type Chart, readChart } from "./chart";
-import { path, attrOf, kid, kids, relId } from "./xml";
+import { path, attrOf, kid, kids, relId, xmlBool } from "./xml";
+
+import { listNumber } from "./numbering";
+import { type Crop, pictureCrop, pictureEffects } from "./picture";
+import { type Matrix, boxMatrix, multiply } from "./transform";
 
 export type { Chart };
 
@@ -33,6 +37,9 @@ export interface Run {
 	color: string;
 	font?: string;
 	href?: string;
+	baseline?: number;
+	tracking?: number;
+	caps?: string;
 	/** Line break run. */
 	br?: boolean;
 }
@@ -44,6 +51,8 @@ export interface Para {
 	bullet?: string;
 	indent: number; // px
 	lineHeight?: number; // multiplier
+	linePoints?: number;
+	hanging?: number;
 	spaceBefore: number; // px
 	spaceAfter: number; // px
 	/** Size used for empty paragraphs so blank lines keep their height. */
@@ -58,6 +67,10 @@ export interface TextBody {
 	insets: [number, number, number, number]; // l t r b px
 	wrap: boolean;
 	vertical: boolean;
+	verticalMode?: string;
+	rotation?: number;
+	columns?: number;
+	columnGap?: number;
 }
 
 interface Box {
@@ -68,6 +81,7 @@ interface Box {
 	rot: number;
 	flipH: boolean;
 	flipV: boolean;
+	matrix?: Matrix;
 }
 
 /** One outline of a freeform shape, in its own coordinate space. */
@@ -98,6 +112,9 @@ export type SlideElement =
 			shadow?: string;
 			/** Picture fill (blob URL), stretched over the shape. */
 			image?: string | null;
+			imageOpacity?: number;
+			imageFilter?: string;
+			imageCrop?: Crop;
 			line?: { color: string; width: number; dash: boolean };
 			radius?: number;
 			/** Freeform outlines (custGeom); replaces the preset `geom`. */
@@ -107,6 +124,8 @@ export type SlideElement =
 	| (Box & {
 			kind: "image";
 			src: string | null;
+			opacity?: number;
+			imageFilter?: string;
 			/** Cropped-away fractions of the source: left, top, right, bottom. */
 			crop?: [number, number, number, number];
 			/** Picture frame: an ellipse, or a corner radius in px. */
@@ -121,6 +140,12 @@ export type SlideElement =
 				cells: Array<{
 					text: TextBody;
 					fill?: string;
+					borders?: {
+						top?: string;
+						right?: string;
+						bottom?: string;
+						left?: string;
+					};
 					span: number;
 					rowSpan: number;
 					hidden: boolean;
@@ -211,6 +236,138 @@ const PRESET: Record<string, string> = {
 	gray: "808080",
 	grey: "808080",
 	orange: "FFA500",
+	purple: "800080",
+	aliceBlue: "F0F8FF",
+	antiqueWhite: "FAEBD7",
+	aqua: "00FFFF",
+	aquamarine: "7FFFD4",
+	azure: "F0FFFF",
+	beige: "F5F5DC",
+	bisque: "FFE4C4",
+	blanchedAlmond: "FFEBCD",
+	blueViolet: "8A2BE2",
+	brown: "A52A2A",
+	burlyWood: "DEB887",
+	cadetBlue: "5F9EA0",
+	chartreuse: "7FFF00",
+	chocolate: "D2691E",
+	coral: "FF7F50",
+	cornflowerBlue: "6495ED",
+	cornsilk: "FFF8DC",
+	crimson: "DC143C",
+	cyan: "00FFFF",
+	dkBlue: "00008B",
+	dkCyan: "008B8B",
+	dkGoldenrod: "B8860B",
+	dkGray: "A9A9A9",
+	dkGreen: "006400",
+	dkKhaki: "BDB76B",
+	dkMagenta: "8B008B",
+	dkOliveGreen: "556B2F",
+	dkOrange: "FF8C00",
+	dkOrchid: "9932CC",
+	dkRed: "8B0000",
+	dkSalmon: "E9967A",
+	dkSeaGreen: "8FBC8F",
+	dkSlateBlue: "483D8B",
+	dkSlateGray: "2F4F4F",
+	dkTurquoise: "00CED1",
+	dkViolet: "9400D3",
+	deepPink: "FF1493",
+	deepSkyBlue: "00BFFF",
+	dimGray: "696969",
+	dodgerBlue: "1E90FF",
+	firebrick: "B22222",
+	floralWhite: "FFFAF0",
+	forestGreen: "228B22",
+	fuchsia: "FF00FF",
+	gainsboro: "DCDCDC",
+	ghostWhite: "F8F8FF",
+	gold: "FFD700",
+	goldenrod: "DAA520",
+	greenYellow: "ADFF2F",
+	honeydew: "F0FFF0",
+	hotPink: "FF69B4",
+	indianRed: "CD5C5C",
+	indigo: "4B0082",
+	ivory: "FFFFF0",
+	khaki: "F0E68C",
+	lavender: "E6E6FA",
+	lavenderBlush: "FFF0F5",
+	lawnGreen: "7CFC00",
+	lemonChiffon: "FFFACD",
+	ltBlue: "ADD8E6",
+	ltCoral: "F08080",
+	ltCyan: "E0FFFF",
+	ltGoldenrodYellow: "FAFAD2",
+	ltGray: "D3D3D3",
+	ltGreen: "90EE90",
+	ltPink: "FFB6C1",
+	ltSalmon: "FFA07A",
+	ltSeaGreen: "20B2AA",
+	ltSkyBlue: "87CEFA",
+	ltSlateGray: "778899",
+	ltSteelBlue: "B0C4DE",
+	ltYellow: "FFFFE0",
+	lime: "00FF00",
+	limeGreen: "32CD32",
+	linen: "FAF0E6",
+	magenta: "FF00FF",
+	maroon: "800000",
+	medAquamarine: "66CDAA",
+	medBlue: "0000CD",
+	medOrchid: "BA55D3",
+	medPurple: "9370DB",
+	medSeaGreen: "3CB371",
+	medSlateBlue: "7B68EE",
+	medSpringGreen: "00FA9A",
+	medTurquoise: "48D1CC",
+	medVioletRed: "C71585",
+	midnightBlue: "191970",
+	mintCream: "F5FFFA",
+	mistyRose: "FFE4E1",
+	moccasin: "FFE4B5",
+	navajoWhite: "FFDEAD",
+	navy: "000080",
+	oldLace: "FDF5E6",
+	olive: "808000",
+	oliveDrab: "6B8E23",
+	orangeRed: "FF4500",
+	orchid: "DA70D6",
+	paleGoldenrod: "EEE8AA",
+	paleGreen: "98FB98",
+	paleTurquoise: "AFEEEE",
+	paleVioletRed: "DB7093",
+	papayaWhip: "FFEFD5",
+	peachPuff: "FFDAB9",
+	peru: "CD853F",
+	pink: "FFC0CB",
+	plum: "DDA0DD",
+	powderBlue: "B0E0E6",
+	rosyBrown: "BC8F8F",
+	royalBlue: "4169E1",
+	saddleBrown: "8B4513",
+	salmon: "FA8072",
+	sandyBrown: "F4A460",
+	seaGreen: "2E8B57",
+	seaShell: "FFF5EE",
+	sienna: "A0522D",
+	silver: "C0C0C0",
+	skyBlue: "87CEEB",
+	slateBlue: "6A5ACD",
+	slateGray: "708090",
+	snow: "FFFAFA",
+	springGreen: "00FF7F",
+	steelBlue: "4682B4",
+	tan: "D2B48C",
+	teal: "008080",
+	thistle: "D8BFD8",
+	tomato: "FF6347",
+	turquoise: "40E0D0",
+	violet: "EE82EE",
+	wheat: "F5DEB3",
+	whiteSmoke: "F5F5F5",
+	yellowGreen: "9ACD32",
 };
 
 class Palette {
@@ -254,11 +411,28 @@ class Palette {
 			hex = this.theme[mapped] ?? this.theme[val] ?? hex;
 		}
 		let [r, g, b] = hexToRgb(hex);
+		if (c.localName === "scrgbClr") {
+			const srgb = (n: number) =>
+				255 * (n <= 0.0031308 ? 12.92 * n : 1.055 * n ** (1 / 2.4) - 0.055);
+			[r, g, b] = ["r", "g", "b"].map((n) =>
+				srgb(Math.max(0, Math.min(1, Number(attrOf(c, n) ?? 0) / 100000))),
+			);
+		} else if (c.localName === "hslClr") {
+			[r, g, b] = hslToRgb([
+				Number(attrOf(c, "hue") ?? 0) / 21600000,
+				Number(attrOf(c, "sat") ?? 0) / 100000,
+				Number(attrOf(c, "lum") ?? 0) / 100000,
+			]);
+		}
 		let alpha = 1;
 		for (const mod of kids(c)) {
 			const v = Number(attrOf(mod, "val")) / 100000;
 			if (!Number.isFinite(v)) continue;
-			if (mod.localName === "alpha") alpha = v;
+			if (mod.localName === "alpha") alpha = Math.max(0, Math.min(1, v));
+			else if (mod.localName === "alphaMod")
+				alpha = Math.max(0, Math.min(1, alpha * v));
+			else if (mod.localName === "alphaOff")
+				alpha = Math.max(0, Math.min(1, alpha + v));
 			else if (mod.localName === "lumMod" || mod.localName === "lumOff") {
 				const hsl = rgbToHsl([r, g, b]);
 				hsl[2] =
@@ -274,6 +448,7 @@ class Palette {
 				b *= v;
 			}
 		}
+		alpha = Math.max(0, Math.min(1, alpha));
 		const to = (n: number) => Math.round(Math.max(0, Math.min(255, n)));
 		return alpha < 1
 			? `rgba(${to(r)}, ${to(g)}, ${to(b)}, ${alpha.toFixed(3)})`
@@ -445,6 +620,14 @@ interface Level {
 	align?: Para["align"];
 	rtl?: boolean;
 	bullet?: string | null;
+	numbering?: { scheme: string; start?: number } | null;
+	baseline?: number;
+	tracking?: number;
+	caps?: string;
+	underline?: boolean;
+	strike?: boolean;
+	linePoints?: number;
+	hanging?: number;
 	indent?: number;
 	lineHeight?: number;
 	spaceBefore?: number;
@@ -470,16 +653,38 @@ function readLevel(pPr: Element | null, pal: Palette, fonts: Fonts): Level {
 	if (rtl !== null) out.rtl = rtl === "1" || rtl === "true";
 	const marL = attrOf(pPr, "marL");
 	if (marL) out.indent = px(marL);
-	if (kid(pPr, "buNone")) out.bullet = null;
+	if (kid(pPr, "buNone")) {
+		out.bullet = null;
+		out.numbering = null;
+	}
+	if (attrOf(pPr, "indent") !== null) out.hanging = px(attrOf(pPr, "indent"));
 	const buChar = kid(pPr, "buChar");
 	if (buChar)
 		out.bullet = bulletGlyph(
 			attrOf(buChar, "char") ?? "•",
 			attrOf(kid(pPr, "buFont"), "typeface"),
 		);
-	if (kid(pPr, "buAutoNum")) out.bullet = "#";
+	if (buChar) out.numbering = null;
+	const numbering = kid(pPr, "buAutoNum");
+	if (numbering) {
+		out.bullet = "#";
+		out.numbering = {
+			scheme: attrOf(numbering, "type") ?? "arabicPeriod",
+			start: numbering.hasAttribute("startAt")
+				? Number(attrOf(numbering, "startAt"))
+				: undefined,
+		};
+	}
+	const lnPts = attrOf(path(pPr, "lnSpc", "spcPts"), "val");
+	if (lnPts !== null) {
+		out.linePoints = Number(lnPts) / 75;
+		out.lineHeight = undefined;
+	}
 	const lnPct = attrOf(path(pPr, "lnSpc", "spcPct"), "val");
-	if (lnPct) out.lineHeight = Number(lnPct) / 100000;
+	if (lnPct !== null) {
+		out.lineHeight = Number(lnPct) / 100000;
+		out.linePoints = undefined;
+	}
 	const before = attrOf(path(pPr, "spcBef", "spcPts"), "val");
 	if (before) out.spaceBefore = (Number(before) / 100) * (4 / 3);
 	const after = attrOf(path(pPr, "spcAft", "spcPts"), "val");
@@ -497,6 +702,13 @@ function readRun(rPr: Element | null, pal: Palette, fonts: Fonts): Level {
 	if (b) out.bold = b === "1" || b === "true";
 	const i = attrOf(rPr, "i");
 	if (i) out.italic = i === "1" || i === "true";
+	if (rPr.hasAttribute("baseline"))
+		out.baseline = Number(attrOf(rPr, "baseline")) / 100000;
+	if (rPr.hasAttribute("spc")) out.tracking = Number(attrOf(rPr, "spc")) / 75;
+	if (rPr.hasAttribute("cap")) out.caps = attrOf(rPr, "cap") ?? undefined;
+	if (rPr.hasAttribute("u")) out.underline = attrOf(rPr, "u") !== "none";
+	if (rPr.hasAttribute("strike"))
+		out.strike = attrOf(rPr, "strike") !== "noStrike";
 	const color = pal.resolve(kid(rPr, "solidFill"));
 	if (color) out.color = color;
 	const latin = attrOf(kid(rPr, "latin"), "typeface");
@@ -574,8 +786,8 @@ function readXfrm(xfrm: Element | null): Box | null {
 		w: px(attrOf(ext, "cx")),
 		h: px(attrOf(ext, "cy")),
 		rot: Number(attrOf(xfrm, "rot") ?? 0) / 60000,
-		flipH: attrOf(xfrm, "flipH") === "1",
-		flipV: attrOf(xfrm, "flipV") === "1",
+		flipH: xmlBool(attrOf(xfrm, "flipH")),
+		flipV: xmlBool(attrOf(xfrm, "flipV")),
 	};
 }
 
@@ -637,7 +849,7 @@ function readPaths(custGeom: Element | null, box: Box): GeomPath[] {
 			w: Number(attrOf(p, "w")) || box.w * EMU_PER_PX || 1,
 			h: Number(attrOf(p, "h")) || box.h * EMU_PER_PX || 1,
 			fill: attrOf(p, "fill") !== "none",
-			stroke: attrOf(p, "stroke") !== "0",
+			stroke: xmlBool(attrOf(p, "stroke"), true),
 		});
 	}
 	return out;
@@ -653,6 +865,10 @@ interface Context {
 	layoutTree: Element | null;
 	masterTree: Element | null;
 	masterStyles: { title: LevelStyles; body: LevelStyles; other: LevelStyles };
+	formatScheme?: Element | null;
+	layoutPart?: string;
+	masterPart?: string;
+	themePart?: string;
 	/** Group transform: child space -> slide space. */
 	map: (b: Box) => Box;
 }
@@ -686,15 +902,23 @@ function readTextBody(
 		const v = bodyAttr(name);
 		return v === null ? fallback : px(v);
 	};
-	const autofit = path(kid(txBody, "bodyPr"), "normAutofit");
-	const fontScale = autofit
-		? Number(attrOf(autofit, "fontScale") ?? 100000) / 100000
-		: 1;
+	const autofit = bodyPrs
+		.map((b) =>
+			kids(b).find((e) =>
+				["normAutofit", "noAutofit", "spAutoFit"].includes(e.localName),
+			),
+		)
+		.find(Boolean);
+	const fontScale = Math.max(
+		0.01,
+		Math.min(1, Number(attrOf(autofit, "fontScale") ?? 100000) / 100000),
+	);
 	const layers = [
 		...inherited,
 		readList(kid(txBody, "lstStyle"), ctx.pal, ctx.fonts),
 	];
 
+	const counters = new Map<number, { scheme: string; value: number }>();
 	const paras: Para[] = kids(txBody, "p").map((p) => {
 		const pPr = kid(p, "pPr");
 		const level = Number(attrOf(pPr, "lvl") ?? 0);
@@ -718,22 +942,32 @@ function readTextBody(
 			const style = { ...merged, ...own };
 			const link = relId(path(r, "rPr", "hlinkClick"), "id");
 			const target = link ? ctx.rels.get(link) : undefined;
-			const rPr = kid(r, "rPr");
 			const text = kid(r, "t")?.textContent ?? "";
 			runs.push({
 				...runFrom(style, own.size ? own.size * fontScale : baseSize),
 				text,
 				// Right-to-left text is set in the complex-script face.
 				font: hasRtl(text) ? (style.csFont ?? style.font) : style.font,
-				underline:
-					!!rPr && attrOf(rPr, "u") !== null && attrOf(rPr, "u") !== "none",
-				strike: !!rPr && (attrOf(rPr, "strike") ?? "noStrike") !== "noStrike",
+
 				href:
 					target?.external && /^https?:/i.test(target.target)
 						? target.target
 						: undefined,
 			});
 		}
+		let bullet = merged.bullet ?? undefined;
+		if (merged.numbering && runs.some((r) => r.text.trim())) {
+			const previous = counters.get(level);
+			const numbering = merged.numbering;
+			const value =
+				own.numbering?.start ??
+				(previous?.scheme === numbering.scheme
+					? previous.value + 1
+					: (numbering.start ?? 1));
+			counters.set(level, { scheme: numbering.scheme, value });
+			for (const l of counters.keys()) if (l > level) counters.delete(l);
+			bullet = listNumber(value, numbering.scheme);
+		} else if (!merged.numbering) counters.delete(level);
 		const endSize = readRun(kid(p, "endParaRPr"), ctx.pal, ctx.fonts).size;
 		// A flag on the paragraph itself is final. A template's blanket
 		// "left-to-right, left-aligned" is not: there the text decides,
@@ -751,9 +985,11 @@ function readTextBody(
 			rtl: rtl || undefined,
 			align,
 			level,
-			bullet: merged.bullet ?? undefined,
+			bullet,
 			indent: merged.indent ?? 0,
 			lineHeight: merged.lineHeight,
+			linePoints: merged.linePoints,
+			hanging: merged.hanging,
 			spaceBefore: merged.spaceBefore ?? 0,
 			spaceAfter: merged.spaceAfter ?? 0,
 			endSize: (endSize ?? baseSize / fontScale) * fontScale,
@@ -772,6 +1008,10 @@ function readTextBody(
 		],
 		wrap: bodyAttr("wrap") !== "none",
 		vertical: (bodyAttr("vert") ?? "horz").startsWith("vert"),
+		verticalMode: bodyAttr("vert") ?? undefined,
+		rotation: Number(bodyAttr("rot") ?? 0) / 60000 || undefined,
+		columns: Math.max(1, Math.min(16, Number(bodyAttr("numCol") ?? 1))),
+		columnGap: px(bodyAttr("spcCol")),
 	};
 }
 
@@ -781,11 +1021,62 @@ function runFrom(style: Level, size: number): Run {
 		size,
 		bold: style.bold ?? false,
 		italic: style.italic ?? false,
-		underline: false,
-		strike: false,
+		underline: style.underline ?? false,
+		strike: style.strike ?? false,
+		baseline: style.baseline,
+		tracking: style.tracking,
+		caps: style.caps,
 		color: style.color ?? "rgb(0, 0, 0)",
 		font: style.font,
 	};
+}
+
+/** Expand a theme style matrix entry without discarding its geometry/effects. */
+function themeStyle(ref: Element | null, ctx: Context): Element | null {
+	if (!ref) return null;
+	const index = Number(attrOf(ref, "idx") ?? 0);
+	const fill = ref.localName === "fillRef" || ref.localName === "bgRef";
+	if (index === 0 && fill)
+		return ref.ownerDocument.createElementNS(
+			"http://schemas.openxmlformats.org/drawingml/2006/main",
+			"a:noFill",
+		);
+	if (index === 0 && ref.localName === "lnRef") {
+		const line = ref.ownerDocument.createElementNS(
+			"http://schemas.openxmlformats.org/drawingml/2006/main",
+			"a:ln",
+		);
+		line.appendChild(
+			ref.ownerDocument.createElementNS(
+				"http://schemas.openxmlformats.org/drawingml/2006/main",
+				"a:noFill",
+			),
+		);
+		return line;
+	}
+	const list = fill
+		? index >= 1001
+			? "bgFillStyleLst"
+			: "fillStyleLst"
+		: ref.localName === "lnRef"
+			? "lnStyleLst"
+			: "effectStyleLst";
+	const entry = kids(kid(ctx.formatScheme, list))[
+		index - (index >= 1001 && fill ? 1001 : 1)
+	];
+	if (!entry) return null;
+	const result = entry.cloneNode(true) as Element;
+	const color = kids(ref).find((e) => e.localName.endsWith("Clr"));
+	if (color)
+		for (const ph of Array.from(
+			result.getElementsByTagNameNS("*", "schemeClr"),
+		)) {
+			if (attrOf(ph, "val") !== "phClr") continue;
+			const replacement = color.cloneNode(true) as Element;
+			for (const mod of kids(ph)) replacement.appendChild(mod.cloneNode(true));
+			ph.replaceWith(replacement);
+		}
+	return result;
 }
 
 function readShape(
@@ -798,7 +1089,36 @@ function readShape(
 	if (inheritOnly && ph) return; // layout/master placeholders are templates, not content
 	const layoutPh = ph ? findPlaceholder(ctx.layoutTree, ph) : null;
 	const masterPh = ph ? findPlaceholder(ctx.masterTree, ph) : null;
-	const spPr = kid(sp, "spPr");
+	const ownProps = kid(sp, "spPr");
+	let fillRels = ctx.rels;
+	const spPr = (
+		ownProps ??
+		sp.ownerDocument.createElementNS(
+			"http://schemas.openxmlformats.org/presentationml/2006/main",
+			"p:spPr",
+		)
+	).cloneNode(true) as Element;
+	const groups = [
+		["solidFill", "gradFill", "blipFill", "pattFill", "noFill", "grpFill"],
+		["ln"],
+		["effectLst", "effectDag"],
+		["prstGeom", "custGeom"],
+	];
+	for (const group of groups) {
+		if (kids(spPr).some((e) => group.includes(e.localName))) continue;
+		const inherited = [layoutPh, masterPh]
+			.flatMap((el) => kids(kid(el, "spPr")))
+			.find((e) => group.includes(e.localName));
+		if (inherited) {
+			spPr.appendChild(inherited.cloneNode(true));
+			if (inherited.localName === "blipFill")
+				fillRels = ctx.pkg.rels(
+					inherited.ownerDocument === layoutPh?.ownerDocument
+						? (ctx.layoutPart ?? "")
+						: (ctx.masterPart ?? ""),
+				);
+		}
+	}
 	const box =
 		readXfrm(kid(spPr, "xfrm")) ??
 		readXfrm(path(layoutPh, "spPr", "xfrm")) ??
@@ -817,7 +1137,30 @@ function readShape(
 	].filter(Boolean) as Element[];
 
 	// Theme style reference (p:style) supplies default fill/line/font colour.
-	const style = kid(sp, "style");
+	const style =
+		kid(sp, "style") ?? kid(layoutPh, "style") ?? kid(masterPh, "style");
+	for (const [name, group] of [
+		[
+			"fillRef",
+			["solidFill", "gradFill", "blipFill", "pattFill", "noFill", "grpFill"],
+		],
+		["lnRef", ["ln"]],
+		["effectRef", ["effectLst", "effectDag"]],
+	] as const) {
+		if (
+			kids(spPr).some((e) => (group as readonly string[]).includes(e.localName))
+		)
+			continue;
+		const entry = themeStyle(kid(style, name), ctx);
+		if (entry) {
+			if (name === "fillRef" && entry.localName === "blipFill")
+				fillRels = ctx.pkg.rels(ctx.themePart ?? "");
+			if (name === "effectRef")
+				for (const effect of kids(entry))
+					spPr.appendChild(effect.cloneNode(true));
+			else spPr.appendChild(entry);
+		}
+	}
 	const styleFill = ctx.pal.resolve(kid(style, "fillRef"));
 	const styleLine = ctx.pal.resolve(kid(style, "lnRef"));
 	const styleFont = ctx.pal.resolve(kid(style, "fontRef"));
@@ -836,7 +1179,7 @@ function readShape(
 	const adj = attrOf(path(spPr, "prstGeom", "avLst", "gd"), "fmla");
 	const mapped = ctx.map(box);
 	const blip = relId(path(spPr, "blipFill", "blip"), "embed");
-	const blipRel = blip ? ctx.rels.get(blip) : undefined;
+	const blipRel = blip ? fillRels.get(blip) : undefined;
 
 	const text = readTextBody(
 		kid(sp, "txBody"),
@@ -858,7 +1201,7 @@ function readShape(
 			blipRel && !blipRel.external && mimeFor(blipRel.target)
 				? ctx.pkg.wantMedia(blipRel.target)
 				: undefined,
-		fill: fill === null ? undefined : (fill ?? (ph ? undefined : styleFill)),
+		fill: fill === null ? undefined : (fill ?? styleFill),
 		line:
 			lnFill && (ln || style)
 				? {
@@ -874,6 +1217,9 @@ function readShape(
 				? Math.min(mapped.w, mapped.h) *
 					(adj ? Number(adj.split(" ")[1]) / 100000 : 0.1667)
 				: undefined,
+		imageOpacity: pictureEffects(kid(spPr, "blipFill")).opacity,
+		imageFilter: pictureEffects(kid(spPr, "blipFill")).imageFilter,
+		imageCrop: pictureCrop(kid(spPr, "blipFill")),
 		text: textBox ? undefined : text,
 	});
 	if (textBox)
@@ -889,23 +1235,15 @@ function readPicture(pic: Element, ctx: Context, out: SlideElement[]) {
 		rel && !rel.external && mimeFor(rel.target)
 			? ctx.pkg.wantMedia(rel.target)
 			: null;
-	const rect = path(pic, "blipFill", "srcRect");
-	const side = (name: string) => Number(attrOf(rect, name) ?? 0) / 100000 || 0;
-	const crop: [number, number, number, number] = [
-		side("l"),
-		side("t"),
-		side("r"),
-		side("b"),
-	];
-	const cropped =
-		crop.some((c) => c !== 0) && crop[0] + crop[2] < 1 && crop[1] + crop[3] < 1;
+	const crop = pictureCrop(kid(pic, "blipFill"));
 	const mapped = ctx.map(box);
 	const prst = attrOf(path(pic, "spPr", "prstGeom"), "prst");
 	out.push({
 		kind: "image",
 		...mapped,
 		src,
-		crop: cropped ? crop : undefined,
+		crop,
+		...pictureEffects(kid(pic, "blipFill")),
 		shadow: ctx.pal.shadow(kid(pic, "spPr")),
 		round:
 			prst === "ellipse"
@@ -989,7 +1327,7 @@ function readFrame(frame: Element, ctx: Context, out: SlideElement[]) {
 		}
 		if (uri.includes("diagram") && readDiagram(data, box, ctx, out)) return;
 		const label = uri.includes("chart")
-			? msg("Chart")
+			? msg("Chart preview unavailable")
 			: uri.includes("diagram")
 				? msg("Diagram")
 				: msg("Embedded object");
@@ -1014,13 +1352,36 @@ function readFrame(frame: Element, ctx: Context, out: SlideElement[]) {
 				wrap: true,
 				vertical: false,
 			};
-			const fill = ctx.pal.fill(kid(tc, "tcPr"));
+			const tcPr = kid(tc, "tcPr");
+			const fill = ctx.pal.fill(tcPr);
+			text.insets = ["marL", "marT", "marR", "marB"].map((n, i) =>
+				tcPr?.hasAttribute(n) ? px(attrOf(tcPr, n)) : text.insets[i],
+			) as [number, number, number, number];
+			const anchor = attrOf(tcPr, "anchor");
+			if (anchor)
+				text.anchor =
+					anchor === "ctr" ? "middle" : anchor === "b" ? "bottom" : "top";
+			const border = (name: string) => {
+				const line = kid(tcPr, name);
+				if (!line || kid(line, "noFill")) return "none";
+				const color = ctx.pal.resolve(kid(line, "solidFill")) ?? "#000000";
+				const width = px(attrOf(line, "w") ?? "12700");
+				const dash = attrOf(kid(line, "prstDash"), "val");
+				return `${width}px ${dash && dash !== "solid" ? "dashed" : "solid"} ${color}`;
+			};
+			const borders = {
+				top: border("lnT"),
+				right: border("lnR"),
+				bottom: border("lnB"),
+				left: border("lnL"),
+			};
 			return {
 				text,
 				fill: fill ?? undefined,
+				borders,
 				span: Number(attrOf(tc, "gridSpan") ?? 1),
 				rowSpan: Number(attrOf(tc, "rowSpan") ?? 1),
-				hidden: attrOf(tc, "hMerge") === "1" || attrOf(tc, "vMerge") === "1",
+				hidden: xmlBool(attrOf(tc, "hMerge")) || xmlBool(attrOf(tc, "vMerge")),
 			};
 		}),
 	}));
@@ -1073,10 +1434,17 @@ function readTree(
 						map: (b) =>
 							parent({
 								...b,
-								x: outer.x + (b.x - cx) * sx,
-								y: outer.y + (b.y - cy) * sy,
-								w: b.w * sx,
-								h: b.h * sy,
+								matrix: multiply(
+									multiply(boxMatrix(outer), [
+										sx,
+										0,
+										0,
+										sy,
+										-cx * sx,
+										-cy * sy,
+									]),
+									boxMatrix(b),
+								),
 							}),
 					},
 					out,
@@ -1085,8 +1453,24 @@ function readTree(
 				break;
 			}
 			case "AlternateContent": {
-				const fallback = kid(el, "Fallback");
-				if (fallback) readTree(fallback, ctx, out, inheritOnly);
+				const supported = new Set([
+					"http://schemas.openxmlformats.org/presentationml/2006/main",
+					"http://schemas.openxmlformats.org/drawingml/2006/main",
+				]);
+				const choice = kids(el, "Choice").find((c) => {
+					const required = (attrOf(c, "Requires") ?? "")
+						.trim()
+						.split(/\s+/)
+						.filter(Boolean);
+					return (
+						required.length > 0 &&
+						required.every((prefix) =>
+							supported.has(c.lookupNamespaceURI(prefix) ?? ""),
+						)
+					);
+				});
+				const content = choice ?? kid(el, "Fallback");
+				if (content) readTree(content, ctx, out, inheritOnly);
 				break;
 			}
 		}
@@ -1105,6 +1489,12 @@ function background(cSld: Element | null, ctx: Context): string | undefined {
 		return ctx.pal.fill(bgPr) ?? undefined;
 	}
 	const ref = kid(bg, "bgRef");
+	const entry = themeStyle(ref, ctx);
+	if (entry) {
+		const props = entry.ownerDocument.createElement("props");
+		props.appendChild(entry);
+		return ctx.pal.fill(props) ?? undefined;
+	}
 	return ref ? ctx.pal.resolve(ref) : undefined;
 }
 
@@ -1173,7 +1563,13 @@ function* readDeck(bytes: Uint8Array): Generator<undefined, Presentation> {
 	const slides: Slide[] = [];
 	const masterCache = new Map<
 		string,
-		{ doc: Document | null; theme: ColorMap; fonts: Fonts }
+		{
+			doc: Document | null;
+			theme: ColorMap;
+			fonts: Fonts;
+			formatScheme: Element | null;
+			themePart: string;
+		}
 	>();
 
 	for (const part of slideParts) {
@@ -1213,13 +1609,24 @@ function* readDeck(bytes: Uint8Array): Generator<undefined, Presentation> {
 				doc,
 				theme,
 				fonts: new Fonts(face("majorFont"), face("minorFont")),
+				themePart,
+				formatScheme:
+					themeDoc?.getElementsByTagNameNS("*", "fmtScheme")[0] ?? null,
 			};
 			masterCache.set(masterPart, master);
 		}
 		const masterRoot = master.doc?.documentElement ?? null;
-		const clrMap: ColorMap = {};
+		let clrMap: ColorMap = { bg1: "lt1", tx1: "dk1", bg2: "lt2", tx2: "dk2" };
 		for (const a of Array.from(kid(masterRoot, "clrMap")?.attributes ?? []))
 			clrMap[a.localName] = a.value;
+		const masterMap = { ...clrMap };
+		for (const root of [layoutDoc?.documentElement, slideDoc.documentElement]) {
+			if (path(root, "clrMapOvr", "masterClrMapping"))
+				clrMap = { ...masterMap };
+			const override = path(root, "clrMapOvr", "overrideClrMapping");
+			for (const a of Array.from(override?.attributes ?? []))
+				clrMap[a.localName] = a.value;
+		}
 		const pal = new Palette(master.theme, clrMap);
 		const txStyles = kid(masterRoot, "txStyles");
 		const masterStyles = {
@@ -1238,6 +1645,10 @@ function* readDeck(bytes: Uint8Array): Generator<undefined, Presentation> {
 			layoutTree,
 			masterTree,
 			masterStyles,
+			formatScheme: master.formatScheme,
+			layoutPart,
+			masterPart,
+			themePart: master.themePart,
 			map: (b: Box) => b,
 		};
 		const ctxFor = (p: string, r: Context["rels"]): Context => ({
@@ -1248,7 +1659,7 @@ function* readDeck(bytes: Uint8Array): Generator<undefined, Presentation> {
 
 		const elements: SlideElement[] = [];
 		const showMaster = (el: Element | null) =>
-			attrOf(el, "showMasterSp") !== "0";
+			xmlBool(attrOf(el, "showMasterSp"), true);
 		if (showMaster(slideRoot) && showMaster(layoutRoot)) {
 			readTree(
 				masterTree,
@@ -1295,7 +1706,7 @@ function* readDeck(bytes: Uint8Array): Generator<undefined, Presentation> {
 			elements,
 			notes,
 			// PowerPoint marks a hidden slide show="0" on its root.
-			...(attrOf(slideRoot, "show") === "0" ? { hidden: true } : {}),
+			...(!xmlBool(attrOf(slideRoot, "show"), true) ? { hidden: true } : {}),
 		});
 		yield;
 	}
