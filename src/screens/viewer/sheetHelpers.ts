@@ -364,6 +364,9 @@ export function chartColors(accents: string[]): ChartColors {
 const PRINT_ROWS = 4000;
 
 /** The grid is windowed, so paper gets a real table of the sheet. */
+/** A printed sheet's two 12 mm margins, in CSS pixels. */
+const SHEET_MARGINS = ((2 * 12) / 25.4) * 96;
+
 export function printSheet(
 	root: HTMLElement,
 	sheet: Sheet,
@@ -476,7 +479,9 @@ export function printSheet(
 		extent = Math.max(extent, object.y + object.h);
 	}
 	content.style.minHeight = `${extent}px`;
-	const wrap = fitted(content, total + 2, "pw-sheet", 1);
+	// The sheet's paper margins (12 mm a side, global.css) are scaled
+	// with it, so they count in the width that has to fit.
+	const wrap = fitted(content, total + 2 + SHEET_MARGINS, "pw-sheet", 1);
 	const title = document.createElement("p");
 	title.className = s.printTitle;
 	title.textContent =

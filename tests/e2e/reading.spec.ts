@@ -871,14 +871,35 @@ test.describe("pictures and code", () => {
 		const scroller = page.getByTestId("image-scroll");
 		const box = await scroller.boundingBox();
 		if (!box) throw new Error("no scroller");
-		const at = { clientX: box.x + box.width * 0.9, clientY: 400 };
-		await scroller.dispatchEvent("touchstart", {
-			touches: [{ identifier: 0, ...at }],
-		});
-		await scroller.dispatchEvent("touchend", {
-			touches: [],
-			changedTouches: [{ identifier: 0, ...at }],
-		});
+		// A tap on the right side, its two halves sent together: a tap is
+		// one only if it is quick.
+		await scroller.evaluate(
+			(el, x) => {
+				const touch = new Touch({
+					identifier: 0,
+					target: el,
+					clientX: x,
+					clientY: 400,
+				});
+				el.dispatchEvent(
+					new TouchEvent("touchstart", {
+						touches: [touch],
+						changedTouches: [touch],
+						bubbles: true,
+						cancelable: true,
+					}),
+				);
+				el.dispatchEvent(
+					new TouchEvent("touchend", {
+						touches: [],
+						changedTouches: [touch],
+						bubbles: true,
+						cancelable: true,
+					}),
+				);
+			},
+			box.x + box.width * 0.9,
+		);
 		await expect(counter).toHaveText("2 / 3");
 		await page
 			.getByTestId("image")
