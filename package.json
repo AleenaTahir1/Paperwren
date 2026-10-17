@@ -16,6 +16,7 @@
     "fixtures:office": "python3 scripts/make-office-fixtures.py"
   },
   "dependencies": {
+    "@cantoo/pdf-lib": "^2.11.1",
     "@fontsource-variable/manrope": "^5.2.5",
     "@tauri-apps/api": "^2.12.0",
     "@tauri-apps/plugin-dialog": "^2.7.3",

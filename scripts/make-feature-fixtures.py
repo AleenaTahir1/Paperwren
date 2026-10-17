@@ -17,6 +17,7 @@ from pypdf.generic import (
     DictionaryObject,
     FloatObject,
     NameObject,
+    NumberObject,
     TextStringObject,
 )
 from reportlab.lib.pagesizes import A4
@@ -278,6 +279,54 @@ def heic_and_avif():
     Image.new("RGB", (160, 120), (60, 160, 60)).save(os.path.join(OUT, "photo.avif"))
 
 
+def form_pdf():
+    """A form to fill in and sign: text, a tick box, a list, a pair of
+    radio buttons and a signature field, on an A4 page; and a second,
+    sideways page with nothing on it, to sign across."""
+    buf = io.BytesIO()
+    c = canvas.Canvas(buf, pagesize=A4)
+    c.setFont("Helvetica-Bold", 20)
+    c.drawString(60, 780, "Wren Club membership")
+    c.setFont("Helvetica", 12)
+    form = c.acroForm
+    c.drawString(60, 730, "Full name")
+    form.textfield(name="fullname", x=160, y=722, width=300, height=22, borderStyle="inset", forceBorder=True)
+    c.drawString(60, 690, "I agree to the rules")
+    form.checkbox(name="agree", x=200, y=686, size=16, buttonStyle="check", forceBorder=True)
+    c.drawString(60, 650, "Membership")
+    form.choice(name="plan", x=160, y=642, width=150, height=22, options=["Monthly", "Yearly"], value="Monthly", forceBorder=True)
+    c.drawString(60, 610, "Size")
+    form.radio(name="size", value="S", x=160, y=606, size=16, selected=False, forceBorder=True)
+    c.drawString(182, 610, "S")
+    form.radio(name="size", value="L", x=210, y=606, size=16, selected=False, forceBorder=True)
+    c.drawString(232, 610, "L")
+    c.drawString(60, 540, "Signature")
+    c.line(160, 520, 460, 520)
+    c.showPage()
+    c.setFont("Helvetica", 14)
+    c.drawString(60, 780, "Annex: signed on its side")
+    c.showPage()
+    c.save()
+    writer = PdfWriter(clone_from=PdfReader(io.BytesIO(buf.getvalue())))
+    # A signature field over the line, as office forms carry one.
+    page = writer.pages[0]
+    sig = DictionaryObject({
+        NameObject("/Type"): NameObject("/Annot"),
+        NameObject("/Subtype"): NameObject("/Widget"),
+        NameObject("/FT"): NameObject("/Sig"),
+        NameObject("/T"): TextStringObject("signature"),
+        NameObject("/Rect"): ArrayObject([FloatObject(160), FloatObject(520), FloatObject(460), FloatObject(570)]),
+        NameObject("/F"): NumberObject(4),
+        NameObject("/P"): page.indirect_reference,
+    })
+    ref = writer._add_object(sig)
+    page[NameObject("/Annots")].append(ref)
+    writer._root_object["/AcroForm"][NameObject("/Fields")].append(ref)
+    writer.pages[1].rotate(90)
+    with open(os.path.join(OUT, "form.pdf"), "wb") as f:
+        writer.write(f)
+
+
 def sheets():
     """A workbook to sort and filter, drawn without gridlines and with
     conditional formatting, and a CSV saved in a Windows code page."""
@@ -333,6 +382,7 @@ def main():
     pictures_in_new_formats()
     heic_and_avif()
     sheets()
+    form_pdf()
     print("wrote", sorted(os.listdir(OUT)))
 
 

@@ -29,6 +29,7 @@ import {
 	Maximize,
 	MessageSquare,
 	Paperclip,
+	PenLine,
 	RotateCcw,
 	RotateCw,
 	Search,
@@ -47,6 +48,8 @@ import type {
 	PDFViewer,
 } from "pdfjs-dist/web/pdf_viewer.mjs";
 import "pdfjs-dist/web/pdf_viewer.css";
+import { FillSign } from "@/screens/tools/FillSign";
+import { announceSaved } from "@/screens/tools/saved";
 import {
 	useCallback,
 	useContext,
@@ -255,6 +258,12 @@ export default function PdfView({
 	const [details, setDetails] = useState<Array<[string, string]>>([]);
 	const [attachments, setAttachments] = useState<Attachment[]>([]);
 	const [layers, setLayers] = useState<Layer[]>([]);
+	// What the file's author allows done to it: marks on its pages,
+	// filling in its form.
+	const [rights, setRights] = useState({ mark: true, fill: true });
+	const [filling, setFilling] = useState(false);
+	// The password the reader opened it with, held for saving copies.
+	const passwordRef = useRef<string | undefined>(undefined);
 	const layerConfig = useRef<LayerConfig | null>(null);
 	/** The phone's sheets of comments, attachments and layers. */
 	const [extra, setExtra] = useState<
@@ -378,6 +387,17 @@ export default function PdfView({
 							const noCopy =
 								Array.isArray(permissions) &&
 								!permissions.includes(pdfjs.PermissionFlag.COPY);
+							if (Array.isArray(permissions)) {
+								const flag = pdfjs.PermissionFlag;
+								const mark =
+									permissions.includes(flag.MODIFY_CONTENTS) ||
+									permissions.includes(flag.MODIFY_ANNOTATIONS);
+								setRights({
+									mark,
+									fill:
+										mark || permissions.includes(flag.FILL_INTERACTIVE_FORMS),
+								});
+							}
 							const text = (key: string) =>
 								typeof meta[key] === "string" && (meta[key] as string).trim()
 									? (meta[key] as string).trim()
@@ -1001,6 +1021,22 @@ export default function PdfView({
 
 	const pdfMenu = (close: () => void) => (
 		<>
+			<SheetItem
+				icon={<PenLine size={20} />}
+				disabled={!rights.fill}
+				hint={
+					rights.fill
+						? t("Fill in its form, sign it, add text or a date")
+						: t("Its author doesn't allow changes")
+				}
+				onClick={() => {
+					close();
+					setFilling(true);
+				}}
+				testId="pdf-fill-sign"
+			>
+				{t("Fill & sign")}
+			</SheetItem>
 			{!isDesktop && (
 				<>
 					<SheetItem
@@ -1538,12 +1574,23 @@ export default function PdfView({
 				</StateView>
 			)}
 
+			{filling && doc && (
+				<FillSign
+					doc={doc}
+					name={name}
+					password={passwordRef.current}
+					canMark={rights.mark}
+					onClose={() => setFilling(false)}
+					onSaved={(saved) => announceSaved(saved, file?.openOver)}
+				/>
+			)}
 			<PasswordDialog
 				open={status === "password"}
 				name={name}
 				wrong={passwordWrong}
 				onSubmit={(password) => {
 					setStatus("loading");
+					passwordRef.current = password;
 					unlock.current?.(password);
 				}}
 				onCancel={onClose}

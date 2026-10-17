@@ -1090,6 +1090,14 @@ export const backend: Backend = {
 	},
 };
 
+/** Open a copy the reader just saved, where the platform said it is. */
+export function requestForSaved(
+	saved: SavedFile,
+	size: number,
+): OpenRequest | null {
+	return saved.reopen ? request(saved.name, true, size, saved.reopen) : null;
+}
+
 /** Build an open request for a file delivered by Android "Open with". */
 export function requestForManagedCopy(
 	path: string,
