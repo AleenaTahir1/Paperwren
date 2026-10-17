@@ -57,8 +57,8 @@ export const es: Table = {
 	"{file} looks damaged or incomplete. Try downloading it again.":
 		"{file} parece dañado o incompleto. Prueba a descargarlo de nuevo.",
 	"Unsupported file": "Archivo no compatible",
-	"Paperwren opens PDF, Word, Excel, PowerPoint, OpenDocument, RTF, CSV, Markdown and text files, and pictures.":
-		"Paperwren abre archivos PDF, Word, Excel, PowerPoint, OpenDocument, RTF, CSV, Markdown y de texto, además de imágenes.",
+	"Paperwren opens PDF, Word, Excel, PowerPoint, OpenDocument, RTF, EPUB, CSV, Markdown and text files, comic books, pictures and source code.":
+		"Paperwren abre archivos PDF, Word, Excel, PowerPoint, OpenDocument, RTF, EPUB, CSV, Markdown y de texto, además de cómics, imágenes y código fuente.",
 	"Can't unlock this file": "No se puede desbloquear este archivo",
 	"{file} is protected in a way Paperwren can't open (a certificate or rights management, not a password).":
 		"{file} está protegido de un modo que Paperwren no puede abrir (un certificado o gestión de derechos, no una contraseña).",
@@ -131,8 +131,8 @@ export const es: Table = {
 	"No ads": "Sin anuncios",
 	"Meet Paperwren": "Te presentamos Paperwren",
 	"Opens everything": "Lo abre todo",
-	"PDF, Word, Excel, PowerPoint, OpenDocument, RTF, CSV and text. Even old .doc and .ppt files.":
-		"PDF, Word, Excel, PowerPoint, OpenDocument, RTF, CSV y texto. Incluso archivos .doc y .ppt antiguos.",
+	"PDF, Word, Excel, PowerPoint, OpenDocument, EPUB books, comics, pictures and text. Even old .doc and .ppt files.":
+		"PDF, Word, Excel, PowerPoint, OpenDocument, libros EPUB, cómics, imágenes y texto. Incluso archivos .doc y .ppt antiguos.",
 	"Private by design": "Privado por diseño",
 	"Pick a look": "Elige un aspecto",
 	"Paper, Sand or Ink, all easy on the eyes. Change it any time in Settings.":
@@ -301,8 +301,8 @@ export const es: Table = {
 	"The file is damaged or isn't a picture format Paperwren shows.":
 		"El archivo está dañado o no es un formato de imagen que Paperwren muestre.",
 	"Drop to open": "Suelta para abrir",
-	"PDF, Word, Excel, PowerPoint and text files":
-		"Archivos PDF, Word, Excel, PowerPoint y de texto",
+	"Documents, books, pictures and text files":
+		"Documentos, libros, imágenes y archivos de texto",
 	"Open a document": "Abrir un documento",
 	"Choose a folder to browse": "Elige una carpeta para explorar",
 	"The small, quiet way to open every document on your device.":
@@ -423,6 +423,10 @@ export const es: Table = {
 		one: "{n} elemento",
 		other: "{n} elementos",
 	},
+	"Reading font": "Fuente de lectura",
+	"As written": "Como está escrito",
+	Serif: "Con serifa",
+	"Sans serif": "Sin serifa",
 	"This file was changed by another app": "Otra app ha cambiado este archivo",
 	Reload: "Volver a cargar",
 	"Keep showing this version": "Seguir mostrando esta versión",

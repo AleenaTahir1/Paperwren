@@ -56,8 +56,8 @@ export const zh: Table = {
 	"{file} looks damaged or incomplete. Try downloading it again.":
 		"{file} 似乎已损坏或不完整。请尝试重新下载。",
 	"Unsupported file": "不支持的文件",
-	"Paperwren opens PDF, Word, Excel, PowerPoint, OpenDocument, RTF, CSV, Markdown and text files, and pictures.":
-		"Paperwren 可打开 PDF、Word、Excel、PowerPoint、OpenDocument、RTF、CSV、Markdown、文本文件和图片。",
+	"Paperwren opens PDF, Word, Excel, PowerPoint, OpenDocument, RTF, EPUB, CSV, Markdown and text files, comic books, pictures and source code.":
+		"Paperwren 可打开 PDF、Word、Excel、PowerPoint、OpenDocument、RTF、EPUB、CSV、Markdown、文本文件、漫画、图片和源代码。",
 	"Can't unlock this file": "无法解锁此文件",
 	"{file} is protected in a way Paperwren can't open (a certificate or rights management, not a password).":
 		"{file} 的保护方式 Paperwren 无法打开（证书或权限管理，而非密码）。",
@@ -127,8 +127,8 @@ export const zh: Table = {
 	"No ads": "无广告",
 	"Meet Paperwren": "认识 Paperwren",
 	"Opens everything": "什么都能打开",
-	"PDF, Word, Excel, PowerPoint, OpenDocument, RTF, CSV and text. Even old .doc and .ppt files.":
-		"PDF、Word、Excel、PowerPoint、OpenDocument、RTF、CSV 和文本。连旧的 .doc 和 .ppt 文件也可以。",
+	"PDF, Word, Excel, PowerPoint, OpenDocument, EPUB books, comics, pictures and text. Even old .doc and .ppt files.":
+		"PDF、Word、Excel、PowerPoint、OpenDocument、EPUB 电子书、漫画、图片和文本。连旧的 .doc 和 .ppt 文件也可以。",
 	"Private by design": "天生私密",
 	"Pick a look": "选择外观",
 	"Paper, Sand or Ink, all easy on the eyes. Change it any time in Settings.":
@@ -281,8 +281,7 @@ export const zh: Table = {
 	"The file is damaged or isn't a picture format Paperwren shows.":
 		"文件已损坏，或不是 Paperwren 可显示的图片格式。",
 	"Drop to open": "松开以打开",
-	"PDF, Word, Excel, PowerPoint and text files":
-		"PDF、Word、Excel、PowerPoint 和文本文件",
+	"Documents, books, pictures and text files": "文档、电子书、图片和文本文件",
 	"Open a document": "打开文档",
 	"Choose a folder to browse": "选择要浏览的文件夹",
 	"The small, quiet way to open every document on your device.":
@@ -391,6 +390,10 @@ export const zh: Table = {
 	"This file is too big to show as a tree": "此文件太大，无法以树形显示",
 	"{n} keys": "{n} 个键",
 	"{n} items": "{n} 项",
+	"Reading font": "阅读字体",
+	"As written": "保持原样",
+	Serif: "衬线",
+	"Sans serif": "无衬线",
 	"This file was changed by another app": "此文件已被其他应用更改",
 	Reload: "重新载入",
 	"Keep showing this version": "继续显示此版本",

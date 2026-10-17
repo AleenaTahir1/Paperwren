@@ -56,8 +56,8 @@ export const ar: Table = {
 	"{file} looks damaged or incomplete. Try downloading it again.":
 		"يبدو أن {file} تالف أو غير مكتمل. جرّب تنزيله من جديد.",
 	"Unsupported file": "ملف غير مدعوم",
-	"Paperwren opens PDF, Word, Excel, PowerPoint, OpenDocument, RTF, CSV, Markdown and text files, and pictures.":
-		"يفتح Paperwren ملفات PDF و Word و Excel و PowerPoint و OpenDocument و RTF و CSV و Markdown والنصوص والصور.",
+	"Paperwren opens PDF, Word, Excel, PowerPoint, OpenDocument, RTF, EPUB, CSV, Markdown and text files, comic books, pictures and source code.":
+		"يفتح Paperwren ملفات PDF و Word و Excel و PowerPoint و OpenDocument و RTF و EPUB و CSV و Markdown والنصوص، والقصص المصوّرة والصور والشيفرة المصدرية.",
 	"Can't unlock this file": "تعذّر فتح قفل هذا الملف",
 	"{file} is protected in a way Paperwren can't open (a certificate or rights management, not a password).":
 		"{file} محميّ بطريقة لا يستطيع Paperwren فتحها (شهادة أو إدارة حقوق، لا كلمة مرور).",
@@ -127,8 +127,8 @@ export const ar: Table = {
 	"No ads": "بلا إعلانات",
 	"Meet Paperwren": "تعرّف على Paperwren",
 	"Opens everything": "يفتح كل شيء",
-	"PDF, Word, Excel, PowerPoint, OpenDocument, RTF, CSV and text. Even old .doc and .ppt files.":
-		"PDF و Word و Excel و PowerPoint و OpenDocument و RTF و CSV والنصوص. حتى ملفات .doc و .ppt القديمة.",
+	"PDF, Word, Excel, PowerPoint, OpenDocument, EPUB books, comics, pictures and text. Even old .doc and .ppt files.":
+		"PDF و Word و Excel و PowerPoint و OpenDocument وكتب EPUB والقصص المصوّرة والصور والنصوص. حتى ملفات .doc و .ppt القديمة.",
 	"Private by design": "خاص بطبيعته",
 	"Pick a look": "اختر مظهرًا",
 	"Paper, Sand or Ink, all easy on the eyes. Change it any time in Settings.":
@@ -298,8 +298,8 @@ export const ar: Table = {
 	"The file is damaged or isn't a picture format Paperwren shows.":
 		"الملف تالف أو ليس بصيغة صور يعرضها Paperwren.",
 	"Drop to open": "أفلت للفتح",
-	"PDF, Word, Excel, PowerPoint and text files":
-		"ملفات PDF و Word و Excel و PowerPoint والنصوص",
+	"Documents, books, pictures and text files":
+		"المستندات والكتب والصور والملفات النصية",
 	"Open a document": "فتح مستند",
 	"Choose a folder to browse": "اختر مجلدًا لتصفحه",
 	"The small, quiet way to open every document on your device.":
@@ -421,6 +421,10 @@ export const ar: Table = {
 		many: "{n} عنصرًا",
 		other: "{n} عنصر",
 	},
+	"Reading font": "خط القراءة",
+	"As written": "كما كُتب",
+	Serif: "مذيَّل",
+	"Sans serif": "غير مذيَّل",
 	"This file was changed by another app": "غيّر تطبيق آخر هذا الملف",
 	Reload: "إعادة التحميل",
 	"Keep showing this version": "الاستمرار في عرض هذه النسخة",

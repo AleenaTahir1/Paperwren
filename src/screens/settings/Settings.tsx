@@ -9,7 +9,7 @@ import {
 } from "@/lib/env";
 import { LANGUAGES, type LanguageSetting, msg, t, tn } from "@/lib/i18n";
 import { FULLSCREEN_KEYS, keys } from "@/lib/keys";
-import type { PageColor, PdfFlow, PdfZoom } from "@/lib/types";
+import type { PageColor, PdfFlow, PdfZoom, ReadingFont } from "@/lib/types";
 import {
 	clearBookmarks,
 	restoreBookmarks,
@@ -307,6 +307,17 @@ export function SettingsScreen() {
 								["theme", t("Theme")],
 							]}
 							testId="page-color"
+						/>
+						<Segmented<ReadingFont>
+							label={t("Reading font")}
+							value={settings.readingFont}
+							onChange={(v) => update("readingFont", v)}
+							options={[
+								["original", t("As written")],
+								["serif", t("Serif")],
+								["sans", t("Sans serif")],
+							]}
+							testId="reading-font"
 						/>
 						{!!window.__paperwrenAndroidExtras?.volumeKeys && (
 							<Switch

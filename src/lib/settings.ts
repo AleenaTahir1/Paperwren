@@ -5,6 +5,7 @@ import {
 	type PageColor,
 	type PdfFlow,
 	type PdfZoom,
+	type ReadingFont,
 	type ResolvedTheme,
 	type Settings,
 	type ThemeSetting,
@@ -33,6 +34,7 @@ const range = (v: unknown, min: number, max: number, fallback: number) =>
 		? Math.min(max, Math.max(min, v))
 		: fallback;
 const FLOWS: PdfFlow[] = ["down", "across"];
+const FONTS: ReadingFont[] = ["original", "serif", "sans"];
 export const PAGE_COLORS: PageColor[] = ["original", "sepia", "dark", "theme"];
 
 /** The paper actually drawn: "theme" is Paper's white, Sand's warm
@@ -79,6 +81,7 @@ export function normalizeSettings(value: unknown): Settings {
 			PAGE_COLORS,
 			DEFAULT_SETTINGS.pageColor,
 		),
+		readingFont: pick(raw.readingFont, FONTS, DEFAULT_SETTINGS.readingFont),
 		keepAwake: bool(raw.keepAwake, DEFAULT_SETTINGS.keepAwake),
 		keepRecents: bool(raw.keepRecents, DEFAULT_SETTINGS.keepRecents),
 		recentsLimit: pick(raw.recentsLimit, LIMITS, DEFAULT_SETTINGS.recentsLimit),

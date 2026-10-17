@@ -56,8 +56,8 @@ export const hi: Table = {
 	"{file} looks damaged or incomplete. Try downloading it again.":
 		"{file} खराब या अधूरी लगती है। इसे फिर से डाउनलोड करके देखें।",
 	"Unsupported file": "असमर्थित फ़ाइल",
-	"Paperwren opens PDF, Word, Excel, PowerPoint, OpenDocument, RTF, CSV, Markdown and text files, and pictures.":
-		"Paperwren PDF, Word, Excel, PowerPoint, OpenDocument, RTF, CSV, Markdown, टेक्स्ट फ़ाइलें और चित्र खोलता है।",
+	"Paperwren opens PDF, Word, Excel, PowerPoint, OpenDocument, RTF, EPUB, CSV, Markdown and text files, comic books, pictures and source code.":
+		"Paperwren PDF, Word, Excel, PowerPoint, OpenDocument, RTF, EPUB, CSV, Markdown, टेक्स्ट फ़ाइलें, कॉमिक किताबें, चित्र और सोर्स कोड खोलता है।",
 	"Can't unlock this file": "यह फ़ाइल अनलॉक नहीं हो सकती",
 	"{file} is protected in a way Paperwren can't open (a certificate or rights management, not a password).":
 		"{file} इस तरह सुरक्षित है जिसे Paperwren नहीं खोल सकता (प्रमाणपत्र या अधिकार प्रबंधन, पासवर्ड नहीं)।",
@@ -127,8 +127,8 @@ export const hi: Table = {
 	"No ads": "कोई विज्ञापन नहीं",
 	"Meet Paperwren": "Paperwren से मिलिए",
 	"Opens everything": "सब कुछ खोलता है",
-	"PDF, Word, Excel, PowerPoint, OpenDocument, RTF, CSV and text. Even old .doc and .ppt files.":
-		"PDF, Word, Excel, PowerPoint, OpenDocument, RTF, CSV और टेक्स्ट। पुरानी .doc और .ppt फ़ाइलें भी।",
+	"PDF, Word, Excel, PowerPoint, OpenDocument, EPUB books, comics, pictures and text. Even old .doc and .ppt files.":
+		"PDF, Word, Excel, PowerPoint, OpenDocument, EPUB किताबें, कॉमिक्स, चित्र और टेक्स्ट। पुरानी .doc और .ppt फ़ाइलें भी।",
 	"Private by design": "शुरू से ही निजी",
 	"Pick a look": "अपना रूप चुनें",
 	"Paper, Sand or Ink, all easy on the eyes. Change it any time in Settings.":
@@ -292,8 +292,8 @@ export const hi: Table = {
 	"The file is damaged or isn't a picture format Paperwren shows.":
 		"फ़ाइल खराब है या ऐसा चित्र फ़ॉर्मेट नहीं है जिसे Paperwren दिखाता है।",
 	"Drop to open": "खोलने के लिए छोड़ें",
-	"PDF, Word, Excel, PowerPoint and text files":
-		"PDF, Word, Excel, PowerPoint और टेक्स्ट फ़ाइलें",
+	"Documents, books, pictures and text files":
+		"दस्तावेज़, किताबें, चित्र और टेक्स्ट फ़ाइलें",
 	"Open a document": "दस्तावेज़ खोलें",
 	"Choose a folder to browse": "देखने के लिए फ़ोल्डर चुनें",
 	"The small, quiet way to open every document on your device.":
@@ -410,6 +410,10 @@ export const hi: Table = {
 		one: "{n} आइटम",
 		other: "{n} आइटम",
 	},
+	"Reading font": "पढ़ने का फ़ॉन्ट",
+	"As written": "जैसा लिखा है",
+	Serif: "सेरिफ़",
+	"Sans serif": "सैन्स सेरिफ़",
 	"This file was changed by another app": "इस फ़ाइल को किसी दूसरे ऐप ने बदल दिया है",
 	Reload: "फिर से लोड करें",
 	"Keep showing this version": "यही संस्करण दिखाते रहें",

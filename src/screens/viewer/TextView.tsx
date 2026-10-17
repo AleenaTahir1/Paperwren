@@ -411,7 +411,7 @@ export default function TextView({
 						{html !== null ? (
 							<article
 								ref={article}
-								className={s.md}
+								className={`${s.md} pw-reading`}
 								// biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized with DOMPurify above
 								dangerouslySetInnerHTML={{ __html: html }}
 							/>

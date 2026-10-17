@@ -272,7 +272,7 @@ export default function ReflowView(props: ViewerProps) {
 								{doc.kind === "rich" ? (
 									<RichDocument doc={doc} />
 								) : doc.kind === "document" ? (
-									<article className={`${d.paper} pw-paper`}>
+									<article className={`${d.paper} pw-paper pw-reading`}>
 										<Blocks blocks={doc.blocks} />
 									</article>
 								) : (

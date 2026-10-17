@@ -296,7 +296,7 @@ export default function EpubView(props: ViewerProps) {
 						<div ref={pages} className={d.pages} style={{ zoom }}>
 							<article
 								ref={content}
-								className={`${d.paper} ${d.book} pw-paper`}
+								className={`${d.paper} ${d.book} pw-paper pw-reading`}
 								lang={book.language}
 							>
 								{book.chapters.map((chapter) => (

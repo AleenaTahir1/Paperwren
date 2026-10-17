@@ -58,8 +58,8 @@ export const fr: Table = {
 	"{file} looks damaged or incomplete. Try downloading it again.":
 		"{file} semble endommagé ou incomplet. Essayez de le télécharger à nouveau.",
 	"Unsupported file": "Fichier non pris en charge",
-	"Paperwren opens PDF, Word, Excel, PowerPoint, OpenDocument, RTF, CSV, Markdown and text files, and pictures.":
-		"Paperwren ouvre les fichiers PDF, Word, Excel, PowerPoint, OpenDocument, RTF, CSV, Markdown et texte, ainsi que les images.",
+	"Paperwren opens PDF, Word, Excel, PowerPoint, OpenDocument, RTF, EPUB, CSV, Markdown and text files, comic books, pictures and source code.":
+		"Paperwren ouvre les fichiers PDF, Word, Excel, PowerPoint, OpenDocument, RTF, EPUB, CSV, Markdown et texte, ainsi que les BD, les images et le code source.",
 	"Can't unlock this file": "Impossible de déverrouiller ce fichier",
 	"{file} is protected in a way Paperwren can't open (a certificate or rights management, not a password).":
 		"{file} est protégé d'une manière que Paperwren ne peut pas ouvrir (certificat ou gestion des droits, et non mot de passe).",
@@ -131,8 +131,8 @@ export const fr: Table = {
 	"No ads": "Sans publicité",
 	"Meet Paperwren": "Voici Paperwren",
 	"Opens everything": "Ouvre tout",
-	"PDF, Word, Excel, PowerPoint, OpenDocument, RTF, CSV and text. Even old .doc and .ppt files.":
-		"PDF, Word, Excel, PowerPoint, OpenDocument, RTF, CSV et texte. Même les anciens fichiers .doc et .ppt.",
+	"PDF, Word, Excel, PowerPoint, OpenDocument, EPUB books, comics, pictures and text. Even old .doc and .ppt files.":
+		"PDF, Word, Excel, PowerPoint, OpenDocument, livres EPUB, BD, images et texte. Même les anciens fichiers .doc et .ppt.",
 	"Private by design": "Privé par nature",
 	"Pick a look": "Choisissez un style",
 	"Paper, Sand or Ink, all easy on the eyes. Change it any time in Settings.":
@@ -304,8 +304,8 @@ export const fr: Table = {
 	"The file is damaged or isn't a picture format Paperwren shows.":
 		"Le fichier est endommagé ou n'est pas un format d'image que Paperwren affiche.",
 	"Drop to open": "Déposez pour ouvrir",
-	"PDF, Word, Excel, PowerPoint and text files":
-		"Fichiers PDF, Word, Excel, PowerPoint et texte",
+	"Documents, books, pictures and text files":
+		"Documents, livres, images et fichiers texte",
 	"Open a document": "Ouvrir un document",
 	"Choose a folder to browse": "Choisissez un dossier à parcourir",
 	"The small, quiet way to open every document on your device.":
@@ -427,6 +427,10 @@ export const fr: Table = {
 		one: "{n} élément",
 		other: "{n} éléments",
 	},
+	"Reading font": "Police de lecture",
+	"As written": "Comme écrit",
+	Serif: "Avec empattement",
+	"Sans serif": "Sans empattement",
 	"This file was changed by another app": "Une autre app a modifié ce fichier",
 	Reload: "Recharger",
 	"Keep showing this version": "Garder cette version",

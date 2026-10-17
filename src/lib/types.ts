@@ -70,6 +70,9 @@ export type PageColor = "original" | "sepia" | "dark" | "theme";
 /** How a PDF's pages follow one another: down a long scroll, or side
  * by side, a swipe (or a key) to the next. */
 export type PdfFlow = "down" | "across";
+/** The face books, Markdown and reading view are set in: the one
+ * each document has, or one the reader picks. */
+export type ReadingFont = "original" | "serif" | "sans";
 
 export interface Settings {
 	theme: ThemeSetting;
@@ -79,6 +82,7 @@ export interface Settings {
 	pdfFlow: PdfFlow;
 	rememberPosition: boolean;
 	pageColor: PageColor;
+	readingFont: ReadingFont;
 	/** Keep the screen from dimming while a document is open. */
 	keepAwake: boolean;
 	keepRecents: boolean;
@@ -114,6 +118,7 @@ export const DEFAULT_SETTINGS: Settings = {
 	pdfFlow: "down",
 	rememberPosition: true,
 	pageColor: "original",
+	readingFont: "original",
 	keepAwake: false,
 	keepRecents: true,
 	recentsLimit: 50,

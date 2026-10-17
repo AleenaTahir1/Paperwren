@@ -444,7 +444,7 @@ export default function DocxView({
 				<div ref={stage} className={`${s.stage} ${reading ? s.reflow : ""}`}>
 					<div
 						ref={pages}
-						className={`${s.pages} ${s.docx} ${reading ? s.reading : ""}`}
+						className={`${s.pages} ${s.docx} ${reading ? `${s.reading} pw-reading` : ""}`}
 						style={{ zoom: scale }}
 					>
 						<div ref={host} />

@@ -49,7 +49,7 @@ export function DropHint() {
 			<div className={s.dropCard}>
 				<FileDown size={44} strokeWidth={1.6} />
 				<strong>{t("Drop to open")}</strong>
-				<span>{t("PDF, Word, Excel, PowerPoint and text files")}</span>
+				<span>{t("Documents, books, pictures and text files")}</span>
 			</div>
 		</div>
 	);

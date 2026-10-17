@@ -99,7 +99,7 @@ export function failureCopy(failure: OpenFailure, name: string): FailureCopy {
 			return {
 				title: t("Unsupported file"),
 				message: t(
-					"Paperwren opens PDF, Word, Excel, PowerPoint, OpenDocument, RTF, CSV, Markdown and text files, and pictures.",
+					"Paperwren opens PDF, Word, Excel, PowerPoint, OpenDocument, RTF, EPUB, CSV, Markdown and text files, comic books, pictures and source code.",
 				),
 				action: null,
 			};

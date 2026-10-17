@@ -462,3 +462,19 @@ html.touch ::-webkit-scrollbar {
 ::highlight(pw-speech) {
 	background-color: color-mix(in srgb, var(--accent) 24%, transparent);
 }
+
+/* Reading font (Settings): books, Markdown and reading view in the face
+ * the reader picked, over the document's own. Code and maths keep
+ * theirs. */
+html[data-reading-font="serif"] {
+	--reading-face: Georgia, "Noto Serif", Tinos, "Times New Roman", serif;
+}
+html[data-reading-font="sans"] {
+	--reading-face: var(--font);
+}
+html[data-reading-font] .pw-reading,
+html[data-reading-font]
+	.pw-reading
+	:not(pre, pre *, code, kbd, samp, .katex, .katex *) {
+	font-family: var(--reading-face) !important;
+}

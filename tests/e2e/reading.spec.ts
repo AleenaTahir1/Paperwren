@@ -1262,3 +1262,29 @@ test.describe("sheets", () => {
 		await expect(cell(page, 1, 1)).toHaveText("Saint-Étienne");
 	});
 });
+
+test.describe("reading font", () => {
+	const face = (page: Page, selector: string) =>
+		page
+			.locator(selector)
+			.first()
+			.evaluate((el) => getComputedStyle(el).fontFamily);
+
+	test("books and Markdown take the face picked; code keeps its own", async ({
+		page,
+	}) => {
+		await boot(page, { settings_v2: { readingFont: "sans" } });
+		await openFixture(page, "features/book.epub");
+		await expect(page.locator("#pw-c1")).toBeVisible({ timeout: 20_000 });
+		expect(await face(page, "#pw-c1 p")).toContain("Manrope");
+		await page.getByTestId("viewer-back").click();
+
+		await page.getByTestId("open-settings").click();
+		await page.getByTestId("reading-font-serif").click();
+		await page.getByTestId("settings-back").click();
+		await openFixture(page, "features/notes.md");
+		await expect(page.locator("article h1")).toBeVisible();
+		expect(await face(page, "article p")).toContain("Georgia");
+		expect(await face(page, "article pre code")).not.toContain("Georgia");
+	});
+});
