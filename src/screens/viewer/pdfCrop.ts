@@ -196,7 +196,7 @@ export async function cropPages(doc: PDFDocumentProxy) {
 	(doc as { getPage: typeof doc.getPage }).getPage = patched;
 	return function stop() {
 		// The document's own method, on its prototype, shows again.
-		delete (doc as { getPage?: unknown }).getPage;
+		Reflect.deleteProperty(doc, "getPage");
 		for (const page of touched) {
 			const full = original.get(page);
 			if (full) setView(page, full);
