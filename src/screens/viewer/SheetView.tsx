@@ -46,7 +46,7 @@ import {
 	shellStyles,
 } from "./Shell";
 import { SlideChart } from "./SlideChart";
-import { useZoom } from "./hooks";
+import { useOfficeDetails, useZoom } from "./hooks";
 import { runWorker } from "./runWorker";
 import {
 	NUMERIC,
@@ -105,6 +105,7 @@ export default function SheetView({
 	active,
 }: ViewerProps) {
 	const { settings } = useSettings();
+	const details = useOfficeDetails(data, fileFormat);
 	const [sheets, setSheets] = useState<Sheet[] | null>(null);
 	// The file's cell styles, and how each is drawn in this theme.
 	const [styles, setStyles] = useState<CellStyle[]>([]);
@@ -1067,6 +1068,7 @@ export default function SheetView({
 			active={active}
 			hud={hud}
 			pager={sheets && isDesktop ? zoomControl : undefined}
+			details={details}
 			onFind={
 				sheets
 					? (query) => {

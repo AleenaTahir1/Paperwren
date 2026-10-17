@@ -27,6 +27,7 @@ import {
 } from "./Shell";
 import { type Heading, HeadingList, readHeadings } from "./headings";
 import {
+	useOfficeDetails,
 	useScrollBookmarks,
 	useScrollMemory,
 	useTapToTurn,
@@ -84,6 +85,7 @@ function Blocks({ blocks }: { blocks: Block[] }) {
  * and pictures) and RTF. Honest about what is not shown. */
 export default function ReflowView(props: ViewerProps) {
 	const { name, format, position, onPosition, onClose, active } = props;
+	const details = useOfficeDetails(props.data, format);
 	const scroller = useRef<HTMLDivElement>(null);
 	const stage = useRef<HTMLDivElement>(null);
 	const hud = useRef<HTMLDivElement>(null);
@@ -188,6 +190,7 @@ export default function ReflowView(props: ViewerProps) {
 			side={side}
 			paper
 			bookmarks={doc ? marks : undefined}
+			details={details}
 			speech={doc ? speech : undefined}
 			chromeHidden={chromeHidden && !find.open}
 			onFind={doc ? find.start : undefined}

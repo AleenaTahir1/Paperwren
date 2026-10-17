@@ -1,4 +1,6 @@
-import { t } from "@/lib/i18n";
+import type { FileFormat } from "@/lib/formats";
+import { locale, t } from "@/lib/i18n";
+import { readOfficeMeta } from "@/lib/officeMeta";
 import type { Position } from "@/lib/types";
 import { useSettings } from "@/state/settings";
 import {
@@ -565,4 +567,32 @@ export function useTapToTurn(
 		},
 		[scroller],
 	);
+}
+
+/** What an Office or OpenDocument file says about itself, as Details
+ * rows; none for any other file. */
+export function useOfficeDetails(
+	data: ArrayBuffer,
+	format: FileFormat,
+): Array<[string, string]> {
+	return useMemo(() => {
+		const meta = readOfficeMeta(data, format);
+		const when = (d: Date | undefined) =>
+			d?.toLocaleString(locale(), { dateStyle: "medium", timeStyle: "short" });
+		const rows: Array<[string, string | undefined]> = [
+			[t("Title"), meta.title],
+			[t("Subject"), meta.subject],
+			[t("Author"), meta.author],
+			[t("Created"), when(meta.created)],
+			[t("Last changed"), when(meta.modified)],
+			[
+				t("Last changed by"),
+				meta.lastAuthor !== meta.author ? meta.lastAuthor : undefined,
+			],
+			[t("Pages"), meta.pages?.toLocaleString(locale())],
+			[t("Words"), meta.words?.toLocaleString(locale())],
+			[t("Made with"), meta.application],
+		];
+		return rows.filter((row): row is [string, string] => !!row[1]);
+	}, [data, format]);
 }

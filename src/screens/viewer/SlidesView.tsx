@@ -52,7 +52,7 @@ import {
 } from "./Shell";
 import { SlideChart } from "./SlideChart";
 import s from "./Slides.module.css";
-import { useTapToTurn, useZoom, useZoomLevel } from "./hooks";
+import { useOfficeDetails, useTapToTurn, useZoom, useZoomLevel } from "./hooks";
 import { runWorker } from "./runWorker";
 import { domSpeech } from "./speechSources";
 import type { ViewerProps } from "./types";
@@ -669,6 +669,7 @@ export default function SlidesView({
 	active,
 }: ViewerProps) {
 	const { settings } = useSettings();
+	const details = useOfficeDetails(data, format);
 	const scroller = useRef<HTMLDivElement>(null);
 	const stage = useRef<HTMLDivElement>(null);
 	const hud = useRef<HTMLDivElement>(null);
@@ -859,6 +860,7 @@ export default function SlidesView({
 			pageKeys={false}
 			side={side}
 			speech={deck ? speech : undefined}
+			details={details}
 			bookmarks={
 				deck
 					? {

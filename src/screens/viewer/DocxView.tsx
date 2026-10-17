@@ -32,6 +32,7 @@ import {
 } from "./Shell";
 import { type Heading, HeadingList, readHeadings } from "./headings";
 import {
+	useOfficeDetails,
 	useScrollBookmarks,
 	useScrollMemory,
 	useTapToTurn,
@@ -78,6 +79,7 @@ export default function DocxView({
 	active,
 }: ViewerProps) {
 	const { settings, update } = useSettings();
+	const details = useOfficeDetails(data, format);
 	const reading = settings.readingView;
 	const scroller = useRef<HTMLDivElement>(null);
 	const stage = useRef<HTMLDivElement>(null);
@@ -281,6 +283,7 @@ export default function DocxView({
 			side={side}
 			paper
 			bookmarks={status === "ready" ? marks : undefined}
+			details={details}
 			speech={status === "ready" ? speech : undefined}
 			onStep={paged ? (dir) => goTo(page + dir) : undefined}
 			chromeHidden={chromeHidden && !find.open}

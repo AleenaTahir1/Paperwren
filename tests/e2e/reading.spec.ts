@@ -1059,3 +1059,24 @@ test.describe("tabs on a desktop", () => {
 		]);
 	});
 });
+
+test.describe("office details", () => {
+	test("a deck and a document say who made them and when", async ({ page }) => {
+		await boot(page);
+		await openFixture(page, "sample.pptx");
+		await page.getByTestId("file-more").click();
+		await page.getByTestId("file-details-open").click();
+		const details = page.getByTestId("file-details");
+		await expect(details).toContainText("Last changed by");
+		await expect(details).toContainText("Steve Canny");
+		await expect(details).toContainText("2013");
+		await page.keyboard.press("Escape");
+		await page.getByTestId("viewer-back").click();
+
+		await openFixture(page, "sample.odt");
+		await page.getByTestId("file-more").click();
+		await page.getByTestId("file-details-open").click();
+		await expect(details).toContainText("Author");
+		await expect(details).toContainText("python-docx");
+	});
+});
