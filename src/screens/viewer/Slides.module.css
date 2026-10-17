@@ -277,6 +277,12 @@
 .presentBar button:hover:not(:disabled) {
 	background: rgba(255, 255, 255, 0.14);
 }
+/* A switch that is on: light, so it reads on the dark bar. */
+.presentBar .presentOn,
+.presentBar .presentOn:hover:not(:disabled) {
+	background: rgba(255, 255, 255, 0.92);
+	color: #000;
+}
 .presentCount {
 	min-width: 64px;
 	text-align: center;
@@ -284,6 +290,101 @@
 	font-weight: 750;
 	font-variant-numeric: tabular-nums;
 	white-space: nowrap;
+}
+/* The laser pointer: a red dot, where the pointer or finger is. */
+.presentTrack {
+	position: relative;
+}
+.laser {
+	position: absolute;
+	width: 18px;
+	height: 18px;
+	margin: -9px 0 0 -9px;
+	border-radius: 50%;
+	background: radial-gradient(
+		circle,
+		#ff4d4d 0 35%,
+		rgba(255, 30, 30, 0.55) 55%,
+		rgba(255, 0, 0, 0) 72%
+	);
+	box-shadow: 0 0 12px 4px rgba(255, 40, 40, 0.55);
+	pointer-events: none;
+}
+/* Presenter view: the slide on the left, what the speaker needs on the
+ * right (below, on a tall screen). */
+.present[data-presenter] {
+	justify-content: flex-start;
+	gap: 16px;
+	padding: 16px;
+	padding-bottom: calc(80px + var(--safe-bottom));
+}
+.present[data-presenter] .presentTrack {
+	flex: 0 0 auto;
+}
+.presenter {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	flex: 1;
+	min-width: 0;
+	align-self: stretch;
+	color: #fff;
+	user-select: text;
+}
+@media (orientation: portrait) {
+	.present[data-presenter] {
+		flex-direction: column;
+	}
+}
+.presenterTime {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+.presenterTime button {
+	color: #fff;
+}
+.presenterTime button:hover {
+	background: rgba(255, 255, 255, 0.14);
+}
+.presenterWatch {
+	font-size: 34px;
+	font-weight: 750;
+	font-variant-numeric: tabular-nums;
+	margin-inline-end: 8px;
+}
+.presenterClock {
+	margin-inline-start: auto;
+	font-size: 17px;
+	color: rgba(255, 255, 255, 0.72);
+	font-variant-numeric: tabular-nums;
+}
+.presenterLabel {
+	margin: 4px 0 0;
+	font-size: 13px;
+	font-weight: 650;
+	color: rgba(255, 255, 255, 0.72);
+}
+.presenterNext {
+	flex: none;
+	overflow: hidden;
+	border-radius: var(--r-s);
+	outline: 1px solid rgba(255, 255, 255, 0.24);
+}
+.presenterNext .slide {
+	box-shadow: none;
+	border-radius: 0;
+}
+.presenterNotes {
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+	padding: 12px 14px;
+	border-radius: var(--r-m);
+	background: rgba(255, 255, 255, 0.08);
+	font-size: 17px;
+	line-height: 1.5;
+	white-space: pre-wrap;
 }
 @media (prefers-reduced-motion: reduce) {
 	.presentSlide[data-from] {

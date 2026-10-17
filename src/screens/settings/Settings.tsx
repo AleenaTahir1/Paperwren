@@ -96,6 +96,8 @@ const SHORTCUTS: Array<[keys: string, what: string, mac?: string]> = [
 	["Home · End", msg("The start and the end of the document"), "⌘↑ · ⌘↓"],
 	["← · →", msg("The previous and the next page or slide")],
 	["F5", msg("Start a slide show")],
+	["P", msg("Presenter view, in a slide show")],
+	["L", msg("Laser pointer, in a slide show")],
 	["Ctrl+D", msg("Bookmark this place")],
 	["Ctrl+Shift+U", msg("Read aloud")],
 	["Ctrl+Tab · Ctrl+Shift+Tab", msg("The next and the previous tab")],
