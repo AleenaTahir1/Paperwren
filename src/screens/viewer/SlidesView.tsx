@@ -52,8 +52,9 @@ import {
 } from "./Shell";
 import { SlideChart } from "./SlideChart";
 import s from "./Slides.module.css";
-import { useZoom, useZoomLevel } from "./hooks";
+import { useOfficeDetails, useTapToTurn, useZoom, useZoomLevel } from "./hooks";
 import { runWorker } from "./runWorker";
+import { domSpeech } from "./speechSources";
 import type { ViewerProps } from "./types";
 import { useDomFind } from "./useDomFind";
 
@@ -668,10 +669,13 @@ export default function SlidesView({
 	active,
 }: ViewerProps) {
 	const { settings } = useSettings();
+	const details = useOfficeDetails(data, format);
 	const scroller = useRef<HTMLDivElement>(null);
 	const stage = useRef<HTMLDivElement>(null);
 	const hud = useRef<HTMLDivElement>(null);
 	const list = useRef<HTMLDivElement>(null);
+	// Read aloud reads the slides' text, from the slide on show.
+	const speech = useMemo(() => domSpeech(scroller, list), []);
 	const [deck, setDeck] = useState<Presentation | null>(null);
 	const [error, setError] = useState<"corrupt" | "password" | null>(null);
 	const [textOnly, setTextOnly] = useState(false);
@@ -685,6 +689,7 @@ export default function SlidesView({
 	const [presenting, setPresenting] = useState(false);
 	const [thumbsOpen, setThumbsOpen] = useState(false);
 	const find = useDomFind(list, scroller);
+	const tapTurn = useTapToTurn(scroller, (dir) => stepRef.current(dir));
 
 	useEffect(() => {
 		const abort = new AbortController();
@@ -744,7 +749,7 @@ export default function SlidesView({
 		max: 5,
 		enabled: !!deck,
 		active,
-		onTap: () => setChromeHidden((h) => !h),
+		onTap: (_target, x) => tapTurn(x) || setChromeHidden((h) => !h),
 	});
 	const scale = fit * zoom;
 
@@ -828,6 +833,7 @@ export default function SlidesView({
 						{
 							id: "slides",
 							label: t("Slides"),
+							icon: <LayoutGrid size={16} />,
 							content: (
 								<SlideThumbs
 									deck={deck}
@@ -853,6 +859,22 @@ export default function SlidesView({
 			// Page Up / Down step through the slides here.
 			pageKeys={false}
 			side={side}
+			speech={deck ? speech : undefined}
+			details={details}
+			bookmarks={
+				deck
+					? {
+							here: () => ({
+								label: t("Slide {n}", { n: current + 1 }),
+								position: { kind: "slides", slide: current },
+							}),
+							go: (p) => {
+								if (p.kind === "slides")
+									goToRef.current(Math.min(p.slide, deck.slides.length - 1));
+							},
+						}
+					: undefined
+			}
 			chromeHidden={chromeHidden && !find.open}
 			onFind={deck ? find.start : undefined}
 			menu={
@@ -920,6 +942,8 @@ export default function SlidesView({
 						onQuery={find.setQuery}
 						onStep={find.step}
 						onClose={find.close}
+						options={find.options}
+						onOptions={find.setOptions}
 					/>
 				) : undefined
 			}

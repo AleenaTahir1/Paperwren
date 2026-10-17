@@ -251,3 +251,80 @@
 .richTable td > p:last-child {
 	margin-bottom: 0;
 }
+
+/* A book (EPUB): one column of text in a reading face. Its own style
+ * sheets are left out (lib/epub.ts), so this is all the styling it has. */
+.book {
+	max-width: 680px;
+	padding: 36px 30px 56px;
+	font-family: Georgia, "Noto Serif", Tinos, "Times New Roman", serif;
+	font-size: 18px;
+	line-height: 1.7;
+	overflow-wrap: break-word;
+}
+.book p {
+	white-space: normal;
+	min-height: 0;
+	margin: 0 0 0.8em;
+}
+.book :is(h1, h2, h3, h4, h5, h6) {
+	line-height: 1.3;
+	margin: 1.4em 0 0.6em;
+	text-wrap: balance;
+}
+.book h1 {
+	font-size: 1.6em;
+}
+.book h2 {
+	font-size: 1.35em;
+}
+.book h3 {
+	font-size: 1.15em;
+}
+.book img {
+	display: block;
+	max-width: 100%;
+	height: auto;
+	margin: 1em auto;
+}
+.book blockquote {
+	margin: 1em 0;
+	padding-inline-start: 1em;
+	border-inline-start: 3px solid #d8d4cc;
+}
+.book table {
+	border-collapse: collapse;
+	max-width: 100%;
+}
+.book :is(td, th) {
+	border: 1px solid #d8d4cc;
+	padding: 4px 8px;
+}
+.book :is(pre, code) {
+	font-family: var(--mono);
+	font-size: 0.85em;
+}
+.book pre {
+	white-space: pre-wrap;
+}
+.book a {
+	color: #2b5f8a;
+}
+.book sup {
+	font-size: 0.7em;
+	line-height: 0;
+}
+/* Each chapter begins on a fresh stretch of the page, and on paper. */
+.chapter + .chapter {
+	margin-top: 2.5em;
+	padding-top: 2em;
+	border-top: 1px solid #e6e2da;
+}
+@media print {
+	.chapter + .chapter {
+		break-before: page;
+		border-top: none;
+		margin-top: 0;
+		padding-top: 0;
+	}
+}

@@ -5,6 +5,8 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.os.CancellationSignal
@@ -18,6 +20,11 @@ import android.print.PrintDocumentInfo
 import android.print.PrintManager
 import android.provider.DocumentsContract
 import android.provider.OpenableColumns
+import android.util.Base64
+import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
+import android.speech.tts.Voice
+import android.view.KeyEvent
 import android.view.WindowManager
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
@@ -38,6 +45,7 @@ import java.io.InputStream
 import java.security.DigestInputStream
 import java.security.MessageDigest
 import java.util.ArrayDeque
+import java.util.Locale
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -65,6 +73,11 @@ import java.util.concurrent.TimeUnit
  *    sideways (the WebView turns down a page's own request for full
  *    screen, so the page asks here instead), and the status-bar icons
  *    follow the app's theme rather than the phone's.
+ * 6. Read aloud, with the system's text-to-speech (a WebView has no
+ *    speech of its own), in voices that speak on the phone only, and
+ *    the volume keys turning pages while the reader asks for that.
+ * 7. Pictures the WebView cannot draw (HEIC, from an iPhone): the
+ *    system decodes them and hands back a JPEG.
  *
  * This file is copied verbatim over the generated activity by
  * scripts/install-android.mjs. Keep it self-contained.
@@ -111,6 +124,50 @@ class MainActivity : TauriActivity() {
       }
     }
 
+  /** Copies the web layer saves (a filled-in form, pages put
+   * together): their bytes arrive a piece at a time into a file in the
+   * cache, then the system's "save as" screen says where they go. No
+   * permission is needed: the reader picks the place. */
+  private val saving = HashMap<String, File>()
+  private var saveToken: String? = null
+  private var saveFile: File? = null
+  private val savePicker =
+    registerForActivityResult(object : androidx.activity.result.contract.ActivityResultContract<Pair<String, String>, Uri?>() {
+      override fun createIntent(context: Context, input: Pair<String, String>): Intent =
+        Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+          addCategory(Intent.CATEGORY_OPENABLE)
+          type = input.second
+          putExtra(Intent.EXTRA_TITLE, input.first)
+        }
+
+      override fun parseResult(resultCode: Int, intent: Intent?): Uri? =
+        if (resultCode == RESULT_OK) intent?.data else null
+    }) { uri ->
+      val token = saveToken
+      val file = saveFile
+      saveToken = null
+      saveFile = null
+      if (token == null || file == null) return@registerForActivityResult
+      if (uri == null) {
+        file.delete()
+        callWeb("__paperwrenSaved", JSONObject.quote(token) + ",\"cancel\"")
+        return@registerForActivityResult
+      }
+      scanExecutor.execute {
+        val result = try {
+          contentResolver.openOutputStream(uri, "wt")?.use { out ->
+            file.inputStream().use { it.copyTo(out) }
+          } ?: throw IllegalStateException("no stream")
+          JSONObject.quote(queryDisplayName(uri))
+        } catch (e: Exception) {
+          "null"
+        } finally {
+          file.delete()
+        }
+        callWeb("__paperwrenSaved", JSONObject.quote(token) + "," + result)
+      }
+    }
+
   /** A slide show has the screen: the system bars are hidden. */
   private var barsHidden = false
 
@@ -143,7 +200,118 @@ class MainActivity : TauriActivity() {
   override fun onDestroy() {
     ingestExecutor.shutdown()
     scanExecutor.shutdown()
+    speech?.shutdown()
+    speech = null
     super.onDestroy()
+  }
+
+  // ---------- Volume keys ----------
+
+  /** The reader asked for the volume keys to turn pages. */
+  @Volatile private var volumeKeysTurn = false
+
+  override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+    val code = event.keyCode
+    if (volumeKeysTurn &&
+      (code == KeyEvent.KEYCODE_VOLUME_UP || code == KeyEvent.KEYCODE_VOLUME_DOWN)
+    ) {
+      // Down turns forward, up back; held, it keeps turning.
+      if (event.action == KeyEvent.ACTION_DOWN) {
+        callWeb("__paperwrenVolumeKey", if (code == KeyEvent.KEYCODE_VOLUME_DOWN) "1" else "-1")
+      }
+      return true
+    }
+    return super.dispatchKeyEvent(event)
+  }
+
+  // ---------- Read aloud ----------
+
+  /** The system's text-to-speech, started the first time it is asked
+   * for; what is asked before it is ready waits for it. */
+  private var speech: TextToSpeech? = null
+  private var speechReady = false
+  private val speechWaiting = ArrayDeque<() -> Unit>()
+
+  private fun spoken(token: String, outcome: String) =
+    callWeb("__paperwrenSpoken", "${JSONObject.quote(token)}, ${JSONObject.quote(outcome)}")
+
+  /** Main thread. */
+  private fun withSpeech(then: () -> Unit) {
+    if (speechReady) {
+      then()
+      return
+    }
+    speechWaiting.add(then)
+    if (speech != null) return
+    speech = TextToSpeech(this) { status ->
+      main.post {
+        val engine = speech
+        speechReady = status == TextToSpeech.SUCCESS && engine != null
+        if (speechReady && engine != null) {
+          engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+            override fun onStart(utteranceId: String?) {}
+            override fun onDone(utteranceId: String?) {
+              utteranceId?.let { spoken(it, "done") }
+            }
+            @Deprecated("Deprecated in Java")
+            override fun onError(utteranceId: String?) {
+              utteranceId?.let { spoken(it, "error") }
+            }
+            override fun onError(utteranceId: String?, errorCode: Int) {
+              utteranceId?.let { spoken(it, "error") }
+            }
+            override fun onStop(utteranceId: String?, interrupted: Boolean) {
+              utteranceId?.let { spoken(it, "stopped") }
+            }
+          })
+        }
+        val waiting = speechWaiting.toList()
+        speechWaiting.clear()
+        if (!speechReady) {
+          speech?.shutdown()
+          speech = null
+        }
+        waiting.forEach { it() }
+      }
+    }
+  }
+
+  /** The voice for a language that speaks on the phone itself: one that
+   * needs the network would send the text away. */
+  private fun onDeviceVoice(engine: TextToSpeech, lang: String): Voice? {
+    val wanted = if (lang.isBlank()) Locale.getDefault() else Locale.forLanguageTag(lang)
+    val voices = try {
+      engine.voices.orEmpty()
+    } catch (e: Exception) {
+      emptySet()
+    }.filter { voice ->
+      !voice.isNetworkConnectionRequired &&
+        voice.features?.contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED) != true
+    }
+    val ofLanguage = voices.filter { it.locale.language == wanted.language }
+    return (ofLanguage.filter { it.locale.country == wanted.country }.ifEmpty { ofLanguage })
+      .maxByOrNull { it.quality }
+  }
+
+  /** Main thread. */
+  private fun speakNow(text: String, lang: String, rate: Float, token: String) {
+    val engine = speech
+    if (!speechReady || engine == null) {
+      spoken(token, "no-voice")
+      return
+    }
+    val voice = onDeviceVoice(engine, lang)
+      ?: onDeviceVoice(engine, Locale.getDefault().toLanguageTag())
+    if (voice == null) {
+      spoken(token, "no-voice")
+      return
+    }
+    engine.voice = voice
+    engine.setSpeechRate(rate)
+    val params = Bundle()
+    if (engine.speak(text, TextToSpeech.QUEUE_FLUSH, params, token) != TextToSpeech.SUCCESS) {
+      spoken(token, "error")
+    }
   }
 
   /** Coming back to a slide show (from the share sheet, another app,
@@ -669,6 +837,53 @@ class MainActivity : TauriActivity() {
       return true
     }
 
+    /** Read `text` aloud; the outcome comes back through
+     * window.__paperwrenSpoken(token, "done" | "stopped" | "error" | "no-voice"). */
+    @JavascriptInterface
+    fun speak(text: String, lang: String, rate: Double, token: String): Boolean {
+      if (!fromApp()) return false
+      main.post { withSpeech { speakNow(text, lang, rate.toFloat(), token) } }
+      return true
+    }
+
+    @JavascriptInterface
+    fun stopSpeaking() {
+      main.post { if (speechReady) speech?.stop() }
+    }
+
+    /** Draw a picture the WebView cannot (HEIC) and hand it back as a
+     * JPEG through window.__paperwrenDecoded(token, base64 | null). */
+    @JavascriptInterface
+    fun decodePicture(base64: String, token: String): Boolean {
+      if (!fromApp()) return false
+      scanExecutor.execute {
+        val jpeg = try {
+          val bytes = Base64.decode(base64, Base64.DEFAULT)
+          val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+          if (bitmap == null) null else {
+            val out = java.io.ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 92, out)
+            bitmap.recycle()
+            Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
+          }
+        } catch (e: Throwable) {
+          null
+        }
+        callWeb(
+          "__paperwrenDecoded",
+          "${JSONObject.quote(token)}, ${if (jpeg == null) "null" else JSONObject.quote(jpeg)}"
+        )
+      }
+      return true
+    }
+
+    /** The volume keys turn the pages (true), or change the volume. */
+    @JavascriptInterface
+    fun volumeKeys(on: Boolean) {
+      if (!fromApp()) return
+      volumeKeysTurn = on
+    }
+
     @JavascriptInterface
     fun keepAwake(on: Boolean) {
       main.post {
@@ -697,6 +912,57 @@ class MainActivity : TauriActivity() {
         bars.isAppearanceLightStatusBars = !dark
         bars.isAppearanceLightNavigationBars = !dark
       }
+    }
+
+    /** Start a copy to save; its bytes follow through saveChunk. */
+    @JavascriptInterface
+    fun saveBegin(token: String): Boolean {
+      if (!fromApp() || token.isEmpty() || token.length > 64) return false
+      return try {
+        val dir = File(cacheDir, "saving").apply { mkdirs() }
+        synchronized(saving) {
+          saving.remove(token)?.delete()
+          saving[token] = File.createTempFile("copy", ".bin", dir)
+        }
+        true
+      } catch (e: Exception) {
+        false
+      }
+    }
+
+    /** A piece of the copy, as base64. */
+    @JavascriptInterface
+    fun saveChunk(token: String, base64: String): Boolean {
+      if (!fromApp()) return false
+      val file = synchronized(saving) { saving[token] } ?: return false
+      return try {
+        FileOutputStream(file, true).use { it.write(Base64.decode(base64, Base64.DEFAULT)) }
+        true
+      } catch (e: Exception) {
+        false
+      }
+    }
+
+    /** Ask where the copy goes, offering `name`. Answers through
+     * window.__paperwrenSaved(token, savedName | "cancel" | null). */
+    @JavascriptInterface
+    fun saveFinish(token: String, name: String, mime: String): Boolean {
+      if (!fromApp()) return false
+      val file = synchronized(saving) { saving.remove(token) } ?: return false
+      main.post {
+        try {
+          saveFile?.delete()
+          saveToken = token
+          saveFile = file
+          savePicker.launch(Pair(name, mime.ifEmpty { "application/octet-stream" }))
+        } catch (e: Exception) {
+          saveToken = null
+          saveFile = null
+          file.delete()
+          callWeb("__paperwrenSaved", JSONObject.quote(token) + ",null")
+        }
+      }
+      return true
     }
 
     /** Ask the user for a folder. Answers through

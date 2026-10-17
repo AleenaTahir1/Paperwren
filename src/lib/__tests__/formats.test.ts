@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
+	PICKER_EXTENSIONS,
+	SCRIPT_EXTENSIONS,
 	formatFromName,
 	isLargeFile,
 	kindOf,
@@ -31,6 +33,7 @@ describe("sniffFormat", () => {
 		["sample.rtf", "rtf"],
 		["sample.txt", "txt"],
 		["sample.csv", "csv"],
+		["features/book.epub", "epub"],
 	])("%s is %s even without a name", (file, expected) => {
 		const hint = expected === "csv" ? file : "";
 		expect(sniffFormat(fixture(file), hint)).toBe(expected);
@@ -173,5 +176,32 @@ describe("large files", () => {
 		expect(isLargeFile("ledger.xlsx", 0)).toBe(false);
 		expect(isLargeFile("no-extension", 99 * MB)).toBe(false);
 		expect(isLargeFile("no-extension", 101 * MB)).toBe(true);
+	});
+});
+
+describe("the desktop's own list of documents", () => {
+	/** The extensions listed in a Rust constant of src-tauri/src/open.rs. */
+	const rustList = (name: string) => {
+		const source = readFileSync("src-tauri/src/open.rs", "utf-8");
+		const body = new RegExp(`${name}: &\\[&str\\] = &\\[([^\\]]*)\\]`).exec(
+			source,
+		)?.[1];
+		return [...(body ?? "").matchAll(/"([a-z0-9]+)"/g)].map((m) => m[1]);
+	};
+
+	it("opens the same files as the app", () => {
+		const desktop = [
+			...rustList("DOCUMENT_EXTENSIONS"),
+			...rustList("SCRIPT_EXTENSIONS"),
+		].sort();
+		expect(desktop).toEqual([...PICKER_EXTENSIONS].sort());
+	});
+
+	it("never hands on the same scripts the app keeps to itself", () => {
+		expect(rustList("SCRIPT_EXTENSIONS").sort()).toEqual(
+			[...SCRIPT_EXTENSIONS].sort(),
+		);
+		for (const script of SCRIPT_EXTENSIONS)
+			expect(rustList("DOCUMENT_EXTENSIONS")).not.toContain(script);
 	});
 });

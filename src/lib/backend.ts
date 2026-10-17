@@ -11,6 +11,8 @@ import { storedFileClear, storedFileGet, storedFilePut } from "./fileStore";
 import {
 	type FileFormat,
 	PICKER_EXTENSIONS,
+	SCRIPT_EXTENSIONS,
+	extensionOf,
 	formatFromName,
 	mimeOf,
 } from "./formats";
@@ -41,6 +43,8 @@ export interface FileAbilities {
 	openWith: boolean;
 	/** Show it in the system file manager. */
 	reveal: boolean;
+	/** Give it a new name. */
+	rename: boolean;
 }
 
 /** A folder the user chose to browse from Home. */
@@ -63,6 +67,13 @@ export interface FolderFile {
 	/** Sub-folder inside the browsed folder ("" for its top level). */
 	folder: string;
 	request: OpenRequest;
+}
+
+/** A file the reader saved: its name, and where to open it again
+ * when the platform says. */
+export interface SavedFile {
+	name: string;
+	reopen?: Reopen;
 }
 
 /** Bounds for a folder scan, matched on the native side. */
@@ -102,6 +113,18 @@ interface Backend {
 	share(file: FileRef): Promise<void>;
 	openWith(file: FileRef): Promise<void>;
 	reveal(file: FileRef): Promise<void>;
+	/** Save bytes the app made (a filled-in form, pages put together)
+	 * as a new file, where the reader says. Null when they cancel. */
+	saveFile(
+		name: string,
+		bytes: Uint8Array,
+		mime: string,
+	): Promise<SavedFile | null>;
+	/** Give the file a new name. On a desktop the file itself is
+	 * renamed in its folder; elsewhere the app holds a copy, and the
+	 * name is the one it is known by here (and is shared or saved by).
+	 * Resolves to where the file is now. */
+	rename(file: FileRef, name: string): Promise<Reopen>;
 	/** Ask the host to print the page as it is laid out for print.
 	 * False when the host has no printing of its own (use window.print). */
 	printPage(jobName: string): Promise<boolean>;
@@ -114,6 +137,9 @@ interface Backend {
 	/** Provider display name of a content:// URI, or null. */
 	providerName(uri: string): string | null;
 	read(reopen: Reopen): Promise<ArrayBuffer>;
+	/** When the file was last changed (ms), to notice another app
+	 * change it while it is open; null where that cannot be known. */
+	stamp(reopen: Reopen): Promise<number | null>;
 	storeGet(key: string): Promise<unknown>;
 	storeSet(key: string, value: unknown): Promise<void>;
 	importsStats(): Promise<ImportsStats>;
@@ -147,10 +173,30 @@ declare global {
 			 * the clock and battery are drawn to be read on them. */
 			systemBars?(dark: boolean): void;
 			pickFolder(token: string): boolean;
+			/** Read `text` aloud with the system's text-to-speech, in an
+			 * on-device voice for `lang`; the outcome comes back through
+			 * window.__paperwrenSpoken(token, ...). False when there is no
+			 * such voice. Added after 1.1.4. */
+			speak?(text: string, lang: string, rate: number, token: string): boolean;
+			stopSpeaking?(): void;
+			/** Draw a picture the webview cannot (HEIC) and hand it back as
+			 * a JPEG through window.__paperwrenDecoded(token, base64 | null).
+			 * Added after 1.1.4. */
+			decodePicture?(base64: string, token: string): boolean;
+			/** Hear the volume keys (they turn pages), or let them change
+			 * the volume again. Added after 1.1.4. */
+			volumeKeys?(on: boolean): void;
 			listFolder(treeUri: string, extensions: string, token: string): boolean;
 			releaseFolder(treeUri: string): void;
+			/** Saving a copy: begin, the bytes in base64 pieces, then the
+			 * system's save screen; the answer comes back through
+			 * window.__paperwrenSaved(token, name | "cancel" | null). */
+			saveBegin?(token: string): boolean;
+			saveChunk?(token: string, base64: string): boolean;
+			saveFinish?(token: string, name: string, mime: string): boolean;
 		};
 		/** MainActivity's answers to pickFolder / listFolder. */
+		__paperwrenSaved?: (token: string, result: string | null) => void;
 		__paperwrenFolder?: (
 			token: string,
 			folder: { uri: string; name: string } | null,
@@ -169,10 +215,15 @@ declare global {
 		 * "open-with", "open"); the page says so in the reader's language
 		 * and answers true. */
 		__paperwrenNativeError?: (code: string) => boolean;
+		/** MainActivity: a volume key was pressed (1 down, -1 up) while
+		 * they turn pages. */
+		__paperwrenVolumeKey?: (dir: number) => void;
 		/** MainActivity's answer to importPicked. */
 		__paperwrenImported?: (token: string, copy: ManagedCopy | null) => void;
 		/** Test hook: the next pick returns this file. */
 		__paperwrenTestFile?: File;
+		/** Test hook: when the open file was last changed. */
+		__paperwrenTestStamp?: number;
 	}
 }
 
@@ -249,6 +300,16 @@ function canWebShare(): boolean {
 	} catch {
 		return false;
 	}
+}
+
+/** Bytes per piece handed to the Android bridge when saving. */
+const SAVE_PIECE = 384 * 1024;
+
+function base64Of(bytes: Uint8Array): string {
+	let text = "";
+	for (let at = 0; at < bytes.length; at += 0x8000)
+		text += String.fromCharCode(...bytes.subarray(at, at + 0x8000));
+	return btoa(text);
 }
 
 function saveCopy(file: File) {
@@ -368,6 +429,7 @@ const browserBackend: Backend = {
 			shareIsDownload: !sheet,
 			openWith: false,
 			reveal: false,
+			rename: true,
 		};
 	},
 	async share(file) {
@@ -381,11 +443,22 @@ const browserBackend: Backend = {
 	async reveal() {
 		throw new OpenError("unsupported");
 	},
+	async saveFile(name, bytes, mime) {
+		saveCopy(new File([bytes as BlobPart], name, { type: mime }));
+		return { name };
+	},
+	async rename(file) {
+		return file.reopen;
+	},
 	async printPage() {
 		return false;
 	},
 	async printOriginal() {
 		return false;
+	},
+	// A browser hands over a copy: the file on disk is out of sight.
+	async stamp() {
+		return window.__paperwrenTestStamp ?? null;
 	},
 	async read(reopen) {
 		if (reopen.kind !== "browser") throw new OpenError("not_found");
@@ -423,10 +496,11 @@ const browserBackend: Backend = {
 
 async function invoke<T>(
 	cmd: string,
-	args?: Record<string, unknown>,
+	args?: Record<string, unknown> | Uint8Array,
+	options?: { headers: Record<string, string> },
 ): Promise<T> {
 	const { invoke } = await import("@tauri-apps/api/core");
-	return invoke<T>(cmd, args);
+	return invoke<T>(cmd, args, options);
 }
 
 function androidName(uri: string): {
@@ -511,7 +585,7 @@ function importPicked(uri: string): Promise<ManagedCopy | null> {
 const androidWaiters = new Map<string, (value: unknown) => void>();
 let androidToken = 0;
 function androidCall<T>(
-	callback: "__paperwrenFolder" | "__paperwrenFolderList",
+	callback: "__paperwrenFolder" | "__paperwrenFolderList" | "__paperwrenSaved",
 	start: (token: string) => boolean,
 ): Promise<T | null> {
 	window[callback] ??= (token: string, value: unknown) => {
@@ -625,7 +699,8 @@ const OPEN_EVENT = "paperwren-open";
 function nativeTarget(file: FileRef): string {
 	const { reopen } = file;
 	if (reopen.kind === "uri") return reopen.uri;
-	if (reopen.kind === "browser") throw new OpenError("unsupported");
+	if (reopen.kind === "browser" || reopen.kind === "memory")
+		throw new OpenError("unsupported");
 	return reopen.path;
 }
 
@@ -825,14 +900,19 @@ const tauriBackend: Backend = {
 				shareIsDownload: false,
 				openWith: extras,
 				reveal: false,
+				rename: true,
 			};
 		}
 		return {
 			share: canWebShare(),
 			shareIsDownload: false,
-			// Desktop: the OS opens it with whatever app owns the type.
-			openWith: file.reopen.kind === "path",
+			// Desktop: the OS opens it with whatever app owns the type; a
+			// script is not handed on, as that app might run it.
+			openWith:
+				file.reopen.kind === "path" &&
+				!SCRIPT_EXTENSIONS.includes(extensionOf(file.name)),
 			reveal: file.reopen.kind === "path",
+			rename: true,
 		};
 	},
 	async share(file) {
@@ -868,6 +948,45 @@ const tauriBackend: Backend = {
 	async reveal(file) {
 		await invoke("reveal_in_folder", { path: nativeTarget(file) });
 	},
+	async saveFile(name, bytes, mime) {
+		const bridge = window.__paperwrenAndroidExtras;
+		if (window.__paperwrenAndroid) {
+			if (!bridge?.saveBegin || !bridge.saveChunk || !bridge.saveFinish)
+				throw new OpenError("unsupported");
+			const { saveBegin, saveChunk, saveFinish } = bridge;
+			const answer = await androidCall<string>("__paperwrenSaved", (token) => {
+				if (!saveBegin.call(bridge, token)) return false;
+				for (let at = 0; at < bytes.length; at += SAVE_PIECE)
+					if (
+						!saveChunk.call(
+							bridge,
+							token,
+							base64Of(bytes.subarray(at, at + SAVE_PIECE)),
+						)
+					)
+						return false;
+				return saveFinish.call(bridge, token, name, mime);
+			});
+			if (answer === "cancel") return null;
+			if (answer === null) throw new OpenError("unreadable");
+			return { name: answer || name };
+		}
+		const path = await invoke<string | null>("save_as", bytes, {
+			headers: { "x-name": encodeURIComponent(name) },
+		});
+		if (!path) return null;
+		const cut = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
+		return { name: path.slice(cut + 1), reopen: { kind: "path", path } };
+	},
+	async rename(file, name) {
+		// A phone holds a private copy: the name is the one it goes by here.
+		if (file.reopen.kind !== "path") return file.reopen;
+		const path = await invoke<string>("rename_file", {
+			path: file.reopen.path,
+			name,
+		});
+		return { kind: "path", path };
+	},
 	async printPage(jobName) {
 		return window.__paperwrenAndroidExtras?.printPage(jobName) ?? false;
 	},
@@ -881,13 +1000,25 @@ const tauriBackend: Backend = {
 		);
 	},
 	async read(reopen) {
-		if (reopen.kind === "browser") throw new OpenError("not_found");
+		if (reopen.kind === "browser" || reopen.kind === "memory")
+			throw new OpenError("not_found");
 		const target = reopen.kind === "uri" ? reopen.uri : reopen.path;
 		try {
 			const { readFile } = await import("@tauri-apps/plugin-fs");
 			return toArrayBuffer(await readFile(target));
 		} catch (err) {
 			throw new OpenError(classifyError(err), String(err));
+		}
+	},
+	async stamp(reopen) {
+		// Only a desktop opens files in place; a phone's are copies or
+		// content the system hands over.
+		if (reopen.kind !== "path" || window.__paperwrenAndroid) return null;
+		try {
+			const { stat } = await import("@tauri-apps/plugin-fs");
+			return (await stat(reopen.path)).mtime?.getTime() ?? null;
+		} catch {
+			return null;
 		}
 	},
 	storeGet: (key) => invoke("store_get", { key }),
@@ -909,10 +1040,63 @@ const raw = isTauri ? tauriBackend : browserBackend;
 
 /** Writes per key are serialized so a slow write can never land
  * after a newer one. */
+/** Files that live inside another one (a PDF's attachments), held for
+ * this run only. */
+const held = new Map<string, File>();
+
+/** Open a file found inside another document. It is read from memory
+ * and never kept in recents: once the app closes, it is gone. */
+export function requestForBytes(name: string, bytes: Uint8Array): OpenRequest {
+	const key = `${held.size + 1}:${name}`;
+	held.set(key, new File([bytes as BlobPart], name));
+	return request(name, true, bytes.byteLength, { kind: "memory", key });
+}
+
 export const backend: Backend = {
 	...raw,
 	storeSet: createSerializedWriter((key, value) => raw.storeSet(key, value)),
+	stamp(reopen) {
+		return reopen.kind === "memory" ? Promise.resolve(null) : raw.stamp(reopen);
+	},
+	read(reopen) {
+		if (reopen.kind !== "memory") return raw.read(reopen);
+		const file = held.get(reopen.key);
+		return file
+			? file.arrayBuffer()
+			: Promise.reject(new OpenError("not_found"));
+	},
+	abilities(file) {
+		if (file.reopen.kind !== "memory") return raw.abilities(file);
+		// It has no place of its own: it can only be shared, or saved
+		// where the browser keeps downloads.
+		const sheet = canWebShare();
+		return {
+			share: sheet || !isTauri,
+			shareIsDownload: !sheet,
+			openWith: false,
+			reveal: false,
+			rename: false,
+		};
+	},
+	async rename(file, name) {
+		if (file.reopen.kind === "memory") throw new OpenError("unsupported");
+		return raw.rename(file, name);
+	},
+	async share(file) {
+		if (file.reopen.kind !== "memory") return raw.share(file);
+		const shared = await asFile(file, backend.read);
+		if (canWebShare()) await webShare(shared);
+		else saveCopy(shared);
+	},
 };
+
+/** Open a copy the reader just saved, where the platform said it is. */
+export function requestForSaved(
+	saved: SavedFile,
+	size: number,
+): OpenRequest | null {
+	return saved.reopen ? request(saved.name, true, size, saved.reopen) : null;
+}
 
 /** Build an open request for a file delivered by Android "Open with". */
 export function requestForManagedCopy(

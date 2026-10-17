@@ -16,8 +16,45 @@
 	margin: 0 auto 6px;
 	box-shadow: var(--shadow-2);
 }
-.dark :global(.pdfViewer .page .canvasWrapper) {
-	filter: invert(0.88) hue-rotate(180deg);
+/* Pages in a row: a swipe settles on the next page, centred. */
+.snap {
+	scroll-snap-type: x mandatory;
+}
+.snap :global(.pdfViewer .page) {
+	scroll-snap-align: center;
+	scroll-snap-stop: always;
+}
+/* Pairs shown one at a time do not scroll sideways: the swipe is the
+ * app's to turn them (and not the browser's, to go back). */
+.container[data-one] {
+	touch-action: pan-y;
+}
+.container[data-flow="across"] :global(.pdfViewer) {
+	padding: 0;
+}
+.container[data-flow="across"] :global(.pdfViewer.removePageBorders .page) {
+	margin: 0 3px;
+}
+/* "Back to page 3", after a link was followed. */
+.trail {
+	position: absolute;
+	inset-inline-start: 12px;
+	bottom: 16px;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	min-height: 40px;
+	padding: 0 14px;
+	border-radius: 999px;
+	border: 1px solid var(--line-strong);
+	background: var(--surface);
+	color: var(--text);
+	font-size: 14px;
+	font-weight: 600;
+	animation: pw-fade-in 160ms ease-out;
+}
+.trail:hover {
+	background: var(--surface-2);
 }
 .outline {
 	display: block;
@@ -91,4 +128,43 @@
 .range input {
 	width: 84px;
 	text-align: center;
+}
+
+/* Comments, attachments and layers: an icon (or a line of small print)
+ * beside the words. */
+button.extra {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	white-space: normal;
+	text-overflow: clip;
+}
+button.extra > svg {
+	flex-shrink: 0;
+	color: var(--text-3);
+}
+.extraText {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+.extraText small {
+	font-size: 12px;
+	color: var(--text-3);
+}
+.comment .extraText span {
+	display: -webkit-box;
+	-webkit-line-clamp: 4;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+button.extra[aria-pressed="false"] {
+	color: var(--text-3);
+}
+.extraBusy {
+	display: flex;
+	justify-content: center;
+	padding: 16px;
 }

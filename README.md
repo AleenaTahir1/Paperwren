@@ -26,13 +26,14 @@
 
 ![PDF, Word, Excel and PowerPoint files open in Paperwren](docs/screenshots/viewers.png)
 
-Paperwren opens PDF, Word, Excel, PowerPoint, OpenDocument, RTF, CSV, Markdown and plain-text files, and pictures. It reads them on the device and does nothing else: it never touches the network and the Android app requests zero permissions.
+Paperwren opens PDF, Word, Excel, PowerPoint, OpenDocument, RTF, EPUB, CSV, Markdown and plain-text files, source code, comic books and pictures. It also fills in and signs PDFs, and merges, splits and organizes them, each tool saving a new copy. Everything happens on the device: it never touches the network and the Android app requests zero permissions.
 
 ## Contents
 
 - [Download](#download)
 - [What it opens](#what-it-opens)
 - [Around the document](#around-the-document)
+- [Tools](#tools)
 - [On Windows](#on-windows)
 - [On a Mac](#on-a-mac)
 - [Zoom and keyboard](#zoom-and-keyboard)
@@ -57,14 +58,16 @@ Every release is on the [releases page](https://github.com/Razee4315/Paperwren/r
 
 | Format | How it is shown |
 |---|---|
-| PDF | pdf.js viewer: fast virtualised pages, text selection, find with highlights, contents, rotate, two pages side by side, password-protected files. Its character maps and standard fonts ship with the app, so Chinese, Japanese and Korean files that name a font without carrying it still read. Go to a page by number (or by the document's own label, such as "iv"), pick one from the page thumbnails, or drag the handle on the right edge. A form is shown as it was saved; nothing can be typed into it and lost. A long file asks which pages to print before it draws any |
-| Word `.docx` | The document's own page layout (docx-preview), fit to width, find, "3 / 12" page counter and go to page, and a list of its headings to jump by. **Reading view** lets the text flow to the width of the screen instead, for a phone. Comments can be shown when a document has them. Long documents only lay out the pages near the screen |
-| Excel `.xlsx` `.xlsm` `.xlsb`, `.xls`, `.ods`, `.csv` `.tsv` | Virtualised grid: frozen rows and columns, merged cells, sheet tabs, find across every sheet, go to a cell by its address, zoom that keeps the headers pinned. Select a range (drag, shift-click, or the corner grip on touch) to copy it and see its sum, average and count. Drag a column edge to resize, double-click to fit. `.xlsx` cells keep their bold/italic, text colours, fills, borders and alignment; long text runs over empty neighbours; charts and pictures on a sheet are drawn where the file puts them. A cell's link and its note are shown beside the cell. Sheets a workbook hides stay hidden |
-| PowerPoint `.pptx` | Slides drawn from their own shapes, theme colours, layouts, freeform outlines, gradients, shadows, cropped pictures and tables, plus speaker notes. Bar, line, area, pie, doughnut and scatter charts are drawn from the numbers stored in the file; SmartArt is drawn from the shapes the file saved for it. Jump to a slide by its number or pick it from a grid of small slides. The slide show takes the whole screen, one slide at a time (on a phone it hides the status bar and turns the screen sideways): swipe, tap a side, click, or use the arrow keys; it passes over slides the author hid, and can show the speaker notes |
+| PDF | pdf.js viewer: fast virtualised pages, text selection, find with highlights, contents, rotate, two pages side by side, password-protected files. Its character maps and standard fonts ship with the app, so Chinese, Japanese and Korean files that name a font without carrying it still read. Go to a page by number (or by the document's own label, such as "iv"), pick one from the page thumbnails, or drag the handle on the right edge. A form is shown as it was saved; nothing can be typed into it and lost. A long file asks which pages to print before it draws any. Pages can turn sideways, one (or two) at a time, by swipe, wheel or a tap on either side. **Crop margins** trims the empty edges every page shares. A link to another page leaves a "Back to page n" chip, and Back and Alt+Right walk that trail. The side panel lists a file's comments and highlights, its attached files (which open in the app) and its layers, which can be switched off. Details give the page size, the PDF version and whether its author forbids copying |
+| Word `.docx` | The document's own page layout (docx-preview), fit to width, find, "3 / 12" page counter and go to page, and a list of its headings to jump by. **Reading view** lets the text flow to the width of the screen instead, for a phone. Comments can be shown when a document has them. Long documents only lay out the pages near the screen. Details show its title, author, dates, who changed it last and its word count, for every Office and OpenDocument file |
+| Excel `.xlsx` `.xlsm` `.xlsb`, `.xls`, `.ods`, `.csv` `.tsv` | Virtualised grid: frozen rows and columns, merged cells, sheet tabs, find across every sheet, go to a cell by its address, zoom that keeps the headers pinned. Select a range (drag, shift-click, or the corner grip on touch) to copy it and see its sum, average and count. Drag a column edge to resize, double-click to fit. `.xlsx` cells keep their bold/italic, text colours, fills, borders and alignment; long text runs over empty neighbours; charts and pictures on a sheet are drawn where the file puts them. A cell's link and its note are shown beside the cell. Sheets a workbook hides stay hidden, and so do the gridlines of a sheet drawn without them (a switch brings them back). **Conditional formatting** is applied to the values the file saved: highlight rules that compare with a number or text, text rules, and colour scales. A column can be **sorted or filtered** for reading; the file is not changed, the header stays put and each row keeps its address. A CSV can be read in another text encoding |
+| PowerPoint `.pptx` | Slides drawn from their own shapes, theme colours, layouts, freeform outlines, gradients, shadows, cropped pictures and tables, plus speaker notes. Bar, line, area, pie, doughnut and scatter charts are drawn from the numbers stored in the file; SmartArt is drawn from the shapes the file saved for it. Jump to a slide by its number or pick it from a grid of small slides. The slide show takes the whole screen, one slide at a time (on a phone it hides the status bar and turns the screen sideways): swipe, tap a side, click, or use the arrow keys; it passes over slides the author hid, and can show the speaker notes. **Presenter view** (P) shows the slide, the next one, the notes, a stopwatch and the time; the **laser pointer** (L) turns the pointer or a finger into a red dot |
+| Books `.epub` | Chapters in one flowing column in a reading face, with the book's contents, its pictures, footnote links, find, bookmarks and read aloud. A book locked by its store (DRM) says so instead of showing nonsense |
 | Legacy `.doc`, OpenDocument `.odt` | A flowing document with its formatting, lists, tables and pictures (the page layout is not reproduced, and the viewer says so). Word 6/95 files and `.rtf` show their text |
 | Legacy `.ppt`, OpenDocument `.odp` | Drawn as slides, like `.pptx`: shapes, text, pictures, tables and backgrounds |
-| Markdown, text, logs, JSON, XML | Rendered Markdown (sanitised; its source is a tap away) or plain text with encoding detection. JSON and XML written on one line are laid out for reading. Long lines wrap or keep their length, and lines can be numbered |
-| Pictures `.png` `.jpg` `.gif` `.webp` `.bmp` | Fitted to the screen, zoomable, and turned the right way up when taken sideways: a scan or a photo of a page is a document too |
+| Markdown, text, logs, JSON, XML, source code | Rendered Markdown (sanitised; its source is a tap away) with a list of its headings and TeX maths (`$…$`, `$$…$$`) drawn by KaTeX, or plain text with encoding detection. Source code in some thirty languages has its syntax coloured. JSON opens as a tree that folds, keeping every digit and repeated key; XML written on one line is laid out for reading. Long lines wrap or keep their length, and lines can be numbered. A script is shown, never run or handed to another app |
+| Pictures `.png` `.jpg` `.gif` `.webp` `.bmp` `.svg` `.avif` `.heic` `.tif` | Fitted to the screen, zoomable, and turned the right way up when taken sideways: a scan or a photo of a page is a document too. A multi-page TIFF turns its pages; arrows step through the other pictures in the folder; a picture can be turned or flipped. Details show the camera, the lens, when and how it was taken. An SVG's scripts never run. Android draws HEIC photos the webview cannot |
+| Comic books `.cbz` | Its pages in order, one at a time, by swipe, tap or key, remembered where you stopped |
 
 Password-protected `.docx`, `.xlsx` and `.pptx` files open with their password (both the Office 2007 and the Office 2010+ encryption). The password is used in memory, once, and never stored. Protected `.doc`/`.xls`/`.ppt` files, and files locked with a certificate or rights management, are not opened; the app says so.
 
@@ -79,16 +82,43 @@ The bytes decide the format, not the file name: content URIs without extensions 
 - **Folders**: pick a folder on Home to browse the documents inside it, with the same search and type filters as recents.
 - **Large files**: a file big enough to be slow, or to be more than a phone can hold, asks before it is read. A sheet with more cells than can be held is shown up to its last whole row that fits, and says so.
 - **Links** in a document are never followed (the app has no network access): a link within the document scrolls to its target, and a web or mail address is shown so it can be copied.
+- **Bookmarks**: Ctrl+D (or the menu) marks the place, named after its page, slide or the words at the top of the screen; they are listed in the menu and the side panel, per file.
+- **Read aloud** with the device's own voices (only those that work offline), sentence by sentence with the words highlighted, at the pace chosen. It starts where you are reading.
+- **Page colour**: original, sepia, dark or the theme's own paper, for PDFs, documents and books; the pictures in a page keep their colours.
+- **Reading font**: books, Markdown and reading view as written, in a serif or in a sans serif.
+- **On a phone**: turn pages with the volume keys or a tap on the edges of the screen, let the bars step aside while reading, dim the screen further than its own lowest brightness, or let the document scroll by itself.
+- **Find** can match case and whole words.
 - **Recents** can be sorted by last opened, name or size; removing one, clearing them or turning them off can be undone for a few seconds. A file reopens at the page and zoom it was left at.
 - **Keep the screen on** while a document is open (off by default; no permission needed).
 - **Languages**: English, 中文, हिन्दी, Español, Français, العربية and اردو, following the phone or chosen in Settings. Arabic and Urdu mirror the app; documents keep their own direction. See "Translations" below.
+
+## Tools
+
+The PDF jobs people otherwise upload to a website for, on the device. Open them from **Tools** on Home, or from a PDF's menu (**Fill & sign**, **More PDF tools**). Each tool saves a new file where you choose, in the system's own save screen; the files you started with are not changed.
+
+| Tool | What it does |
+|---|---|
+| Fill & sign | The form's own fields can be typed into, ticked and chosen. Anywhere on a page you can put a signature or initials, a line of text, the date, a tick or a cross, and move, resize or remove them; a signature field in the form is a "Sign here" box. A signature is drawn with a finger, pen or mouse, typed in a handwriting face, or taken from a photo of one on paper (the paper is made clear), and can be kept on the device for next time. The copy keeps the fields as fields, or makes them part of the page. Marks stay upright on pages the file turns, and text in a script the standard PDF fonts lack is drawn as a picture. A PDF whose author forbids changes says so instead |
+| Merge PDFs | Several PDFs as one, in the order you set |
+| Organize pages | Turn, move or take out pages, picked from thumbnails |
+| Split or extract pages | Pages typed as "1-3, 5" as a new PDF, or every page as its own PDF in a ZIP |
+| Pictures to PDF | Photos or scans (any format the app opens) as pages: A4, Letter, or each picture's own size |
+| PDF to pictures | Pages as JPEG pictures at 150 dpi (several in a ZIP) |
+| Page numbers, watermark | "1" or "Page 1 of 9" at the foot or top of every page; a word such as DRAFT across them |
+| Add or remove a password | A copy that asks for a password to open, or one that no longer does (if you know it) |
+
+Any file can also be **renamed**, from its menu or a recent's: the extension stays as it is. On a desktop the file itself is renamed in its folder, never over another file; on a phone, where the app holds a copy, the new name is the one it goes by in the app and is shared by. This answers [issue #10](https://github.com/Razee4315/Paperwren/issues/10).
+
+The tools are built on [pdf-lib](https://github.com/cantoo-scribe/pdf-lib) (the maintained fork), loaded only when one runs.
 
 ## On Windows
 
 The same web layer, laid out for a mouse and a keyboard:
 
 - **One bar.** The app draws the window's frame itself, so the bar that names the document is also the title bar: back, the file's name, the page number, zoom, find, the menu, and the window's own buttons. Drag it to move the window, double-click it to maximise. Nothing sits at the foot of a document except a workbook's sheet tabs.
-- **A side panel** that stays open while reading: a PDF's pages and contents, a Word document's headings, a deck's slides.
+- **Tabs.** Each document opened is a tab in the window's top row: Ctrl+Tab moves between them, Ctrl+1 to Ctrl+9 picks one, Ctrl+W or a middle click closes it, and the plus goes back to Home for another. Several files dropped together open a tab each.
+- **A side panel** that stays open while reading: a PDF's pages, contents, comments, attachments and layers, a Word document's or a Markdown file's headings, a deck's slides, and bookmarks.
+- **A file changed by another app** while it is open says so, and reloads at the place you had reached.
 - **Menus open at the pointer**, and a right click on selected text offers Copy, Select all and Find.
 - **Full screen** for any document with F11; the bar returns while the pointer is at the top edge.
 - **The window opens where it was left**, as large as it was left. Each document opened from the file manager is a window of its own, and they share one list of recent files.
@@ -115,7 +145,10 @@ On Windows the keyboard works from the moment a file opens, and keeps working af
 | Keys | What they do |
 |---|---|
 | Ctrl+O | Open a file |
-| Ctrl+W, Alt+Left | Close the document |
+| Ctrl+W, Alt+Left | Close the document (or the tab). After a link in a PDF, Alt+Left goes back to where it was, Alt+Right forward again |
+| Ctrl+Tab, Ctrl+Shift+Tab, Ctrl+1 to Ctrl+9 | The next, the previous or a given tab |
+| Ctrl+D | Bookmark this place |
+| Ctrl+Shift+U | Read aloud |
 | Ctrl+F | Find in the document (on Home: search your files) |
 | F3, Shift+F3 (or Enter, Shift+Enter in the field) | Next and previous match. Esc closes the search |
 | Ctrl+P | Print |
@@ -127,6 +160,7 @@ On Windows the keyboard works from the moment a file opens, and keeps working af
 | Ctrl+A | Select the whole document |
 | Ctrl `]`, Ctrl `[` | PDF: turn the pages |
 | F5 | Slides: start the slide show. A click or the wheel goes on, a right click goes back, Esc leaves |
+| P, L | In a slide show: presenter view, the laser pointer |
 | Arrows, Shift+arrows, Home, End, Page Up, Page Down, Enter | Sheets: move the selection (Shift extends it) |
 | Ctrl+arrow, Ctrl+Home, Ctrl+End | Sheets: to the edge of the data, the first cell, the last cell |
 | Ctrl+Page Up, Ctrl+Page Down | Sheets: the previous and the next sheet |
@@ -155,6 +189,8 @@ The same app on Windows (an older build; the window now has one bar):
 - No network access and no analytics. The release APK requests zero Android permissions, and the release pipeline fails if one appears.
 - Recents and settings live in app-private storage. On Android, files opened from the picker or shared into the app are kept as private copies (deduplicated by content hash, capped at 250 MB) so recents still reopen after the app is closed; they can be deleted in Settings.
 - Passwords (PDF and Office) are used once, in memory, and never stored.
+- A signature or initials you ask to keep are stored as pictures in app-private storage, and can be forgotten whenever you sign.
+- The app never changes a file it opened. It writes only a copy a tool made, where you pick it in the system's save screen, and a file you rename. On a desktop both are done by the Rust side (`src-tauri/src/save.rs`), which checks the name: the web layer's file access stays read-only.
 
 The full policy is at [razee4315.github.io/Paperwren/privacy](https://razee4315.github.io/Paperwren/privacy).
 
@@ -191,6 +227,7 @@ Run all four checks (`lint`, `build`, `test`, `cargo test`) before pushing.
 
 - `python3 scripts/make-office-fixtures.py`: the basic Office/ODF/RTF samples (needs python-pptx, python-docx and LibreOffice).
 - `python3 scripts/make-rich-fixtures.py`: styled and frozen workbooks, chart and effect decks, right-to-left text, a picture, and password-protected PDF and Office files (needs openpyxl, Pillow, python-pptx, reportlab, msoffcrypto-tool). The password is `wren`.
+- `python3 scripts/make-feature-fixtures.py`: the files for the reading features in `fixtures/features/` (a PDF with pictures, comments, attachments, layers and wide margins, an EPUB and a locked one, a comic book, pictures in newer formats, a workbook with conditional formatting and a CSV in a Windows code page; needs reportlab, pypdf, Pillow, pillow-heif and openpyxl). `notes.md`, `data.json` and `wren.py` there are written by hand.
 - `fixtures/legacy/` and `fixtures/odf/` are real files from the Apache POI and LibreOffice test suites; see the README in each.
 
 ### Translations
@@ -233,10 +270,13 @@ src/
     parseWorker.ts  SheetJS, legacy Office parsing and decryption, off the main thread
   state/          React providers: settings, recents, navigation/Back
   ui/             small component kit (CSS Modules)
-  screens/        Home, Settings, viewer/ (one lazily loaded chunk per engine)
+  screens/        Home, Settings, viewer/ (one lazily loaded chunk per engine),
+                  tools/ (fill & sign, the PDF tools)
+    pdfTools.ts   the PDF tools on pdf-lib: fill and sign, build, number, mark, lock
 src-tauri/
   src/            Rust core: store.rs (atomic JSON store), imports.rs (managed copies),
-                  open.rs (desktop hand-offs, the files Finder asks for), error.rs
+                  open.rs (desktop hand-offs, the files Finder asks for),
+                  save.rs (saving a copy, renaming), error.rs
   tauri.windows.conf.json   Windows only: no native frame, and the webview's
                   pinch reaches the app (the Android window is in tauri.android.conf.json)
   tauri.macos.conf.json     macOS only: the system's window buttons over the app's bar

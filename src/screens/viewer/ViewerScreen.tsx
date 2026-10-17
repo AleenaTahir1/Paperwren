@@ -21,6 +21,7 @@ import {
 	useState,
 } from "react";
 import { PasswordDialog } from "./Dialogs";
+import { FileChangedBar, useFileChanged } from "./FileChanged";
 import { ViewerFileContext } from "./FileMenu";
 import { runWorker } from "./runWorker";
 import type { ViewerProps } from "./types";
@@ -32,6 +33,7 @@ const docx = lazy(() => import("./DocxView"));
 const sheet = lazy(() => import("./SheetView"));
 const slides = lazy(() => import("./SlidesView"));
 const reflow = lazy(() => import("./ReflowView"));
+const epub = lazy(() => import("./EpubView"));
 const text = lazy(() => import("./TextView"));
 const image = lazy(() => import("./ImageView"));
 Object.assign(VIEWERS, {
@@ -47,9 +49,11 @@ Object.assign(VIEWERS, {
 	doc: reflow,
 	odt: reflow,
 	rtf: reflow,
+	epub,
 	md: text,
 	txt: text,
 	image,
+	cbz: image,
 });
 
 /** Content URIs often carry no extension; name the file after what
@@ -112,6 +116,8 @@ export default function ViewerScreen({
 	onClose,
 	onLocate,
 	onReplace,
+	onOpen,
+	onTools,
 }: {
 	request: OpenRequest;
 	active: boolean;
@@ -119,6 +125,10 @@ export default function ViewerScreen({
 	onLocate: () => void;
 	/** Show another file in place of this one. */
 	onReplace: (request: OpenRequest) => void;
+	/** Show another file over this one. */
+	onOpen: (request: OpenRequest) => void;
+	/** Open the tools (or one of them) with this file. */
+	onTools?: (tool: string | undefined, file: OpenRequest) => void;
 }) {
 	const { entries, record, setPosition, markUnavailable, remove } =
 		useRecents();
@@ -129,10 +139,13 @@ export default function ViewerScreen({
 		() => !isLargeFile(request.name, request.size),
 	);
 	// Position at open time; later writes must not re-trigger restores.
-	const [initialPosition] = useState<Position | undefined>(
+	// A reload starts from where the reader had got to.
+	const [initialPosition, setInitialPosition] = useState<Position | undefined>(
 		() =>
 			request.position ?? entries.find((e) => e.id === request.id)?.position,
 	);
+	// Counts the reads of the file: a reload reads it again.
+	const [reads, setReads] = useState(0);
 
 	// A password-protected Office file, waiting for its password.
 	const [locked, setLocked] = useState<{
@@ -152,15 +165,17 @@ export default function ViewerScreen({
 			return;
 		}
 		const { name, verified } = displayName(request, format);
-		record({
-			id: request.id,
-			name,
-			nameVerified: verified ? undefined : false,
-			format,
-			size,
-			reopen: request.reopen,
-			position: request.position,
-		});
+		// A file inside another one has no place to reopen it from.
+		if (request.reopen.kind !== "memory")
+			record({
+				id: request.id,
+				name,
+				nameVerified: verified ? undefined : false,
+				format,
+				size,
+				reopen: request.reopen,
+				position: request.position,
+			});
 		setLoaded({ data, format, name, size });
 	};
 
@@ -215,7 +230,20 @@ export default function ViewerScreen({
 		return () => {
 			alive = false;
 		};
-	}, [request, allowed]);
+	}, [request, allowed, reads]);
+
+	const [changed, keepVersion] = useFileChanged(
+		request.reopen,
+		!!loaded && active,
+		reads,
+	);
+	const reload = () => {
+		setInitialPosition(
+			(was) => entries.find((e) => e.id === request.id)?.position ?? was,
+		);
+		setLoaded(null);
+		setReads((n) => n + 1);
+	};
 
 	const onPosition = useCallback(
 		(p: Position) => setPosition(request.id, p),
@@ -317,8 +345,29 @@ export default function ViewerScreen({
 					format: loaded.format,
 					reopen: request.reopen,
 				},
+				id: request.id,
+				// Shown again under its new name, from where it now is.
+				onRenamed:
+					request.reopen.kind === "memory"
+						? undefined
+						: (name, reopen, id) =>
+								onReplace({
+									...request,
+									id,
+									name,
+									nameVerified: true,
+									reopen,
+									position:
+										entries.find((e) => e.id === request.id)?.position ??
+										initialPosition,
+								}),
 				size: loaded.data.byteLength || loaded.size,
 				openOther: onReplace,
+				openOver: onOpen,
+				openTools:
+					onTools && request.reopen.kind !== "memory"
+						? (tool) => onTools(tool, request)
+						: undefined,
 			}}
 		>
 			<ViewerBoundary name={loaded.name} onClose={onClose}>
@@ -334,6 +383,9 @@ export default function ViewerScreen({
 					/>
 				</Suspense>
 			</ViewerBoundary>
+			{changed && active && (
+				<FileChangedBar onReload={reload} onDismiss={keepVersion} />
+			)}
 		</ViewerFileContext.Provider>
 	);
 }

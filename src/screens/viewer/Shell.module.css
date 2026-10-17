@@ -2,7 +2,7 @@
 
 .shell {
 	position: fixed;
-	inset: 0;
+	inset: var(--tab-strip) 0 0;
 	z-index: 30;
 	display: flex;
 	flex-direction: column;
@@ -24,8 +24,8 @@
 	align-items: center;
 	gap: 2px;
 	height: var(--bar-h);
-	padding: 0 calc(4px + var(--safe-right) + var(--win-controls)) 0
-		calc(4px + var(--safe-left) + var(--win-lights));
+	padding: 0 calc(4px + var(--safe-right) + var(--bar-controls)) 0
+		calc(4px + var(--safe-left) + var(--bar-lights));
 }
 /* The page counter and zoom control, in the bar on a desktop. */
 .tools {
@@ -137,6 +137,12 @@
 	font-weight: 750;
 	color: var(--text-3);
 	white-space: nowrap;
+}
+.sideIcon {
+	display: grid;
+	place-items: center;
+	width: 32px;
+	padding: 0;
 }
 .sideTab:hover {
 	color: var(--text);
@@ -556,4 +562,83 @@
 }
 .scrub[data-held] .scrubLabel {
 	opacity: 0.94;
+}
+
+/* A bookmark: the place, and a way to forget it. */
+.mark {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+}
+.mark > button:first-child {
+	flex: 1;
+	min-width: 0;
+}
+
+/* Read aloud: a small bar over the foot of the document while it reads. */
+.speech {
+	position: absolute;
+	bottom: 16px;
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 6;
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	padding: 4px;
+	border-radius: 999px;
+	border: 1px solid var(--line-strong);
+	background: var(--surface);
+	animation: pw-fade-in 160ms ease-out;
+}
+.speechRate {
+	min-width: 48px;
+	height: 36px;
+	border-radius: 999px;
+	font-size: 13px;
+	font-weight: 800;
+	font-variant-numeric: tabular-nums;
+	color: var(--text-2);
+}
+.speechRate:hover {
+	background: var(--surface-2);
+}
+
+/* Dim the screen: a shade over the document, never the system's own
+ * brightness. Taps go through it. */
+.dim {
+	position: absolute;
+	inset: 0;
+	z-index: 5;
+	background: #000;
+	pointer-events: none;
+}
+.dimField {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	padding: 4px 8px 12px;
+	font-weight: 700;
+	color: var(--text-2);
+}
+.dimField input {
+	width: 100%;
+	accent-color: var(--accent);
+}
+
+/* Rename: the name to type, and its extension kept beside it. */
+.renameField {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+.renameExt {
+	flex-shrink: 0;
+	color: var(--text-2);
+	font-weight: 650;
+}
+.renameError {
+	margin: 8px 0 0;
+	font-size: 13px;
+	color: var(--danger, #b0312c);
 }

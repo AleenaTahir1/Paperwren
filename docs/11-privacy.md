@@ -30,6 +30,8 @@ Every claim here must stay literally true. Any future feature that would break o
 | Preferences (theme, viewer defaults, …) | Remember your choices | App-private storage | Cleared on app uninstall / "clear data" |
 | Cached copy of opened files | Let parsers re-read; speed | App-private **cache** dir | Auto-purged (LRU 250 MB / 30 days); one-tap "Clear cache" |
 | PDF passwords | Unlock in-session only | **Memory only** | Never written anywhere; gone when file closes |
+| Kept signatures and initials (pictures, only when the user ticks "Keep it on this device") | Sign the next form in a tap | App-private storage | Forget each one from the signature list; cleared on uninstall |
+| Copies the tools save (a signed form, merged pages) | The user's own files | Where the user picks in the system save screen (Android: Storage Access Framework, no permission) | The user's files, not the app's |
 
 Nothing else. No cookies, no identifiers, no advertising ID reads, no fingerprinting surfaces.
 

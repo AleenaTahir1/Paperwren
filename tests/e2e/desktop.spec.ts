@@ -197,6 +197,64 @@ test.describe("the desktop layout", () => {
 		await expect(page.getByTestId("slide-page-field")).toHaveValue("2");
 	});
 
+	test("presenter view and the laser pointer", async ({ page }) => {
+		await boot(page, {}, DESKTOP);
+		await openFixture(page, "sample.pptx");
+		await expect(page.getByTestId("slide-page-field")).toHaveValue("1", {
+			timeout: 20_000,
+		});
+		await page.getByTestId("slides-present").click();
+		const counter = page.getByTestId("present-counter");
+		await expect(counter).toHaveText("1 / 3");
+
+		await page.keyboard.press("p");
+		const panel = page.getByTestId("presenter");
+		await expect(panel).toContainText("Next: slide 2");
+		await expect(page.getByTestId("presenter-next")).toBeVisible();
+		await expect(page.getByTestId("presenter-notes")).toHaveText(
+			"No notes for this slide",
+		);
+		await expect(page.getByTestId("presenter-watch")).toHaveText(/^0:0\d$/);
+		// The slide and the panel sit side by side.
+		const slide = await page.getByTestId("present-slide").boundingBox();
+		const side = await panel.boundingBox();
+		expect((slide?.x ?? 0) + (slide?.width ?? 0)).toBeLessThanOrEqual(
+			side?.x ?? 0,
+		);
+		// Pausing stops the clock; reset starts it again from nothing.
+		await page.getByTestId("presenter-pause").click();
+		const held = await page.getByTestId("presenter-watch").textContent();
+		await page.waitForTimeout(1200);
+		await expect(page.getByTestId("presenter-watch")).toHaveText(held ?? "");
+		await page.getByTestId("presenter-reset").click();
+		await expect(page.getByTestId("presenter-watch")).toHaveText("0:00");
+
+		// Clicking in the panel turns nothing; the keys still do.
+		await panel.click();
+		await expect(counter).toHaveText("1 / 3");
+		await page.keyboard.press("ArrowRight");
+		await expect(panel).toContainText("Next: slide 3");
+		await page.keyboard.press("ArrowRight");
+		await expect(panel).toContainText("End of the show");
+		await expect(page.getByTestId("presenter-notes")).toHaveText(
+			"Speaker note text",
+		);
+		await page.keyboard.press("p");
+		await expect(panel).toHaveCount(0);
+
+		// The laser: a dot where the mouse is, and a click points, not turns.
+		await page.keyboard.press("l");
+		await page.mouse.move(500, 300);
+		const laser = page.getByTestId("present-laser");
+		await expect(laser).toBeVisible();
+		await page.mouse.click(520, 320);
+		await expect(counter).toHaveText("3 / 3");
+		await page.keyboard.press("l");
+		await expect(laser).toHaveCount(0);
+		await page.mouse.click(640, 300, { button: "right" });
+		await expect(counter).toHaveText("2 / 3");
+	});
+
 	test("a sheet is walked by the keyboard, as in a spreadsheet program", async ({
 		page,
 	}) => {
@@ -622,5 +680,40 @@ test.describe("on a phone", () => {
 		await page.getByTestId("slide-jump-input").fill("1");
 		await page.getByTestId("slide-jump-go").click();
 		await expect(counter).toHaveText("1 / 3");
+	});
+});
+
+test.describe("a file changed by another app", () => {
+	test("says so, and reads it again where the reader was", async ({ page }) => {
+		await boot(page, {}, DESKTOP);
+		await page.evaluate(() => {
+			window.__paperwrenTestStamp = 1;
+		});
+		await openFixture(page, "sample.txt");
+		await expect(page.getByTestId("text-scroll")).toBeVisible();
+		const bar = page.getByTestId("file-changed");
+		await page.waitForTimeout(2500);
+		await expect(bar).toHaveCount(0);
+
+		await page.evaluate(() => {
+			window.__paperwrenTestStamp = 2;
+		});
+		await expect(bar).toBeVisible({ timeout: 5000 });
+		await expect(bar).toContainText("This file was changed by another app");
+		// Kept as it is: not asked again until it changes once more.
+		await page.getByTestId("file-changed-dismiss").click();
+		await expect(bar).toHaveCount(0);
+		await page.waitForTimeout(2500);
+		await expect(bar).toHaveCount(0);
+
+		await page.evaluate(() => {
+			window.__paperwrenTestStamp = 3;
+		});
+		await expect(bar).toBeVisible({ timeout: 5000 });
+		await page.getByTestId("file-changed-reload").click();
+		await expect(bar).toHaveCount(0);
+		await expect(page.getByTestId("text-scroll")).toBeVisible();
+		await page.waitForTimeout(2500);
+		await expect(bar).toHaveCount(0);
 	});
 });

@@ -1,5 +1,6 @@
 import { hasRtl } from "@/lib/bidi";
 import { isDesktop } from "@/lib/env";
+import { ANY_MATCH, type FindOptions, matches } from "@/lib/find";
 import { locale, t } from "@/lib/i18n";
 import { type Chart, readChart } from "@/lib/pptx/chart";
 
@@ -11,7 +12,7 @@ import {
 	columnOffsets,
 	computeVisibleWindow,
 } from "@/lib/sheetLayout";
-import { decodeText } from "@/lib/text";
+import { ENCODINGS, decodeText } from "@/lib/text";
 import type { CellStyle, GridObject, ParseResult } from "@/lib/workbookModel";
 import { useSettings } from "@/state/settings";
 import {
@@ -20,11 +21,22 @@ import {
 	ErrorArt,
 	IconButton,
 	SheetItem,
+	Sheet as SheetPanel,
 	Spinner,
 	StateView,
 	toast,
 } from "@/ui";
-import { Copy, LocateFixed, Search } from "lucide-react";
+import {
+	ArrowDownAZ,
+	ArrowUpZA,
+	Copy,
+	Filter,
+	FilterX,
+	Grid3x3,
+	Languages,
+	LocateFixed,
+	Search,
+} from "lucide-react";
 import {
 	type CSSProperties,
 	useCallback,
@@ -45,12 +57,14 @@ import {
 	shellStyles,
 } from "./Shell";
 import { SlideChart } from "./SlideChart";
-import { useZoom } from "./hooks";
+import { useOfficeDetails, useZoom } from "./hooks";
 import { runWorker } from "./runWorker";
 import {
+	type Arrangement,
 	NUMERIC,
 	type Range,
 	type Sheet,
+	arrange,
 	cellTextCss,
 	chartColors,
 	key,
@@ -104,7 +118,27 @@ export default function SheetView({
 	active,
 }: ViewerProps) {
 	const { settings } = useSettings();
-	const [sheets, setSheets] = useState<Sheet[] | null>(null);
+	const details = useOfficeDetails(data, fileFormat);
+	const [parsed, setSheets] = useState<Sheet[] | null>(null);
+	// Rows sorted and filtered by the reader, per sheet; the file is not
+	// changed, and Find and the grid see the rows as they are shown.
+	const [arranged, setArranged] = useState<Record<number, Arrangement>>({});
+	const sheets = useMemo(
+		() =>
+			parsed?.map((sh, i) => (arranged[i] ? arrange(sh, arranged[i]) : sh)) ??
+			null,
+		[parsed, arranged],
+	);
+	// The filter being typed: its column and text, or null when closed.
+	const [filtering, setFiltering] = useState<{
+		col: number;
+		text: string;
+	} | null>(null);
+	// Gridlines as the file draws them, unless the reader says otherwise.
+	const [gridShown, setGridShown] = useState<Record<number, boolean>>({});
+	// A CSV file's text encoding.
+	const [encoding, setEncoding] = useState("auto");
+	const [encodingOpen, setEncodingOpen] = useState(false);
 	// The file's cell styles, and how each is drawn in this theme.
 	const [styles, setStyles] = useState<CellStyle[]>([]);
 
@@ -132,6 +166,7 @@ export default function SheetView({
 	const zoomRef = useRef(zoom);
 	zoomRef.current = zoom;
 	const [findOpen, setFindOpen] = useState(false);
+	const [findOptions, setFindOptions] = useState<FindOptions>(ANY_MATCH);
 	const [find, setFind] = useState<FindState>({
 		query: "",
 		total: 0,
@@ -152,7 +187,7 @@ export default function SheetView({
 	useEffect(() => {
 		const abort = new AbortController();
 		let urls: string[] = [];
-		const input = fileFormat === "csv" ? decodeText(data) : data;
+		const input = fileFormat === "csv" ? decodeText(data, encoding) : data;
 		runWorker<ParseResult>({ type: "workbook", buffer: input }, abort.signal)
 			.then((result) => {
 				if (!result.ok) {
@@ -193,6 +228,7 @@ export default function SheetView({
 						: firstVisible,
 				);
 				setStyles(result.styles ?? []);
+				setArranged({});
 				setSheets(list);
 			})
 			.catch((e) => {
@@ -203,9 +239,18 @@ export default function SheetView({
 			abort.abort();
 			for (const url of urls) if (url) URL.revokeObjectURL(url);
 		};
-	}, [data, fileFormat]);
+	}, [data, fileFormat, encoding]);
 
 	const sheet = sheets?.[index];
+	const how = arranged[index];
+	const gridlines = gridShown[index] ?? sheet?.gridlines !== false;
+	const rearrange = (change: Arrangement | undefined) =>
+		setArranged((all) => {
+			const next = { ...all };
+			if (change?.sort || change?.filter?.text.trim()) next[index] = change;
+			else delete next[index];
+			return next;
+		});
 	// Sheets the file hides are left out, as Excel and Google Sheets
 	// leave them out: no tab, and find does not lead into them. (A
 	// workbook with nothing but hidden sheets still shows them; their
@@ -594,7 +639,7 @@ export default function SheetView({
 	// biome-ignore lint/correctness/useExhaustiveDependencies: a new query or workbook restarts the search; switching sheets must not
 	useEffect(() => {
 		if (!findOpen || !sheets) return;
-		const q = find.query.trim().toLowerCase();
+		const q = find.query.trim();
 		const t = window.setTimeout(() => {
 			const found: Array<Point & { sheet: number }> = [];
 			if (q) {
@@ -602,7 +647,7 @@ export default function SheetView({
 					if (!offered(sh)) return;
 					const here: Point[] = [];
 					for (const [k, cell] of sh.cells)
-						if (cell.value.toLowerCase().includes(q))
+						if (matches(cell.value, q, findOptions))
 							here.push({ r: Math.floor(k / 1024), c: k % 1024 });
 					here.sort((a, b) => a.r - b.r || a.c - b.c);
 					for (const hit of here) found.push({ ...hit, sheet: si });
@@ -623,7 +668,7 @@ export default function SheetView({
 			if (first) go(first);
 		}, 150);
 		return () => window.clearTimeout(t);
-	}, [find.query, findOpen, sheets]);
+	}, [find.query, findOptions, findOpen, sheets]);
 
 	const go = (hit: Point & { sheet: number }) => {
 		if (hit.sheet !== index) {
@@ -673,7 +718,7 @@ export default function SheetView({
 				if (doc.getElementsByTagName("parsererror").length) continue;
 				// A chart with no stored values reads its ranges from the sheets.
 				const chart = readChart(doc, colors, (formula) =>
-					rangeValues(sheets ?? [], formula),
+					rangeValues(parsed ?? [], formula),
 				);
 				if (chart) out.set(object, chart);
 			} catch {
@@ -681,7 +726,7 @@ export default function SheetView({
 			}
 		}
 		return out;
-	}, [sheet, sheets, accents]);
+	}, [sheet, parsed, accents]);
 
 	// Objects hang from their columns, so they move (and stretch, when
 	// anchored at both ends) as columns are resized. They may sit beyond
@@ -953,6 +998,32 @@ export default function SheetView({
 
 	const bottom = sheets ? (
 		<>
+			{how && sheet && parsed && (
+				<div className={s.arranged} data-testid="sheet-arranged">
+					<span>
+						{[
+							how.sort &&
+								t("Sorted by column {col}", {
+									col: colName(sheet.colOrigins[how.sort.col] ?? how.sort.col),
+								}),
+							how.filter?.text.trim() &&
+								t("Showing {shown} of {total} rows", {
+									shown: (sheet.cells.size ? sheet.rows : 0).toLocaleString(),
+									total: parsed[index].rows.toLocaleString(),
+								}),
+						]
+							.filter(Boolean)
+							.join(" · ")}
+					</span>
+					<Button
+						variant="ghost"
+						onClick={() => rearrange(undefined)}
+						data-testid="sheet-arranged-clear"
+					>
+						{t("Show every row")}
+					</Button>
+				</div>
+			)}
 			{limited && (
 				<p className={s.limit} data-testid="sheet-limit">
 					{limited}
@@ -1065,6 +1136,7 @@ export default function SheetView({
 			active={active}
 			hud={hud}
 			pager={sheets && isDesktop ? zoomControl : undefined}
+			details={details}
 			onFind={
 				sheets
 					? (query) => {
@@ -1075,18 +1147,106 @@ export default function SheetView({
 			}
 			menu={
 				sheet
-					? (close) => (
-							<SheetItem
-								icon={<LocateFixed size={20} />}
-								onClick={() => {
-									close();
-									setJump("");
-								}}
-								testId="sheet-go-to"
-							>
-								{t("Go to cell")}
-							</SheetItem>
-						)
+					? (close) => {
+							// Sorting and filtering go by the column of the cell picked.
+							const col = anchor?.c;
+							const where =
+								col === undefined
+									? t("Pick a cell in the column first")
+									: t("Column {col}", {
+											col: colName(sheet.colOrigins[col] ?? col),
+										});
+							const sortBy = (dir: 1 | -1) => {
+								close();
+								if (col !== undefined)
+									rearrange({ ...how, sort: { col, dir } });
+							};
+							return (
+								<>
+									<SheetItem
+										icon={<LocateFixed size={20} />}
+										onClick={() => {
+											close();
+											setJump("");
+										}}
+										testId="sheet-go-to"
+									>
+										{t("Go to cell")}
+									</SheetItem>
+									<SheetItem
+										icon={<ArrowDownAZ size={20} />}
+										disabled={col === undefined}
+										hint={where}
+										checked={how?.sort?.col === col && how?.sort?.dir === 1}
+										onClick={() => sortBy(1)}
+										testId="sheet-sort-up"
+									>
+										{t("Sort A to Z")}
+									</SheetItem>
+									<SheetItem
+										icon={<ArrowUpZA size={20} />}
+										disabled={col === undefined}
+										hint={where}
+										checked={how?.sort?.col === col && how?.sort?.dir === -1}
+										onClick={() => sortBy(-1)}
+										testId="sheet-sort-down"
+									>
+										{t("Sort Z to A")}
+									</SheetItem>
+									<SheetItem
+										icon={<Filter size={20} />}
+										disabled={col === undefined}
+										hint={where}
+										onClick={() => {
+											close();
+											if (col !== undefined)
+												setFiltering({
+													col,
+													text: how?.filter?.col === col ? how.filter.text : "",
+												});
+										}}
+										testId="sheet-filter"
+									>
+										{t("Filter by this column")}
+									</SheetItem>
+									{how && (
+										<SheetItem
+											icon={<FilterX size={20} />}
+											onClick={() => {
+												close();
+												rearrange(undefined);
+											}}
+											testId="sheet-unarrange"
+										>
+											{t("Show every row")}
+										</SheetItem>
+									)}
+									<SheetItem
+										icon={<Grid3x3 size={20} />}
+										checked={gridlines}
+										onClick={() => {
+											close();
+											setGridShown((all) => ({ ...all, [index]: !gridlines }));
+										}}
+										testId="sheet-gridlines"
+									>
+										{t("Gridlines")}
+									</SheetItem>
+									{fileFormat === "csv" && (
+										<SheetItem
+											icon={<Languages size={20} />}
+											onClick={() => {
+												close();
+												setEncodingOpen(true);
+											}}
+											testId="sheet-encoding"
+										>
+											{t("Text encoding")}
+										</SheetItem>
+									)}
+								</>
+							);
+						}
 					: undefined
 			}
 			onPrint={
@@ -1144,6 +1304,8 @@ export default function SheetView({
 						state={find}
 						onQuery={(query) => setFind((f) => ({ ...f, query }))}
 						onStep={stepFind}
+						options={findOptions}
+						onOptions={setFindOptions}
 						onClose={() => {
 							setFindOpen(false);
 							setFind({ query: "", total: 0, current: -1 });
@@ -1156,7 +1318,7 @@ export default function SheetView({
 			{sheet && (
 				<div
 					ref={scroller}
-					className={s.scroller}
+					className={`${s.scroller} ${gridlines ? "" : s.gridless}`}
 					onScroll={onScroll}
 					onKeyDown={onKey}
 					onPointerDown={onPointerDown}
@@ -1320,6 +1482,72 @@ export default function SheetView({
 					/>
 				</form>
 			</Dialog>
+			<Dialog
+				open={filtering !== null}
+				title={t("Filter by this column")}
+				onClose={() => setFiltering(null)}
+				actions={
+					<>
+						<Button variant="ghost" onClick={() => setFiltering(null)}>
+							{t("Cancel")}
+						</Button>
+						<Button
+							onClick={() => {
+								if (filtering) rearrange({ ...how, filter: filtering });
+								setFiltering(null);
+							}}
+							data-testid="sheet-filter-go"
+						>
+							{t("Filter")}
+						</Button>
+					</>
+				}
+			>
+				<form
+					onSubmit={(e) => {
+						e.preventDefault();
+						if (filtering) rearrange({ ...how, filter: filtering });
+						setFiltering(null);
+					}}
+				>
+					<p className={shellStyles.meta}>
+						{t("Show only the rows whose cell in column {col} holds:", {
+							col: colName(
+								sheet?.colOrigins[filtering?.col ?? 0] ?? filtering?.col ?? 0,
+							),
+						})}
+					</p>
+					<input
+						className={shellStyles.input}
+						dir="auto"
+						autoComplete="off"
+						value={filtering?.text ?? ""}
+						onChange={(e) =>
+							setFiltering((f) => (f ? { ...f, text: e.target.value } : f))
+						}
+						aria-label={t("Filter by this column")}
+						data-testid="sheet-filter-input"
+					/>
+				</form>
+			</Dialog>
+			<SheetPanel
+				open={encodingOpen}
+				title={t("Text encoding")}
+				onClose={() => setEncodingOpen(false)}
+			>
+				{ENCODINGS.map((value) => (
+					<SheetItem
+						key={value}
+						checked={encoding === value}
+						onClick={() => {
+							setEncoding(value);
+							setEncodingOpen(false);
+						}}
+					>
+						{value === "auto" ? t("Automatic") : value.toUpperCase()}
+					</SheetItem>
+				))}
+			</SheetPanel>
 			{error && (
 				<StateView
 					icon={<ErrorArt />}

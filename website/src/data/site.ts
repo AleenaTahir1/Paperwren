@@ -2,16 +2,16 @@ export const SITE = {
 	name: "Paperwren",
 	tagline: "Open anything. Instantly.",
 	description:
-		"Paperwren is a free document viewer for Android and Windows. Open PDF, Word, Excel and PowerPoint files with no account, no ads, no internet access and no permissions.",
+		"Paperwren is a free document viewer for Android and Windows. Open PDF, Word, Excel, PowerPoint and EPUB files, fill in and sign PDFs, and merge or split them, with no account, no ads, no internet access and no permissions.",
 	repo: "https://github.com/Razee4315/Paperwren",
 	releases: "https://github.com/Razee4315/Paperwren/releases/latest",
 	issues: "https://github.com/Razee4315/Paperwren/issues",
 	email: "saqlainrazee@gmail.com",
 	security: "https://github.com/Razee4315/Paperwren/security/advisories/new",
-	/** From the v0.10.3 release assets. */
-	androidSize: "7.3 MB",
-	windowsSize: "2.2 MB",
-	version: "0.10.3",
+	/** From the v1.1.4 release assets. */
+	androidSize: "30.8 MB",
+	windowsSize: "6.7 MB",
+	version: "1.2.0",
 };
 
 /** Internal link that respects the deploy base path. */
@@ -29,4 +29,6 @@ export const FORMATS = [
 	{ ext: "DOC · ODT · RTF", note: "A clean reading view of the text" },
 	{ ext: "PPT · ODP", note: "Slide text, in order" },
 	{ ext: "MD · TXT · JSON", note: "Rendered Markdown, plain text, logs" },
+	{ ext: "EPUB · CBZ", note: "Books and comics" },
+	{ ext: "JPG · PNG · HEIC · TIFF", note: "Photos and scans" },
 ];

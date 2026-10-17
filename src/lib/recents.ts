@@ -14,7 +14,9 @@ export function idForReopen(reopen: Reopen): string {
 			? reopen.uri
 			: reopen.kind === "browser"
 				? `browser:${reopen.key}`
-				: reopen.path;
+				: reopen.kind === "memory"
+					? `memory:${reopen.key}`
+					: reopen.path;
 	let hash = 5381;
 	for (let i = 0; i < key.length; i++) {
 		hash = ((hash << 5) + hash + key.charCodeAt(i)) | 0;
@@ -55,6 +57,9 @@ export function cleanPosition(value: unknown): Position | undefined {
 				rotation: [0, 90, 180, 270].includes(p.rotation as number)
 					? (p.rotation as number)
 					: 0,
+				...(p.spread === true ? { spread: true } : {}),
+				...(p.spread === true && p.cover === true ? { cover: true } : {}),
+				...(p.crop === true ? { crop: true } : {}),
 			};
 		case "scroll":
 			return {
@@ -76,6 +81,11 @@ export function cleanPosition(value: unknown): Position | undefined {
 			return {
 				kind: "slides",
 				slide: Math.max(0, Math.floor(finite(p.slide))),
+			};
+		case "pages":
+			return {
+				kind: "pages",
+				page: Math.max(0, Math.floor(finite(p.page))),
 			};
 		default:
 			return undefined;

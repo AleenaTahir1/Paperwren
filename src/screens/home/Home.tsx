@@ -5,6 +5,7 @@ import { isolate, locale, msg, t } from "@/lib/i18n";
 import { keys } from "@/lib/keys";
 import type { OpenRequest, RecentEntry } from "@/lib/types";
 import { FileDetails, HandOffItems } from "@/screens/viewer/FileMenu";
+import { RenameDialog } from "@/screens/viewer/RenameDialog";
 import { MAX_FOLDERS, useFolders } from "@/state/folders";
 import { useRecents } from "@/state/recents";
 import {
@@ -24,6 +25,7 @@ import {
 	FolderPlus,
 	Info,
 	MoreVertical,
+	PencilLine,
 	Pin,
 	PinOff,
 	Plus,
@@ -31,6 +33,7 @@ import {
 	Settings as SettingsIcon,
 	ShieldCheck,
 	Trash2,
+	Wrench,
 } from "lucide-react";
 import { type CSSProperties, useMemo, useState } from "react";
 import { FolderList } from "./FolderList";
@@ -102,6 +105,8 @@ function meta(e: RecentEntry): string {
 		parts.push(t("Page {n}", { n: e.position.page }));
 	else if (e.position?.kind === "slides" && e.position.slide > 0)
 		parts.push(t("Slide {n}", { n: e.position.slide + 1 }));
+	else if (e.position?.kind === "pages" && e.position.page > 0)
+		parts.push(t("Page {n}", { n: e.position.page + 1 }));
 	if (e.size > 0) parts.push(formatBytes(e.size));
 	parts.push(relativeTime(e.openedAt));
 	return parts.filter(Boolean).map(isolate).join(" · ");
@@ -112,12 +117,14 @@ export function Home({
 	onOpenRecent,
 	onOpenRequest,
 	onSettings,
+	onTools,
 }: {
 	onOpenFile: () => void;
 	onOpenRecent: (entry: RecentEntry) => void;
 	/** Open a file found in a browsed folder. */
 	onOpenRequest: (request: OpenRequest) => void;
 	onSettings: () => void;
+	onTools: () => void;
 }) {
 	const { entries, ready, togglePin, remove, restore } = useRecents();
 	const [query, setQuery] = useState("");
@@ -126,6 +133,7 @@ export function Home({
 	const [sortOpen, setSortOpen] = useState(false);
 	const [menuFor, setMenuFor] = useState<RecentEntry | null>(null);
 	const [detailsFor, setDetailsFor] = useState<RecentEntry | null>(null);
+	const [renameFor, setRenameFor] = useState<RecentEntry | null>(null);
 	// Where the list looks: recents, or one of the folders the user chose.
 	const { folders, add: addFolder, remove: removeFolder } = useFolders();
 	const [place, setPlace] = useState<string | null>(null);
@@ -266,6 +274,13 @@ export function Home({
 						{t("Open file")}
 					</button>
 				)}
+				<IconButton
+					label={t("Tools")}
+					onClick={onTools}
+					data-testid="open-tools"
+				>
+					<Wrench size={22} />
+				</IconButton>
 				<IconButton
 					label={t("Settings")}
 					onClick={onSettings}
@@ -488,6 +503,19 @@ export function Home({
 								testPrefix="menu"
 							/>
 						)}
+						{!menuFor.unavailable &&
+							backend.abilities(refOf(menuFor)).rename && (
+								<SheetItem
+									icon={<PencilLine size={20} />}
+									onClick={() => {
+										setRenameFor(menuFor);
+										setMenuFor(null);
+									}}
+									testId="menu-rename"
+								>
+									{t("Rename")}
+								</SheetItem>
+							)}
 						<SheetItem
 							icon={<Info size={20} />}
 							onClick={() => {
@@ -518,6 +546,13 @@ export function Home({
 					</>
 				)}
 			</Sheet>
+			{renameFor && (
+				<RenameDialog
+					file={refOf(renameFor)}
+					id={renameFor.id}
+					onClose={() => setRenameFor(null)}
+				/>
+			)}
 			{detailsFor && (
 				<FileDetails
 					file={refOf(detailsFor)}

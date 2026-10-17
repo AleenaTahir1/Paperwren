@@ -8,6 +8,37 @@
 import { unzipSync } from "fflate";
 import { type FileFormat, formatFromName } from "./formats";
 
+/** ISO media brands of pictures (the box after "ftyp"). */
+const AVIF = ["avif", "avis"];
+const HEIC = ["heic", "heix", "hevc", "hevx", "heim", "heis", "hevm", "hevs"];
+
+/** A picture in an ISO media file (AVIF, HEIC): its brands decide. */
+function isoPicture(bytes: Uint8Array): string | null {
+	if (bytes.length < 16 || latin1.decode(bytes.subarray(4, 8)) !== "ftyp")
+		return null;
+	const size = Math.min(
+		bytes.length,
+		((bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3]) >>> 0,
+	);
+	const brands: string[] = [latin1.decode(bytes.subarray(8, 12))];
+	for (let at = 16; at + 4 <= size; at += 4)
+		brands.push(latin1.decode(bytes.subarray(at, at + 4)));
+	if (brands.some((b) => AVIF.includes(b))) return "image/avif";
+	if (brands.some((b) => HEIC.includes(b) || b === "mif1" || b === "msf1"))
+		return "image/heic";
+	return null;
+}
+
+/** An SVG drawing: XML text whose first element is <svg>. */
+function isSvg(bytes: Uint8Array): boolean {
+	const head = new TextDecoder("utf-8")
+		.decode(bytes.subarray(0, 2048))
+		.replace(/^\uFEFF/, "");
+	return /^\s*(<\?xml[^>]*>\s*)?(<!--[\s\S]*?-->\s*)*(<!DOCTYPE\s+svg[^>]*>\s*)?(<!--[\s\S]*?-->\s*)*<svg[\s>]/i.test(
+		head,
+	);
+}
+
 /** A picture's type from its first bytes, or null. */
 export function sniffImageType(bytes: Uint8Array): string | null {
 	if (startsWith(bytes, [0x89, 0x50, 0x4e, 0x47])) return "image/png";
@@ -21,6 +52,14 @@ export function sniffImageType(bytes: Uint8Array): string | null {
 		bytes[11] === 0x50
 	)
 		return "image/webp";
+	if (
+		startsWith(bytes, [0x49, 0x49, 0x2a, 0x00]) ||
+		startsWith(bytes, [0x4d, 0x4d, 0x00, 0x2a])
+	)
+		return "image/tiff";
+	const iso = isoPicture(bytes);
+	if (iso) return iso;
+	if (isSvg(bytes)) return "image/svg+xml";
 	// "BM" alone is two letters; a real bitmap also states its own size.
 	if (startsWith(bytes, [0x42, 0x4d]) && bytes.length > 26) {
 		const size =
@@ -125,24 +164,46 @@ export function ooxmlFamily(xml: string): FileFormat {
 	return "unknown";
 }
 
+/** Pictures a comic book archive is made of. */
+export const COMIC_PAGE = /\.(png|jpe?g|gif|webp|bmp|avif)$/i;
+/** What else a comic archive carries: notes about it, not pages. */
+const COMIC_NOTES = /(^|\/)(comicinfo\.xml|[^/]*\.(txt|nfo|sfv|url|md))$/i;
+
 function zipFamily(bytes: Uint8Array): FileFormat {
 	try {
+		const names: string[] = [];
 		const entries = unzipSync(bytes, {
-			filter: (f) => f.name === "[Content_Types].xml" || f.name === "mimetype",
+			filter: (f) => {
+				names.push(f.name);
+				return f.name === "[Content_Types].xml" || f.name === "mimetype";
+			},
 		});
 		const odf = entries.mimetype && latin1.decode(entries.mimetype);
 		if (odf) {
 			if (odf.includes("opendocument.text")) return "odt";
 			if (odf.includes("opendocument.spreadsheet")) return "ods";
 			if (odf.includes("opendocument.presentation")) return "odp";
+			if (odf.includes("application/epub+zip")) return "epub";
 		}
 		const types = entries["[Content_Types].xml"];
 		if (types) return ooxmlFamily(latin1.decode(types));
+		// A comic book: an archive of pictures, and little else (what is
+		// said about it: ComicInfo.xml, a note, a checksum list).
+		const files = names.filter(
+			(n) => !n.endsWith("/") && !isJunk(n) && !COMIC_NOTES.test(n),
+		);
+		const pages = files.filter((n) => COMIC_PAGE.test(n));
+		if (pages.length && pages.length >= files.length * 0.8) return "cbz";
 	} catch {
 		// Not a readable zip.
 	}
 	return "unknown";
 }
+
+/** What an archive carries besides its contents (a Mac's resource
+ * forks, a folder's thumbnails). */
+export const isJunk = (name: string) =>
+	/(^|\/)(__MACOSX\/|\.|Thumbs\.db$)/i.test(name);
 
 function looksLikeText(head: Uint8Array): boolean {
 	if (head.length === 0) return true;

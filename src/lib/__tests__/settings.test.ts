@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
 	migrateLegacySettings,
 	normalizeSettings,
+	resolvePageColor,
 	resolveTheme,
 } from "../settings";
 import { DEFAULT_SETTINGS } from "../types";
@@ -13,8 +14,44 @@ describe("settings", () => {
 			normalizeSettings({ theme: "neon", darkPages: true, recentsLimit: 7 }),
 		).toEqual({
 			...DEFAULT_SETTINGS,
-			darkPages: true,
+			pageColor: "theme",
 		});
+	});
+
+	it("keeps a chosen page colour and drops an unknown one", () => {
+		expect(normalizeSettings({ pageColor: "sepia" }).pageColor).toBe("sepia");
+		expect(normalizeSettings({ pageColor: "neon" }).pageColor).toBe("original");
+		// A choice made since wins over the old switch.
+		expect(
+			normalizeSettings({ pageColor: "dark", darkPages: false }).pageColor,
+		).toBe("dark");
+		expect(normalizeSettings({ darkPages: false }).pageColor).toBe("original");
+	});
+
+	it("keeps how PDF pages follow one another", () => {
+		expect(normalizeSettings({ pdfFlow: "across" }).pdfFlow).toBe("across");
+		expect(normalizeSettings({ pdfFlow: "sideways" }).pdfFlow).toBe("down");
+	});
+
+	it("keeps the reading controls within their range", () => {
+		const read = normalizeSettings({
+			dim: 3,
+			scrollSpeed: -5,
+			volumeKeys: true,
+			tapToTurn: "yes",
+		});
+		expect(read.dim).toBe(0.7);
+		expect(read.scrollSpeed).toBe(10);
+		expect(read.volumeKeys).toBe(true);
+		expect(read.tapToTurn).toBe(false);
+		expect(normalizeSettings({ dim: "dark" }).dim).toBe(0);
+	});
+
+	it("draws the page the theme suggests", () => {
+		expect(resolvePageColor("theme", "light")).toBe("original");
+		expect(resolvePageColor("theme", "sepia")).toBe("sepia");
+		expect(resolvePageColor("theme", "dark")).toBe("dark");
+		expect(resolvePageColor("sepia", "dark")).toBe("sepia");
 	});
 
 	it("migrates the old five-theme settings", () => {

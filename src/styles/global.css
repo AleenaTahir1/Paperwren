@@ -40,6 +40,12 @@
 	--win-controls: 0px;
 	/* And at its left, where a Mac keeps its three. */
 	--win-lights: 0px;
+	/* What a screen's own top bar leaves for them: all of it, unless
+	 * the row of tabs above it holds the window's buttons instead. */
+	--bar-controls: var(--win-controls);
+	--bar-lights: var(--win-lights);
+	/* The row of tabs over the screens (desktop, several documents). */
+	--tab-strip: 0px;
 }
 
 /* ---------- Desktop ----------
@@ -63,6 +69,14 @@ html.lights {
 /* A full-screen window has no buttons to leave room for. */
 html.lights[data-fullscreen] {
 	--win-lights: 0px;
+}
+/* Several documents open: their tabs make the window's top row, with
+ * its buttons; each screen's bar comes under it. Full screen keeps the
+ * document alone. */
+html.tabbed:not([data-fullscreen]) {
+	--tab-strip: var(--bar-h);
+	--bar-controls: 0px;
+	--bar-lights: 0px;
 }
 /* Buttons and labels are not text to select; a document is (the
  * viewer turns selection back on for it). */
@@ -392,4 +406,75 @@ html.touch ::-webkit-scrollbar {
 	#pw-print .pw-keep {
 		break-inside: avoid;
 	}
+}
+
+/* ---------- Page colour ----------
+ * The paper a document is read on, whatever the app's theme (Settings,
+ * Reading). A viewer marks its paper `.pw-paper` (a PDF's is pdf.js's
+ * own canvas) inside a box carrying data-page-color. Sepia scales the
+ * three channels, so white turns warm and black stays black. Dark turns
+ * the paper over. Either way the pictures on it are turned back, so a
+ * photo is not shown as its negative: sepia is undone by the opposite
+ * scaling, invert(0.9) by invert(1) then contrast(1.25), and a half
+ * turn of hue by another (close, as colours past the screen's range
+ * are cut on the way). */
+[data-page-color="sepia"] :is(.pw-paper, .docx-wrapper > section.docx),
+[data-page-color="sepia"] .pdfViewer .page .canvasWrapper {
+	filter: url("#pw-sepia");
+}
+[data-page-color="dark"] :is(.pw-paper, .docx-wrapper > section.docx),
+[data-page-color="dark"] .pdfViewer .page .canvasWrapper {
+	filter: invert(0.9) hue-rotate(180deg);
+}
+[data-page-color="sepia"]
+	:is(.pw-paper, .docx-wrapper > section.docx)
+	:is(img, video, picture) {
+	filter: url("#pw-sepia-undo");
+}
+[data-page-color="dark"]
+	:is(.pw-paper, .docx-wrapper > section.docx)
+	:is(img, video, picture) {
+	filter: hue-rotate(180deg) invert(1) contrast(1.25);
+}
+/* A PDF's pictures are pixels of the page itself: each is copied, as
+ * it is, over the dark page (see pdfPictures.ts). */
+.pw-pictures {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	display: none;
+}
+[data-page-color="sepia"] .pw-pictures,
+[data-page-color="dark"] .pw-pictures {
+	display: block;
+}
+.pw-picture {
+	position: absolute;
+}
+@media print {
+	:is(.pw-paper, .docx-wrapper > section.docx),
+	:is(.pw-paper, .docx-wrapper > section.docx) :is(img, video, picture) {
+		filter: none !important;
+	}
+}
+
+/* The sentence being read aloud. */
+::highlight(pw-speech) {
+	background-color: color-mix(in srgb, var(--accent) 24%, transparent);
+}
+
+/* Reading font (Settings): books, Markdown and reading view in the face
+ * the reader picked, over the document's own. Code and maths keep
+ * theirs. */
+html[data-reading-font="serif"] {
+	--reading-face: Georgia, "Noto Serif", Tinos, "Times New Roman", serif;
+}
+html[data-reading-font="sans"] {
+	--reading-face: var(--font);
+}
+html[data-reading-font] .pw-reading,
+html[data-reading-font]
+	.pw-reading
+	:not(pre, pre *, code, kbd, samp, .katex, .katex *) {
+	font-family: var(--reading-face) !important;
 }

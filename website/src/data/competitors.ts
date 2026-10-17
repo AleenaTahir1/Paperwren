@@ -140,5 +140,5 @@ export const paperwren = {
 	shared: null,
 	collected: null,
 	account: "None. There is nothing to sign in to",
-	edits: false as boolean | string,
+	edits: "Fills in and signs PDFs; Office files are view only" as boolean | string,
 };

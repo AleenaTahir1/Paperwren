@@ -1,8 +1,21 @@
 import { backend, formatBytes } from "@/lib/backend";
-import { isDesktop, isMac, isTauri, ownsFrame, sharesFrame } from "@/lib/env";
+import {
+	isDesktop,
+	isMac,
+	isTauri,
+	isTouch,
+	ownsFrame,
+	sharesFrame,
+} from "@/lib/env";
 import { LANGUAGES, type LanguageSetting, msg, t, tn } from "@/lib/i18n";
 import { FULLSCREEN_KEYS, keys } from "@/lib/keys";
-import type { PdfZoom } from "@/lib/types";
+import { SIGNATURES_KEY, loadSignatures } from "@/lib/signatures";
+import type { PageColor, PdfFlow, PdfZoom, ReadingFont } from "@/lib/types";
+import {
+	clearBookmarks,
+	restoreBookmarks,
+	useBookmarkCount,
+} from "@/state/bookmarks";
 import { useNav } from "@/state/navigation";
 import { useRecents } from "@/state/recents";
 import { useSettings } from "@/state/settings";
@@ -49,6 +62,11 @@ const LICENSES: Array<[string, string]> = [
 	["fflate", "MIT"],
 	["marked", "MIT"],
 	["DOMPurify", "Apache-2.0 / MPL-2.0"],
+	["highlight.js", "BSD-3-Clause"],
+	["UTIF.js", "MIT"],
+	["KaTeX", "MIT"],
+	["pdf-lib (Cantoo fork)", "MIT"],
+	["pako", "MIT / Zlib"],
 	["React", "MIT"],
 	["Lucide icons", "ISC"],
 	["Manrope", "SIL OFL 1.1"],
@@ -80,6 +98,11 @@ const SHORTCUTS: Array<[keys: string, what: string, mac?: string]> = [
 	["Home · End", msg("The start and the end of the document"), "⌘↑ · ⌘↓"],
 	["← · →", msg("The previous and the next page or slide")],
 	["F5", msg("Start a slide show")],
+	["P", msg("Presenter view, in a slide show")],
+	["L", msg("Laser pointer, in a slide show")],
+	["Ctrl+D", msg("Bookmark this place")],
+	["Ctrl+Shift+U", msg("Read aloud")],
+	["Ctrl+Tab · Ctrl+Shift+Tab", msg("The next and the previous tab")],
 	["Ctrl+] · Ctrl+[", msg("Turn the pages of a PDF")],
 	["Ctrl+Page Up · Ctrl+Page Down", msg("The previous and the next sheet")],
 	["Alt+←", msg("Back")],
@@ -154,6 +177,11 @@ export function SettingsScreen() {
 		null,
 	);
 	const [confirmCopies, setConfirmCopies] = useState(false);
+	const bookmarkCount = useBookmarkCount();
+	const [signatureCount, setSignatureCount] = useState(0);
+	useEffect(() => {
+		loadSignatures().then((list) => setSignatureCount(list.length));
+	}, []);
 	const [showLicenses, setShowLicenses] = useState(false);
 
 	useEffect(() => {
@@ -257,19 +285,73 @@ export function SettingsScreen() {
 							]}
 							testId="pdf-zoom"
 						/>
+						<Segmented<PdfFlow>
+							label={t("PDF pages scroll")}
+							value={settings.pdfFlow}
+							onChange={(v) => update("pdfFlow", v)}
+							options={[
+								["down", t("Down")],
+								["across", t("Sideways")],
+							]}
+							testId="pdf-flow"
+						/>
 						<Switch
 							label={t("Remember where I stopped")}
 							hint={t("Reopen files at the same page and zoom")}
 							checked={settings.rememberPosition}
 							onChange={(v) => update("rememberPosition", v)}
 						/>
-						<Switch
-							label={t("Dark pages")}
-							hint={t("Invert PDF pages in the Ink theme for night reading")}
-							checked={settings.darkPages}
-							onChange={(v) => update("darkPages", v)}
-							testId="dark-pages"
+						<Segmented<PageColor>
+							label={t("Page colour")}
+							value={settings.pageColor}
+							onChange={(v) => update("pageColor", v)}
+							options={[
+								["original", t("Original")],
+								["sepia", t("Sepia")],
+								["dark", t("Dark")],
+								// Paper's white, Sand's warm page, Ink's dark one.
+								["theme", t("Theme")],
+							]}
+							testId="page-color"
 						/>
+						<Segmented<ReadingFont>
+							label={t("Reading font")}
+							value={settings.readingFont}
+							onChange={(v) => update("readingFont", v)}
+							options={[
+								["original", t("As written")],
+								["serif", t("Serif")],
+								["sans", t("Sans serif")],
+							]}
+							testId="reading-font"
+						/>
+						{!!window.__paperwrenAndroidExtras?.volumeKeys && (
+							<Switch
+								label={t("Turn pages with the volume keys")}
+								hint={t("Down for the next page, up for the one before")}
+								checked={settings.volumeKeys}
+								onChange={(v) => update("volumeKeys", v)}
+								testId="volume-keys"
+							/>
+						)}
+						{isTouch && (
+							<Switch
+								label={t("Tap the sides to turn pages")}
+								hint={t("The left edge goes back, the right edge on")}
+								checked={settings.tapToTurn}
+								onChange={(v) => update("tapToTurn", v)}
+								testId="tap-to-turn"
+							/>
+						)}
+						{!isDesktop && (
+							<Switch
+								label={t("Hide the bars while reading")}
+								hint={t("They come back when you scroll back or tap")}
+								checked={settings.autoHideBars}
+								onChange={(v) => update("autoHideBars", v)}
+								testId="auto-hide-bars"
+							/>
+						)}
 						<Switch
 							label={t("Keep the screen on")}
 							hint={t("While a document is open, the screen won't dim or lock")}
@@ -336,6 +418,60 @@ export function SettingsScreen() {
 									{t("{n} on this device. Your files are not touched.", {
 										n: entries.length,
 									})}
+								</span>
+							</span>
+						</button>
+						<button
+							type="button"
+							className={s.action}
+							disabled={bookmarkCount === 0}
+							onClick={async () => {
+								const previous = await clearBookmarks();
+								toast(t("Bookmarks deleted"), {
+									label: t("Undo"),
+									run: () => restoreBookmarks(previous),
+								});
+							}}
+							data-testid="clear-bookmarks"
+						>
+							<span className={s.actionText}>
+								{t("Delete bookmarks")}
+								<span className={s.hint}>
+									{tn(
+										bookmarkCount,
+										"{n} bookmark, kept only on this device",
+										"{n} bookmarks, kept only on this device",
+									)}
+								</span>
+							</span>
+						</button>
+						<button
+							type="button"
+							className={s.action}
+							disabled={signatureCount === 0}
+							onClick={async () => {
+								const kept = await loadSignatures();
+								await backend.storeSet(SIGNATURES_KEY, []).catch(() => {});
+								setSignatureCount(0);
+								toast(t("Signatures forgotten"), {
+									label: t("Undo"),
+									run: () =>
+										backend
+											.storeSet(SIGNATURES_KEY, kept)
+											.then(() => setSignatureCount(kept.length))
+											.catch(() => {}),
+								});
+							}}
+							data-testid="clear-signatures"
+						>
+							<span className={s.actionText}>
+								{t("Forget kept signatures")}
+								<span className={s.hint}>
+									{tn(
+										signatureCount,
+										"{n} signature or initials, kept only on this device",
+										"{n} signatures and initials, kept only on this device",
+									)}
 								</span>
 							</span>
 						</button>

@@ -1,28 +1,52 @@
 import { backend } from "@/lib/backend";
+import type { Bookmark as Mark } from "@/lib/bookmarks";
 import { isDesktop } from "@/lib/env";
+import type { FindOptions } from "@/lib/find";
 import type { FileFormat } from "@/lib/formats";
-import { t, uiDir } from "@/lib/i18n";
+import { msg, t, uiDir } from "@/lib/i18n";
+import { idForReopen } from "@/lib/recents";
+import { MAX_DIM, PAGE_COLORS, resolvePageColor } from "@/lib/settings";
 import { FIND_EVENT, SELECT_ALL_EVENT } from "@/lib/signals";
+import { canSpeak } from "@/lib/speech";
+import type { PageColor, Position } from "@/lib/types";
+import { useBookmarks } from "@/state/bookmarks";
 import { useSettings } from "@/state/settings";
-import { IconButton, Sheet, SheetItem, formatColor, modalOpen } from "@/ui";
+import {
+	IconButton,
+	Sheet,
+	SheetItem,
+	formatColor,
+	modalOpen,
+	toast,
+} from "@/ui";
 import {
 	ArrowLeft,
+	Bookmark,
+	BookmarkPlus,
 	ChevronDown,
 	ChevronUp,
 	Minus,
 	PanelLeft,
 	Plus,
+	ScrollText,
+	SunDim,
+	SwatchBook,
+	Volume2,
 	X,
 } from "lucide-react";
 import {
 	type ReactNode,
 	type RefObject,
+	useContext,
 	useEffect,
 	useRef,
 	useState,
 } from "react";
-import { FileMenu } from "./FileMenu";
+import { FileMenu, ViewerFileContext } from "./FileMenu";
+import { ReadAloud } from "./ReadAloud";
+import { AutoScroll, DimSheet } from "./ReadingControls";
 import s from "./Shell.module.css";
+import type { SpeechSource } from "./speechSources";
 
 export { s as shellStyles };
 
@@ -48,6 +72,9 @@ function Title({ name, format }: { name: string; format: FileFormat }) {
 	);
 }
 
+/** Pages laid in a row (data-flow="across") are read sideways. */
+const across = (el: HTMLElement) => el.dataset.flow === "across";
+
 /** How far through the document the reader is: a hairline under the
  * top bar, driven straight from scroll events (no re-renders). */
 function Progress({ of }: { of: RefObject<HTMLElement | null> }) {
@@ -56,8 +83,12 @@ function Progress({ of }: { of: RefObject<HTMLElement | null> }) {
 		const el = of.current;
 		if (!el) return;
 		const update = () => {
-			const range = el.scrollHeight - el.clientHeight;
-			const ratio = range > 1 ? Math.min(1, el.scrollTop / range) : 0;
+			const sideways = across(el);
+			const range = sideways
+				? el.scrollWidth - el.clientWidth
+				: el.scrollHeight - el.clientHeight;
+			const at = sideways ? Math.abs(el.scrollLeft) : el.scrollTop;
+			const ratio = range > 1 ? Math.min(1, at / range) : 0;
 			if (bar.current) bar.current.style.transform = `scaleX(${ratio})`;
 		};
 		update();
@@ -67,10 +98,116 @@ function Progress({ of }: { of: RefObject<HTMLElement | null> }) {
 	return <div ref={bar} className={s.progress} aria-hidden="true" />;
 }
 
+export const PAGE_COLOR_NAMES: Record<PageColor, string> = {
+	original: msg("Original"),
+	sepia: msg("Sepia"),
+	dark: msg("Dark"),
+	theme: msg("Match the theme"),
+};
+
+/** The paper the reader chose, as drawn: "original", "sepia" or "dark". */
+export function usePageColor() {
+	const { settings, theme } = useSettings();
+	return resolvePageColor(settings.pageColor, theme);
+}
+
+/** The choice of paper, from a viewer's menu. It is the same setting
+ * as in Settings: a reader who wants dark pages wants them in every
+ * document. */
+function PageColorSheet({
+	open,
+	onClose,
+}: { open: boolean; onClose: () => void }) {
+	const { settings, update } = useSettings();
+	return (
+		<Sheet
+			open={open}
+			title={t("Page colour")}
+			onClose={onClose}
+			testId="page-color-menu"
+		>
+			{PAGE_COLORS.map((value) => (
+				<SheetItem
+					key={value}
+					checked={settings.pageColor === value}
+					onClick={() => {
+						update("pageColor", value);
+						onClose();
+					}}
+					testId={`page-color-${value}`}
+				>
+					{t(PAGE_COLOR_NAMES[value])}
+				</SheetItem>
+			))}
+		</Sheet>
+	);
+}
+
+/** To the start or the end of a document, down or along its row. */
+function toEnd(el: HTMLElement, end: boolean) {
+	if (across(el)) el.scrollLeft = end ? el.scrollWidth : 0;
+	else el.scrollTop = end ? el.scrollHeight : 0;
+}
+
+/** Where a viewer's reader is, and how to take them back there. */
+export interface BookmarkSource {
+	/** The place on show now, named ("Page 12", or the words there). */
+	here: () => { label: string; position: Position } | null;
+	go: (position: Position) => void;
+}
+
+function BookmarkList({
+	list,
+	onPick,
+	onRemove,
+	compact = false,
+}: {
+	list: Mark[];
+	onPick: (mark: Mark) => void;
+	onRemove: (mark: Mark) => void;
+	compact?: boolean;
+}) {
+	if (!list.length)
+		return (
+			<p className={s.sideEmpty}>
+				{isDesktop
+					? t("No bookmarks yet. Add one from the menu, or with Ctrl+D.")
+					: t("No bookmarks yet. Add one from the menu.")}
+			</p>
+		);
+	return (
+		<>
+			{list.map((mark) => (
+				<div key={mark.id} className={s.mark} data-testid="bookmark">
+					<button
+						type="button"
+						className={compact ? s.sideItem : s.listItem}
+						onClick={() => onPick(mark)}
+						title={compact ? mark.label : undefined}
+						dir="auto"
+					>
+						{mark.label}
+					</button>
+					<IconButton
+						label={t("Remove bookmark")}
+						onClick={() => onRemove(mark)}
+						data-testid="bookmark-remove"
+					>
+						<X size={compact ? 14 : 18} />
+					</IconButton>
+				</div>
+			))}
+		</>
+	);
+}
+
 /** One list beside the document: its pages, its contents, its slides. */
 export interface SideTab {
 	id: string;
 	label: string;
+	/** Shown in place of the label when more tabs than two share the
+	 * panel's narrow head. */
+	icon?: ReactNode;
 	content: ReactNode;
 }
 
@@ -83,6 +220,7 @@ function SidePanel({
 	const [id, setId] = useState(tabs[0]?.id);
 	const tab = tabs.find((x) => x.id === id) ?? tabs[0];
 	if (!tab) return null;
+	const icons = tabs.length > 2 && tabs.every((x) => x.icon);
 	return (
 		<aside className={s.side} dir={uiDir()} data-testid="side-panel">
 			<div className={s.sideHead}>
@@ -93,11 +231,13 @@ function SidePanel({
 							role="tab"
 							key={x.id}
 							aria-selected={x.id === tab.id}
-							className={s.sideTab}
+							className={`${s.sideTab} ${icons ? s.sideIcon : ""}`}
 							onClick={() => setId(x.id)}
+							title={icons ? x.label : undefined}
+							aria-label={icons ? x.label : undefined}
 							data-testid={`side-tab-${x.id}`}
 						>
-							{x.label}
+							{icons ? x.icon : x.label}
 						</button>
 					))}
 				</div>
@@ -131,7 +271,12 @@ export function Shell({
 	active,
 	pageKeys = true,
 	onStep,
+	turnPages = false,
+	onEdge,
 	side,
+	paper = false,
+	bookmarks,
+	speech,
 }: {
 	name: string;
 	format: FileFormat;
@@ -163,10 +308,233 @@ export function Shell({
 	pageKeys?: boolean;
 	/** Left and Right turn a whole page, when the page fits the width. */
 	onStep?: (dir: 1 | -1) => void;
+	/** Space, Page Up and Page Down turn a page too (`onStep`), for
+	 * pages laid in a row. */
+	turnPages?: boolean;
+	/** Home and End (and Ctrl with them) go to the first or the last
+	 * page this way, where scrolling does not reach them. */
+	onEdge?: (end: boolean) => void;
 	/** Lists for the panel beside the document (desktop). */
 	side?: SideTab[];
+	/** The document is read on paper whose colour the reader picks. */
+	paper?: boolean;
+	/** Places in the document can be bookmarked and gone back to. */
+	bookmarks?: BookmarkSource;
+	/** The document's text, to be read aloud from the place on show. */
+	speech?: SpeechSource;
 }) {
 	const { settings, update } = useSettings();
+	const [colorOpen, setColorOpen] = useState(false);
+	const paperColor = usePageColor();
+	const pageColor = paper ? paperColor : undefined;
+
+	// --- bookmarks ---
+	const viewing = useContext(ViewerFileContext);
+	const fileId =
+		bookmarks && viewing && viewing.file.reopen.kind !== "memory"
+			? idForReopen(viewing.file.reopen)
+			: null;
+	const marks = useBookmarks(fileId);
+	const [marksOpen, setMarksOpen] = useState(false);
+	const sourceRef = useRef(bookmarks);
+	sourceRef.current = bookmarks;
+	const addMark = () => {
+		const place = sourceRef.current?.here();
+		if (!place || !fileId) return;
+		const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+		marks.add({ id, ...place, at: Date.now() });
+		toast(t("Bookmark added"), {
+			label: t("Undo"),
+			run: () => marks.remove(id),
+		});
+	};
+	const addRef = useRef(addMark);
+	addRef.current = addMark;
+	const goMark = (mark: Mark) => {
+		setMarksOpen(false);
+		sourceRef.current?.go(mark.position);
+	};
+	// Ctrl+D, as a browser bookmarks a page.
+	useEffect(() => {
+		if (!active || !fileId) return;
+		const onKey = (e: KeyboardEvent) => {
+			if (modalOpen() || e.altKey || e.shiftKey) return;
+			if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "d") return;
+			e.preventDefault();
+			addRef.current();
+		};
+		window.addEventListener("keydown", onKey);
+		return () => window.removeEventListener("keydown", onKey);
+	}, [active, fileId]);
+
+	// --- read aloud ---
+	const [voiced, setVoiced] = useState(() => canSpeak());
+	useEffect(() => {
+		// The list of voices can arrive a moment after the page.
+		if (!voiced) canSpeak(() => setVoiced(canSpeak()));
+	}, [voiced]);
+	const [reading, setReading] = useState(false);
+	const canRead = !!speech && voiced;
+	useEffect(() => {
+		if (!active || !canRead) return;
+		// Ctrl+Shift+U, as in Edge.
+		const onKey = (e: KeyboardEvent) => {
+			if (modalOpen() || e.altKey || !e.shiftKey) return;
+			if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "u") return;
+			e.preventDefault();
+			setReading((r) => !r);
+		};
+		window.addEventListener("keydown", onKey);
+		return () => window.removeEventListener("keydown", onKey);
+	}, [active, canRead]);
+
+	// --- reading on a phone: dimmer, scrolling by itself, the volume
+	// keys, the bars out of the way ---
+	const [dimOpen, setDimOpen] = useState(false);
+	const [scrolling, setScrolling] = useState(false);
+	const canScroll = !!progressOf && !turnPages;
+	useEffect(() => {
+		if (!active || !canScroll) setScrolling(false);
+	}, [active, canScroll]);
+	const turnPage = useRef<(dir: 1 | -1) => void>(() => {});
+	turnPage.current = (dir) => {
+		if (stepRef.current) stepRef.current(dir);
+		else {
+			const el = progressOf?.current;
+			if (el) el.scrollTop += dir * el.clientHeight * 0.9;
+		}
+	};
+	useEffect(() => {
+		const bridge = window.__paperwrenAndroidExtras;
+		if (!active || !settings.volumeKeys || !bridge?.volumeKeys) return;
+		bridge.volumeKeys(true);
+		window.__paperwrenVolumeKey = (dir) => {
+			if (!modalOpen()) turnPage.current(dir < 0 ? -1 : 1);
+		};
+		return () => {
+			bridge.volumeKeys?.(false);
+			window.__paperwrenVolumeKey = undefined;
+		};
+	}, [active, settings.volumeKeys]);
+	// Scrolling on hides the bars; scrolling back (or a tap) brings them.
+	// The viewer's tap turns its own switch over: a tap while the bars
+	// went by themselves must bring them back, so then the switch reads
+	// the other way round.
+	const [autoHidden, setAutoHidden] = useState(false);
+	const [tapShows, setTapShows] = useState(false);
+	const autoHiddenRef = useRef(autoHidden);
+	autoHiddenRef.current = autoHidden;
+	useEffect(() => {
+		if (!autoHiddenRef.current) return;
+		setTapShows(chromeHidden);
+		setAutoHidden(false);
+	}, [chromeHidden]);
+	useEffect(() => {
+		const el = progressOf?.current;
+		if (isDesktop || !settings.autoHideBars || !el || !active) return;
+		let last = el.scrollTop;
+		const onScroll = () => {
+			const y = el.scrollTop;
+			if (y - last > 24) {
+				setAutoHidden(true);
+				last = y;
+			} else if (last - y > 48) {
+				setAutoHidden(false);
+				last = y;
+			} else if (y < last) last = Math.max(y, last - 48);
+		};
+		el.addEventListener("scroll", onScroll, { passive: true });
+		return () => el.removeEventListener("scroll", onScroll);
+	}, [progressOf, settings.autoHideBars, active]);
+
+	const fileMenu = (close: () => void) => (
+		<>
+			{menu?.(close)}
+			{canScroll && (
+				<SheetItem
+					icon={<ScrollText size={20} />}
+					checked={scrolling}
+					onClick={() => {
+						close();
+						setScrolling((on) => !on);
+					}}
+					testId="auto-scroll-start"
+				>
+					{t("Scroll by itself")}
+				</SheetItem>
+			)}
+			<SheetItem
+				icon={<SunDim size={20} />}
+				hint={
+					settings.dim > 0
+						? t("{n}% darker", {
+								n: Math.round((settings.dim / MAX_DIM) * 100),
+							})
+						: undefined
+				}
+				onClick={() => {
+					close();
+					setDimOpen(true);
+				}}
+				testId="dim"
+			>
+				{t("Dim the screen")}
+			</SheetItem>
+			{canRead && (
+				<SheetItem
+					icon={<Volume2 size={20} />}
+					shortcut="Ctrl+Shift+U"
+					checked={reading}
+					onClick={() => {
+						close();
+						setReading((r) => !r);
+					}}
+					testId="read-aloud-start"
+				>
+					{t("Read aloud")}
+				</SheetItem>
+			)}
+			{fileId && (
+				<>
+					<SheetItem
+						icon={<BookmarkPlus size={20} />}
+						shortcut="Ctrl+D"
+						onClick={() => {
+							close();
+							addMark();
+						}}
+						testId="bookmark-add"
+					>
+						{t("Add bookmark")}
+					</SheetItem>
+					<SheetItem
+						icon={<Bookmark size={20} />}
+						hint={marks.list.length ? String(marks.list.length) : undefined}
+						onClick={() => {
+							close();
+							setMarksOpen(true);
+						}}
+						testId="bookmarks"
+					>
+						{t("Bookmarks")}
+					</SheetItem>
+				</>
+			)}
+			{paper && (
+				<SheetItem
+					icon={<SwatchBook size={20} />}
+					hint={t(PAGE_COLOR_NAMES[settings.pageColor])}
+					onClick={() => {
+						close();
+						setColorOpen(true);
+					}}
+					testId="page-color"
+				>
+					{t("Page colour")}
+				</SheetItem>
+			)}
+		</>
+	);
 
 	// The window is named after the document, as in every desktop reader.
 	useEffect(() => {
@@ -189,6 +557,10 @@ export function Shell({
 	// a click into it first: Space, Page Up / Down, Home, End, the arrows.
 	const stepRef = useRef(onStep);
 	stepRef.current = onStep;
+	const turnRef = useRef(turnPages);
+	turnRef.current = turnPages;
+	const edgeRef = useRef(onEdge);
+	edgeRef.current = onEdge;
 	useEffect(() => {
 		if (!active) return;
 		const onKey = (e: KeyboardEvent) => {
@@ -214,14 +586,30 @@ export function Shell({
 							? false
 							: null;
 				if (!el || end === null || (e.ctrlKey && e.metaKey)) return;
-				el.scrollTop = end ? el.scrollHeight : 0;
+				if (edgeRef.current) edgeRef.current(end);
+				else toEnd(el, end);
 				e.preventDefault();
 				return;
 			}
-			const turn = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+			const turn =
+				e.key === "ArrowRight"
+					? 1
+					: e.key === "ArrowLeft"
+						? -1
+						: turnRef.current && e.key === "PageDown"
+							? 1
+							: turnRef.current && e.key === "PageUp"
+								? -1
+								: turnRef.current && e.key === " " && !onBar
+									? e.shiftKey
+										? -1
+										: 1
+									: 0;
 			if (turn && stepRef.current) {
-				// Sideways keys pan a page wider than the screen instead.
-				if (el && el.scrollWidth > el.clientWidth + 1) return;
+				// Sideways keys pan a page wider than the screen instead
+				// (pages in a row turn whatever their size).
+				const pans = el && !across(el) && el.scrollWidth > el.clientWidth + 1;
+				if (pans && e.key.startsWith("Arrow")) return;
 				stepRef.current(turn);
 				e.preventDefault();
 				return;
@@ -235,9 +623,11 @@ export function Shell({
 				...(onBar ? {} : { " ": e.shiftKey ? -page : page }),
 				...(pageKeys ? { PageDown: page, PageUp: -page } : {}),
 			};
-			if (e.key === "Home") el.scrollTop = 0;
-			else if (e.key === "End") el.scrollTop = el.scrollHeight;
-			else if (e.key in by) el.scrollTop += by[e.key];
+			if (e.key === "Home" || e.key === "End") {
+				const end = e.key === "End";
+				if (edgeRef.current) edgeRef.current(end);
+				else toEnd(el, end);
+			} else if (e.key in by) el.scrollTop += by[e.key];
 			else return;
 			e.preventDefault();
 		};
@@ -292,7 +682,29 @@ export function Shell({
 		};
 	}, [active, finding]);
 
-	const tabs = isDesktop ? (side ?? []) : [];
+	const barsHidden = (chromeHidden !== tapShows || autoHidden) && !finding;
+	const tabs = isDesktop
+		? [
+				...(side ?? []),
+				...(fileId
+					? [
+							{
+								id: "bookmarks",
+								label: t("Bookmarks"),
+								icon: <Bookmark size={16} />,
+								content: (
+									<BookmarkList
+										list={marks.list}
+										onPick={goMark}
+										onRemove={(mark) => marks.remove(mark.id)}
+										compact
+									/>
+								),
+							},
+						]
+					: []),
+			]
+		: [];
 	const sideOpen = settings.sidePanel && tabs.length > 0;
 
 	return (
@@ -303,8 +715,8 @@ export function Shell({
 			style={active ? undefined : { display: "none" }}
 		>
 			<header
-				className={`${s.top} ${chromeHidden ? s.hiddenTop : ""} ${finding ? s.pinned : ""}`}
-				{...inert(chromeHidden)}
+				className={`${s.top} ${barsHidden ? s.hiddenTop : ""} ${finding ? s.pinned : ""}`}
+				{...inert(barsHidden)}
 			>
 				{/* The bar is the window's title bar where the app draws its own
 				 * frame: a press on it (not on a button) moves the window. */}
@@ -331,7 +743,7 @@ export function Shell({
 					)}
 					{actions}
 					<FileMenu
-						extra={menu}
+						extra={fileMenu}
 						details={details}
 						onPrint={onPrint}
 						active={active}
@@ -344,17 +756,59 @@ export function Shell({
 				{sideOpen && (
 					<SidePanel tabs={tabs} onClose={() => update("sidePanel", false)} />
 				)}
-				<div ref={main} className={s.main} dir="ltr">
+				<div
+					ref={main}
+					className={s.main}
+					dir="ltr"
+					data-page-color={pageColor}
+				>
 					{children}
+					{settings.dim > 0 && (
+						<div
+							className={s.dim}
+							style={{ opacity: settings.dim }}
+							aria-hidden="true"
+							data-testid="dim-layer"
+						/>
+					)}
+					{scrolling && progressOf && (
+						<AutoScroll of={progressOf} onClose={() => setScrolling(false)} />
+					)}
+					{reading && speech && (
+						<ReadAloud
+							source={speech}
+							active={active}
+							onClose={() => setReading(false)}
+						/>
+					)}
 					{hud && (
 						<div ref={hud} className={s.hud} dir={uiDir()} aria-hidden="true" />
 					)}
 				</div>
 			</div>
+			{paper && (
+				<PageColorSheet open={colorOpen} onClose={() => setColorOpen(false)} />
+			)}
+			<DimSheet open={dimOpen} onClose={() => setDimOpen(false)} />
+			{fileId && (
+				<Sheet
+					open={marksOpen}
+					title={t("Bookmarks")}
+					onClose={() => setMarksOpen(false)}
+					wide
+					testId="bookmark-list"
+				>
+					<BookmarkList
+						list={marks.list}
+						onPick={goMark}
+						onRemove={(mark) => marks.remove(mark.id)}
+					/>
+				</Sheet>
+			)}
 			{(bottom || (pager && !isDesktop)) && (
 				<footer
-					className={`${s.bottom} ${chromeHidden ? s.hiddenBottom : ""}`}
-					{...inert(chromeHidden)}
+					className={`${s.bottom} ${barsHidden ? s.hiddenBottom : ""}`}
+					{...inert(barsHidden)}
 				>
 					{bottom}
 					{pager && !isDesktop && <div className={s.pager}>{pager}</div>}
@@ -474,13 +928,15 @@ export function FindBar({
 	onStep,
 	onClose,
 	options,
+	onOptions,
 }: {
 	state: FindState;
 	onQuery: (q: string) => void;
 	onStep: (dir: 1 | -1) => void;
 	onClose: () => void;
-	/** Further switches (match case, whole words). */
-	options?: ReactNode;
+	/** Match case, whole words: offered when they can be changed. */
+	options?: FindOptions;
+	onOptions?: (options: FindOptions) => void;
 }) {
 	const input = useRef<HTMLInputElement>(null);
 	useEffect(() => {
@@ -539,7 +995,36 @@ export function FindBar({
 			<span className={s.findCount} aria-live="polite" data-testid="find-count">
 				{label}
 			</span>
-			{options}
+			{options && onOptions && (
+				<>
+					<button
+						type="button"
+						className={s.findOption}
+						aria-pressed={options.matchCase}
+						title={t("Match case")}
+						aria-label={t("Match case")}
+						onClick={() =>
+							onOptions({ ...options, matchCase: !options.matchCase })
+						}
+						data-testid="find-case"
+					>
+						Aa
+					</button>
+					<button
+						type="button"
+						className={s.findOption}
+						aria-pressed={options.wholeWords}
+						title={t("Whole words")}
+						aria-label={t("Whole words")}
+						onClick={() =>
+							onOptions({ ...options, wholeWords: !options.wholeWords })
+						}
+						data-testid="find-words"
+					>
+						“ab”
+					</button>
+				</>
+			)}
 			<IconButton
 				label={t("Previous match")}
 				shortcut="Shift+F3"

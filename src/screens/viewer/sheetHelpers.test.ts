@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
 	type Sheet,
+	arrange,
+	headerRows,
 	key,
 	mixHex,
 	parseCellAddress,
@@ -158,5 +160,60 @@ describe("parseCellAddress", () => {
 	it("refuses what is not a cell", () => {
 		for (const text of ["", "12", "B", "B0", "B2:C3", "Sheet1!A1", "ABCD1"])
 			expect(parseCellAddress(text)).toBeNull();
+	});
+});
+
+describe("arrange", () => {
+	const people = sheetOf([
+		["Name", "Age", "City"],
+		["bea", "41", "Lahore"],
+		["Ali", "9", "Karachi"],
+		["Cem", "", "Lahore"],
+		["dan", "120", "Paris"],
+	]);
+	const column = (sh: Sheet, c: number) =>
+		Array.from(
+			{ length: sh.rows },
+			(_, r) => sh.cells.get(key(r, c))?.value ?? "",
+		);
+
+	it("keeps a first row of labels in place", () => {
+		expect(headerRows(people)).toBe(1);
+		expect(
+			headerRows(
+				sheetOf([
+					["1", "2"],
+					["3", "4"],
+				]),
+			),
+		).toBe(0);
+		expect(headerRows({ ...people, freeze: { rows: 2, cols: 0 } })).toBe(2);
+	});
+
+	it("sorts numbers as numbers and text as a reader would, empties last", () => {
+		const up = arrange(people, { sort: { col: 1, dir: 1 } });
+		expect(column(up, 0)).toEqual(["Name", "Ali", "bea", "dan", "Cem"]);
+		const down = arrange(people, { sort: { col: 1, dir: -1 } });
+		expect(column(down, 0)).toEqual(["Name", "dan", "bea", "Ali", "Cem"]);
+		const names = arrange(people, { sort: { col: 0, dir: 1 } });
+		expect(column(names, 0)).toEqual(["Name", "Ali", "bea", "Cem", "dan"]);
+		// Each row keeps its own address.
+		expect(names.rowOrigins).toEqual([0, 2, 1, 3, 4]);
+		expect(people.cells.get(key(1, 0))?.value).toBe("bea");
+	});
+
+	it("filters, then sorts what is left", () => {
+		const lahore = arrange(people, {
+			filter: { col: 2, text: " lahore" },
+			sort: { col: 0, dir: -1 },
+		});
+		expect(column(lahore, 0)).toEqual(["Name", "Cem", "bea"]);
+		expect(lahore.rowPrefix).toEqual([0, 30, 60, 90]);
+		const none = arrange(sheetOf([["1"], ["2"]]), {
+			filter: { col: 0, text: "x" },
+		});
+		expect(none.rows).toBe(1);
+		expect(none.cells.size).toBe(0);
+		expect(arrange(people, { filter: { col: 0, text: "  " } })).toBe(people);
 	});
 });

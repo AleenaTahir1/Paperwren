@@ -1,3 +1,6 @@
+import type { FileFormat } from "@/lib/formats";
+import { locale, t } from "@/lib/i18n";
+import { readOfficeMeta } from "@/lib/officeMeta";
 import type { Position } from "@/lib/types";
 import { useSettings } from "@/state/settings";
 import {
@@ -9,6 +12,7 @@ import {
 	useState,
 } from "react";
 import { flushSync } from "react-dom";
+import type { BookmarkSource } from "./Shell";
 
 export interface ZoomOptions {
 	/** The scrolling viewport. */
@@ -37,7 +41,8 @@ export interface ZoomOptions {
 	hud?: RefObject<HTMLElement | null>;
 	/** How a zoom reads in the badge (default: a percentage). */
 	label?: (zoom: number) => string;
-	onTap?: (target: HTMLElement) => void;
+	/** A single tap, and where it landed. */
+	onTap?: (target: HTMLElement, x: number, y: number) => void;
 	/** Replaces the default double-tap (zoom in / back to `home`). */
 	onDoubleTap?: (x: number, y: number) => void;
 	/** Replaces the default Ctrl+0 (back to `home`). */
@@ -312,7 +317,7 @@ export function useZoom(options: ZoomOptions): ZoomApi {
 			if (!o.current.onTap || window.getSelection()?.toString()) return;
 			// Wait out a possible second tap before acting on the first.
 			tapTimer = window.setTimeout(
-				() => o.current.onTap?.(target),
+				() => o.current.onTap?.(target, done.x, done.y),
 				twice ? 280 : 0,
 			);
 		};
@@ -461,4 +466,133 @@ export function useScrollMemory(
 			el.removeEventListener("scroll", onScroll);
 		};
 	}, [ready, scroller, remember]);
+}
+
+/** A bookmark's name: the words at the top of the screen. */
+const WORDS = 80;
+/** What reads as a line or a paragraph of a document. */
+const BLOCKS = "p, li, h1, h2, h3, h4, h5, h6, pre, td, th, blockquote, dt, dd";
+
+/**
+ * The first words at the top of the screen. Found by halving the
+ * document's paragraphs (in order, so the first one still showing is
+ * found in a few steps however long it is), not by asking what is under
+ * a point: a menu that is still closing would answer that instead.
+ */
+function wordsAtTop(scroller: HTMLElement, content: HTMLElement): string {
+	const top = scroller.getBoundingClientRect().top + 8;
+	const blocks = content.querySelectorAll<HTMLElement>(BLOCKS);
+	let lo = 0;
+	let hi = blocks.length;
+	while (lo < hi) {
+		const mid = (lo + hi) >> 1;
+		if (blocks[mid].getBoundingClientRect().bottom <= top) lo = mid + 1;
+		else hi = mid;
+	}
+	for (let i = lo; i < Math.min(blocks.length, lo + 20); i++) {
+		const block = blocks[i];
+		let text = block.textContent ?? "";
+		if (block.tagName === "PRE") {
+			// A whole text file is one block: its line at the top.
+			const box = block.getBoundingClientRect();
+			const line = Number.parseFloat(getComputedStyle(block).lineHeight) || 20;
+			const lines = text.split("\n");
+			const from = Math.max(0, Math.floor((top - box.top) / line));
+			text = lines.slice(from).find((l) => l.trim()) ?? "";
+		}
+		const words = text.replace(/\s+/g, " ").trim();
+		if (words) return words.slice(0, WORDS);
+	}
+	return "";
+}
+
+/**
+ * Bookmarks for a document that scrolls (Word, text, flowing documents):
+ * a place is how far down it is, named after the words found there.
+ */
+export function useScrollBookmarks(
+	scroller: RefObject<HTMLElement | null>,
+	content: RefObject<HTMLElement | null>,
+): BookmarkSource {
+	return useMemo(
+		() => ({
+			here: () => {
+				const el = scroller.current;
+				if (!el) return null;
+				const range = el.scrollHeight - el.clientHeight;
+				const ratio = range > 0 ? Math.min(1, el.scrollTop / range) : 0;
+				const words = content.current ? wordsAtTop(el, content.current) : "";
+				return {
+					label: words || t("{n}% through", { n: Math.round(ratio * 100) }),
+					position: { kind: "scroll", ratio },
+				};
+			},
+			go: (position) => {
+				const el = scroller.current;
+				if (!el || position.kind !== "scroll") return;
+				el.scrollTop = position.ratio * (el.scrollHeight - el.clientHeight);
+			},
+		}),
+		[scroller, content],
+	);
+}
+
+/**
+ * A tap on a side of the screen turns the page, where the reader asked
+ * for that (Settings, Reading): the left quarter back, the right quarter
+ * on. `onStep` turns a page; without it the document scrolls a screen.
+ * The returned handler says whether it turned (else the tap is the
+ * viewer's, to show or hide the bars).
+ */
+export function useTapToTurn(
+	scroller: RefObject<HTMLElement | null>,
+	onStep?: (dir: 1 | -1) => void,
+): (x: number) => boolean {
+	const { settings } = useSettings();
+	const on = useRef(settings.tapToTurn);
+	on.current = settings.tapToTurn;
+	const step = useRef(onStep);
+	step.current = onStep;
+	return useCallback(
+		(x: number) => {
+			const el = scroller.current;
+			if (!on.current || !el) return false;
+			const box = el.getBoundingClientRect();
+			const at = (x - box.left) / box.width;
+			const dir = at < 0.25 ? -1 : at > 0.75 ? 1 : 0;
+			if (!dir) return false;
+			if (step.current) step.current(dir);
+			else el.scrollTop += dir * el.clientHeight * 0.9;
+			return true;
+		},
+		[scroller],
+	);
+}
+
+/** What an Office or OpenDocument file says about itself, as Details
+ * rows; none for any other file. */
+export function useOfficeDetails(
+	data: ArrayBuffer,
+	format: FileFormat,
+): Array<[string, string]> {
+	return useMemo(() => {
+		const meta = readOfficeMeta(data, format);
+		const when = (d: Date | undefined) =>
+			d?.toLocaleString(locale(), { dateStyle: "medium", timeStyle: "short" });
+		const rows: Array<[string, string | undefined]> = [
+			[t("Title"), meta.title],
+			[t("Subject"), meta.subject],
+			[t("Author"), meta.author],
+			[t("Created"), when(meta.created)],
+			[t("Last changed"), when(meta.modified)],
+			[
+				t("Last changed by"),
+				meta.lastAuthor !== meta.author ? meta.lastAuthor : undefined,
+			],
+			[t("Pages"), meta.pages?.toLocaleString(locale())],
+			[t("Words"), meta.words?.toLocaleString(locale())],
+			[t("Made with"), meta.application],
+		];
+		return rows.filter((row): row is [string, string] => !!row[1]);
+	}, [data, format]);
 }

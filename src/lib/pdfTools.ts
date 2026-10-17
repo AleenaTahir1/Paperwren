@@ -1,0 +1,493 @@
+/**
+ * The PDF tools: filling in and signing a form, and putting pages
+ * together, apart and in order. Each one reads the bytes of one or more
+ * PDFs and returns the bytes of a new one; nothing is changed in place,
+ * and the reader saves the result as a copy. Built on pdf-lib, loaded
+ * only when a tool runs.
+ */
+
+import type {
+	PDFDocument as Doc,
+	PDFFont,
+	PDFPage,
+	SecurityOptions,
+} from "@cantoo/pdf-lib";
+
+const lib = () => import("@cantoo/pdf-lib");
+
+/** A place on a page as it is shown, upright: fractions of the shown
+ * width and height, from the top left. A page the file turns on its
+ * side is shown turned, and so are these. */
+export interface Placement {
+	/** 0-based. */
+	page: number;
+	x: number;
+	y: number;
+	w: number;
+	h: number;
+}
+
+/** What the reader put on a page: a picture (a signature, a tick) or a
+ * line of text. Text in a script the standard PDF fonts lack is
+ * handed over as a picture of it. */
+export type Mark = Placement &
+	(
+		| { kind: "image"; png: Uint8Array }
+		| {
+				kind: "text";
+				text: string;
+				/** "#rrggbb". */
+				color: string;
+		  }
+	);
+
+/** A form field's new value, by its full name: text, a ticked box, the
+ * chosen option of a list or a group of radio buttons. */
+export interface FieldValue {
+	name: string;
+	value: string | boolean;
+}
+
+/** What could not be done, for the reader. */
+export class ToolError extends Error {
+	constructor(
+		readonly reason: "password" | "corrupt" | "locked" | "empty",
+		detail?: string,
+	) {
+		super(detail ?? reason);
+	}
+}
+
+async function open(bytes: Uint8Array, password?: string): Promise<Doc> {
+	const { PDFDocument } = await lib();
+	try {
+		return await PDFDocument.load(bytes, {
+			password,
+			updateMetadata: false,
+		});
+	} catch (err) {
+		const text = String((err as Error)?.message ?? err).toLowerCase();
+		if (/password|encrypt/.test(text)) throw new ToolError("password", text);
+		throw new ToolError("corrupt", text);
+	}
+}
+
+/** The page's box as shown (pdf.js shows the crop box), and the turn
+ * the file gives it, in degrees clockwise. */
+function shownBox(page: PDFPage) {
+	const box = page.getCropBox();
+	const turn = (((page.getRotation().angle % 360) + 360) % 360) as
+		| 0
+		| 90
+		| 180
+		| 270;
+	return { ...box, turn };
+}
+
+/**
+ * Where a point of the page as shown (u across, v down, as fractions)
+ * lies in the page's own coordinates (points, from the bottom left of
+ * the unturned page). A page turned clockwise by 90° shows its bottom
+ * left corner at the top left, and so on round.
+ */
+export function pagePoint(
+	box: { x: number; y: number; width: number; height: number; turn: number },
+	u: number,
+	v: number,
+): [number, number] {
+	const { x, y, width: w, height: h } = box;
+	switch (box.turn) {
+		case 90:
+			return [x + v * w, y + u * h];
+		case 180:
+			return [x + (1 - u) * w, y + v * h];
+		case 270:
+			return [x + (1 - v) * w, y + (1 - u) * h];
+		default:
+			return [x + u * w, y + (1 - v) * h];
+	}
+}
+
+/** The size of the page as shown, in points. */
+function shownSize(box: ReturnType<typeof shownBox>): [number, number] {
+	return box.turn % 180 ? [box.height, box.width] : [box.width, box.height];
+}
+
+const rgbOf = async (hex: string) => {
+	const { rgb } = await lib();
+	const n = Number.parseInt(hex.replace("#", ""), 16) || 0;
+	return rgb(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255);
+};
+
+/** True when the standard Helvetica can write the text (Latin-1 and
+ * the few extra marks of WinAnsi). */
+export function standardText(text: string): boolean {
+	return /^[ -~ -ÿ–—‘’“”•…€]*$/.test(text);
+}
+
+async function drawMark(doc: Doc, mark: Mark, font: () => Promise<PDFFont>) {
+	const { degrees } = await lib();
+	const page = doc.getPage(mark.page);
+	const box = shownBox(page);
+	const [shownW, shownH] = shownSize(box);
+	// Drawn from the mark's bottom left corner as shown, turned with the
+	// page so it reads upright.
+	const [x, y] = pagePoint(box, mark.x, mark.y + mark.h);
+	const width = mark.w * shownW;
+	const height = mark.h * shownH;
+	const rotate = degrees(box.turn);
+	if (mark.kind === "image") {
+		const image = await doc.embedPng(mark.png);
+		page.drawImage(image, { x, y, width, height, rotate });
+		return;
+	}
+	const f = await font();
+	// The box is the line's height: the size that fills it, nudged so the
+	// letters sit on its baseline rather than at its foot.
+	const size = Math.max(4, height / 1.2);
+	const lift = size * 0.25;
+	const turn = (box.turn * Math.PI) / 180;
+	page.drawText(mark.text, {
+		x: x - Math.sin(turn) * lift,
+		y: y + Math.cos(turn) * lift,
+		size,
+		font: f,
+		color: await rgbOf(mark.color),
+		rotate,
+		maxWidth: Math.max(width, f.widthOfTextAtSize(mark.text, size)),
+	});
+}
+
+/**
+ * Fill in a form's fields and put the marks on its pages. `flatten`
+ * makes the fields part of the page, so the copy reads the same
+ * everywhere and cannot be changed by mistake.
+ */
+export async function fillAndSign(
+	bytes: Uint8Array,
+	{
+		password,
+		fields = [],
+		marks = [],
+		flatten = false,
+	}: {
+		password?: string;
+		fields?: FieldValue[];
+		marks?: Mark[];
+		flatten?: boolean;
+	},
+): Promise<Uint8Array> {
+	const {
+		PDFCheckBox,
+		PDFDropdown,
+		PDFOptionList,
+		PDFRadioGroup,
+		PDFTextField,
+		PDFName,
+		PDFBool,
+		StandardFonts,
+	} = await lib();
+	const doc = await open(bytes, password);
+	let helvetica: PDFFont | null = null;
+	const font = async () => {
+		helvetica ??= await doc.embedFont(StandardFonts.Helvetica);
+		return helvetica;
+	};
+
+	let needsReader = false;
+	if (fields.length) {
+		const form = doc.getForm();
+		for (const { name, value } of fields) {
+			const field = form.getFieldMaybe(name);
+			if (!field || field.isReadOnly()) continue;
+			if (field instanceof PDFTextField) {
+				const text = String(value);
+				if (!standardText(text)) needsReader = true;
+				field.setText(text || undefined);
+			} else if (field instanceof PDFCheckBox) {
+				if (value) field.check();
+				else field.uncheck();
+			} else if (field instanceof PDFRadioGroup) {
+				if (typeof value === "string" && field.getOptions().includes(value))
+					field.select(value);
+			} else if (
+				field instanceof PDFDropdown ||
+				field instanceof PDFOptionList
+			) {
+				if (typeof value === "string" && field.getOptions().includes(value))
+					field.select(value);
+			}
+		}
+		if (needsReader && !flatten) {
+			// Text in a script Helvetica lacks: the reader's app draws the
+			// fields from their values instead of a drawn appearance.
+			form.acroForm.dict.set(PDFName.of("NeedAppearances"), PDFBool.True);
+		} else {
+			try {
+				form.updateFieldAppearances(await font());
+			} catch {
+				form.acroForm.dict.set(PDFName.of("NeedAppearances"), PDFBool.True);
+				needsReader = true;
+			}
+			if (flatten && !needsReader) form.flatten();
+		}
+	}
+	for (const mark of marks) await drawMark(doc, mark, font);
+	return doc.save({ updateFieldAppearances: false });
+}
+
+/** One page of a new document: which file and page it comes from, and
+ * how far to turn it (degrees clockwise, on top of its own turn). */
+export interface PagePick {
+	file: number;
+	page: number;
+	turn?: number;
+}
+
+/**
+ * A new document from pages of one or more: merge (every page of each,
+ * in turn), extract or split (some pages), delete (all but some),
+ * reorder and rotate (the pages in a new order, turned).
+ */
+export async function buildPdf(
+	sources: Array<{ bytes: Uint8Array; password?: string }>,
+	picks: PagePick[],
+): Promise<Uint8Array> {
+	if (!picks.length) throw new ToolError("empty");
+	const { PDFDocument, degrees } = await lib();
+	const docs = await Promise.all(sources.map((s) => open(s.bytes, s.password)));
+	const out = await PDFDocument.create();
+	// Pages are copied a file at a time, in one call each, so objects
+	// they share (fonts, pictures) are copied once.
+	const wanted = docs.map((_, i) => [
+		...new Set(picks.filter((p) => p.file === i).map((p) => p.page)),
+	]);
+	const copied = await Promise.all(
+		docs.map((doc, i) =>
+			wanted[i].length ? out.copyPages(doc, wanted[i]) : Promise.resolve([]),
+		),
+	);
+	for (const pick of picks) {
+		const source = copied[pick.file]?.[wanted[pick.file].indexOf(pick.page)];
+		if (!source) continue;
+		// The same page twice needs a copy of its own.
+		const page = out.getPages().includes(source)
+			? (await out.copyPages(docs[pick.file], [pick.page]))[0]
+			: source;
+		if (pick.turn)
+			page.setRotation(
+				degrees((((page.getRotation().angle + pick.turn) % 360) + 360) % 360),
+			);
+		out.addPage(page);
+	}
+	return out.save();
+}
+
+/** How many pages a PDF has. */
+export async function pageCount(
+	bytes: Uint8Array,
+	password?: string,
+): Promise<number> {
+	return (await open(bytes, password)).getPageCount();
+}
+
+/** Pages as "1-3, 5, 8-": 0-based page numbers, in the order typed.
+ * Null when it names a page the document does not have, or none. */
+export function parsePages(text: string, count: number): number[] | null {
+	const out: number[] = [];
+	for (const part of text.split(/[,;\s]+/).filter(Boolean)) {
+		const m = /^(\d*)\s*[-–]\s*(\d*)$/.exec(part) ?? /^(\d+)$/.exec(part);
+		if (!m) return null;
+		const from = Number(m[1] || 1);
+		const to = m[2] === undefined ? from : Number(m[2] || count);
+		if (from < 1 || to < 1 || from > count || to > count) return null;
+		const step = from <= to ? 1 : -1;
+		for (let p = from; p !== to + step; p += step) out.push(p - 1);
+	}
+	return out.length ? out : null;
+}
+
+/** Paper sizes for pictures turned into pages, in points. */
+export const PAPER = {
+	a4: [595.28, 841.89],
+	letter: [612, 792],
+} as const;
+
+/**
+ * Pictures as pages: each on a page of its own, either the size of the
+ * picture or fitted (with a margin) to A4 or Letter, turned to suit.
+ * The pictures arrive as JPEG or PNG; anything else is drawn into one
+ * of those first, where there is a canvas.
+ */
+export async function imagesToPdf(
+	images: Array<{ bytes: Uint8Array; type: "jpg" | "png" }>,
+	paper: "fit" | keyof typeof PAPER = "fit",
+): Promise<Uint8Array> {
+	if (!images.length) throw new ToolError("empty");
+	const { PDFDocument } = await lib();
+	const doc = await PDFDocument.create();
+	const margin = 24;
+	for (const picture of images) {
+		const image =
+			picture.type === "jpg"
+				? await doc.embedJpg(picture.bytes)
+				: await doc.embedPng(picture.bytes);
+		if (paper === "fit") {
+			// 96 pixels to the inch, as a screen shows it.
+			const w = (image.width * 72) / 96;
+			const h = (image.height * 72) / 96;
+			doc.addPage([w, h]).drawImage(image, { x: 0, y: 0, width: w, height: h });
+			continue;
+		}
+		const [a, b] = PAPER[paper];
+		const wide = image.width > image.height;
+		const [pw, ph] = wide ? [b, a] : [a, b];
+		const scale = Math.min(
+			(pw - margin * 2) / image.width,
+			(ph - margin * 2) / image.height,
+		);
+		const w = image.width * scale;
+		const h = image.height * scale;
+		doc.addPage([pw, ph]).drawImage(image, {
+			x: (pw - w) / 2,
+			y: (ph - h) / 2,
+			width: w,
+			height: h,
+		});
+	}
+	return doc.save();
+}
+
+/** Where page numbers go. */
+export type NumberSpot = "bottom-center" | "bottom-right" | "top-right";
+
+/** Page numbers on every page: "1", or "Page 1 of 9" in the words the
+ * caller gives ({n} and {total}). */
+export async function addPageNumbers(
+	bytes: Uint8Array,
+	{
+		password,
+		spot = "bottom-center",
+		pattern = "{n}",
+		first = 1,
+	}: {
+		password?: string;
+		spot?: NumberSpot;
+		pattern?: string;
+		first?: number;
+	} = {},
+): Promise<Uint8Array> {
+	const { StandardFonts, degrees } = await lib();
+	const doc = await open(bytes, password);
+	const font = await doc.embedFont(StandardFonts.Helvetica);
+	const total = doc.getPageCount();
+	const grey = await rgbOf("#444444");
+	const size = 10;
+	doc.getPages().forEach((page, i) => {
+		const raw = pattern
+			.replace("{n}", String(first + i))
+			.replace("{total}", String(first + total - 1));
+		const text = standardText(raw) ? raw : String(first + i);
+		const box = shownBox(page);
+		const [w, h] = shownSize(box);
+		const textW = font.widthOfTextAtSize(text, size);
+		const margin = 28;
+		const u =
+			spot === "bottom-center" ? (w - textW) / 2 / w : (w - margin - textW) / w;
+		const v = spot === "top-right" ? (margin + size) / h : (h - margin) / h;
+		const [x, y] = pagePoint(box, u, v);
+		page.drawText(text, {
+			x,
+			y,
+			size,
+			font,
+			color: grey,
+			rotate: degrees(box.turn),
+		});
+	});
+	return doc.save();
+}
+
+/** A word or two across every page, faint and on a slant: "DRAFT",
+ * "COPY", "CONFIDENTIAL". Text Helvetica cannot write is refused. */
+export async function addWatermark(
+	bytes: Uint8Array,
+	{
+		text,
+		password,
+		opacity = 0.18,
+	}: { text: string; password?: string; opacity?: number },
+): Promise<Uint8Array> {
+	if (!text.trim() || !standardText(text)) throw new ToolError("empty");
+	const { StandardFonts, degrees } = await lib();
+	const doc = await open(bytes, password);
+	const font = await doc.embedFont(StandardFonts.HelveticaBold);
+	const color = await rgbOf("#c0392b");
+	for (const page of doc.getPages()) {
+		const box = shownBox(page);
+		const [w, h] = shownSize(box);
+		// As wide as most of the page's diagonal.
+		const angle = Math.atan2(h, w);
+		const size = Math.min(
+			160,
+			(Math.hypot(w, h) * 0.7) / Math.max(1, font.widthOfTextAtSize(text, 1)),
+		);
+		const textW = font.widthOfTextAtSize(text, size);
+		// Centred: start half the text back along the slant, and half its
+		// height down across it.
+		const cu =
+			0.5 -
+			(Math.cos(angle) * textW) / 2 / w +
+			(Math.sin(angle) * size * 0.35) / w;
+		const cv =
+			0.5 +
+			(Math.sin(angle) * textW) / 2 / h +
+			(Math.cos(angle) * size * 0.35) / h;
+		const [x, y] = pagePoint(box, cu, cv);
+		page.drawText(text, {
+			x,
+			y,
+			size,
+			font,
+			color,
+			opacity,
+			rotate: degrees(box.turn + (angle * 180) / Math.PI),
+		});
+	}
+	return doc.save();
+}
+
+/** A copy that asks for a password to open. */
+export async function protect(
+	bytes: Uint8Array,
+	userPassword: string,
+	{ password }: { password?: string } = {},
+): Promise<Uint8Array> {
+	if (!userPassword) throw new ToolError("empty");
+	const doc = await open(bytes, password);
+	const options: SecurityOptions = {
+		userPassword,
+		// The same password opens it with every right: it is the reader's.
+		ownerPassword: userPassword,
+		permissions: {
+			printing: "highResolution",
+			modifying: true,
+			copying: true,
+			annotating: true,
+			fillingForms: true,
+			contentAccessibility: true,
+			documentAssembly: true,
+		},
+	};
+	doc.encrypt(options);
+	return doc.save();
+}
+
+/** A copy without the password, for a file the reader can open. */
+export async function unlock(
+	bytes: Uint8Array,
+	password: string,
+): Promise<Uint8Array> {
+	const doc = await open(bytes, password);
+	return doc.save();
+}

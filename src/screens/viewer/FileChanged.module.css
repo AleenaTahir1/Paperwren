@@ -1,0 +1,28 @@
+/* Over the top of the document, under its bar. */
+.bar {
+	position: fixed;
+	z-index: 30;
+	top: calc(var(--tab-strip, 0px) + var(--bar-h) + 10px);
+	left: 50%;
+	transform: translateX(-50%);
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: max-content;
+	max-width: calc(100% - 24px);
+	padding: 6px 6px 6px 14px;
+	border-radius: var(--r-m);
+	background: var(--surface);
+	color: var(--text);
+	box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+	border: 1px solid var(--line);
+	animation: pw-fade-in var(--t-med) var(--ease);
+}
+.icon {
+	flex-shrink: 0;
+	color: var(--accent);
+}
+.text {
+	font-size: 14px;
+	font-weight: 600;
+}

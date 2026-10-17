@@ -15,6 +15,7 @@ type Glyph =
 	| "slides"
 	| "text"
 	| "markdown"
+	| "book"
 	| "image"
 	| "other";
 
@@ -30,6 +31,7 @@ const KIND_VAR: Record<ReturnType<typeof kindOf>, string> = {
 
 function glyphFor(format: FileFormat): Glyph {
 	if (format === "md") return "markdown";
+	if (format === "epub") return "book";
 	const kind = kindOf(format);
 	return kind === "pdf"
 		? "pdf"
@@ -116,6 +118,20 @@ function GlyphShape({ glyph }: { glyph: Glyph }) {
 				>
 					<path d="M12 29 V16 L17 22 L22 16 V29" />
 					<path d="M30 16 V28 M26 24 L30 28.5 L34 24" />
+				</g>
+			);
+		case "book":
+			// An open book.
+			return (
+				<g
+					fill="none"
+					stroke={w}
+					strokeWidth="2.2"
+					strokeLinejoin="round"
+					strokeLinecap="round"
+				>
+					<path d="M24 17 C21 14.5 16.5 14 12.5 14.5 V28.5 C16.5 28 21 28.5 24 31 Z" />
+					<path d="M24 17 C27 14.5 31.5 14 35.5 14.5 V28.5 C31.5 28 27 28.5 24 31 Z" />
 				</g>
 			);
 		case "image":

@@ -1,5 +1,20 @@
 /** Decode text bytes: BOM-aware UTF-16/UTF-8, then strict UTF-8, then
  * Windows-1252 (the usual encoding of older .txt/.csv files). */
+/** The encodings a reader can pick for a text file the app misreads. */
+export const ENCODINGS = [
+	"auto",
+	"utf-8",
+	"utf-16le",
+	"utf-16be",
+	"windows-1252",
+	"windows-1251",
+	"windows-1256",
+	"shift-jis",
+	"gb18030",
+	"big5",
+	"euc-kr",
+];
+
 export function decodeText(buffer: ArrayBuffer, encoding = "auto"): string {
 	const bytes = new Uint8Array(buffer);
 	if (encoding !== "auto") return new TextDecoder(encoding).decode(bytes);

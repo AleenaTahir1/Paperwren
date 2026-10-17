@@ -221,6 +221,23 @@
 	font-size: 13px;
 	color: var(--text-2);
 }
+/* Rows the reader sorted or filtered: said so, with the way back. */
+.arranged {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 2px calc(4px + var(--safe-right)) 2px calc(12px + var(--safe-left));
+	border-bottom: 1px solid var(--line);
+	background: var(--accent-soft, var(--surface-2));
+	font-size: 13px;
+	color: var(--text);
+}
+/* A sheet the file draws without gridlines. Authored borders are drawn
+ * as inset shadows, so they stay. */
+.gridless .cell {
+	border-color: transparent;
+}
 .detail {
 	display: flex;
 	align-items: center;

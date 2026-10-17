@@ -2,7 +2,7 @@
 
 .page {
 	position: fixed;
-	inset: 0;
+	inset: var(--tab-strip) 0 0;
 	display: flex;
 	flex-direction: column;
 	background: var(--page-bg);
@@ -16,8 +16,8 @@
 	align-items: center;
 	gap: 12px;
 	padding: calc(10px + var(--safe-top))
-		calc(8px + var(--safe-right) + var(--win-controls)) 6px
-		calc(18px + var(--safe-left) + var(--win-lights));
+		calc(8px + var(--safe-right) + var(--bar-controls)) 6px
+		calc(18px + var(--safe-left) + var(--bar-lights));
 	min-height: calc(64px + var(--safe-top));
 }
 /* "Open file" in the bar (desktop). */

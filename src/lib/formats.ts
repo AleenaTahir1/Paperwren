@@ -12,6 +12,7 @@ export type FileFormat =
 	| "doc"
 	| "odt"
 	| "rtf"
+	| "epub"
 	| "xlsx"
 	| "xls"
 	| "ods"
@@ -22,6 +23,7 @@ export type FileFormat =
 	| "md"
 	| "txt"
 	| "image"
+	| "cbz"
 	| "unknown";
 
 /** The family drives colour, icon, and filter chips. */
@@ -40,6 +42,7 @@ export const ALL_FORMATS: FileFormat[] = [
 	"doc",
 	"odt",
 	"rtf",
+	"epub",
 	"xlsx",
 	"xls",
 	"ods",
@@ -50,7 +53,80 @@ export const ALL_FORMATS: FileFormat[] = [
 	"md",
 	"txt",
 	"image",
+	"cbz",
 	"unknown",
+];
+
+/** Source code and configuration, shown as text with its syntax
+ * coloured (viewer/TextView.tsx). */
+export const CODE_EXTENSIONS = [
+	"js",
+	"mjs",
+	"cjs",
+	"jsx",
+	"ts",
+	"tsx",
+	"py",
+	"rb",
+	"go",
+	"rs",
+	"java",
+	"kt",
+	"kts",
+	"swift",
+	"c",
+	"h",
+	"cpp",
+	"cc",
+	"hpp",
+	"cs",
+	"php",
+	"sh",
+	"bash",
+	"zsh",
+	"ps1",
+	"bat",
+	"sql",
+	"css",
+	"scss",
+	"less",
+	"html",
+	"htm",
+	"vue",
+	"toml",
+	"gradle",
+	"dart",
+	"lua",
+	"r",
+	"pl",
+	"diff",
+	"patch",
+	"properties",
+	"conf",
+	"cfg",
+	"env",
+	"csproj",
+	"plist",
+];
+
+/** Code a system may run when its default app opens it (a script):
+ * shown here as text, never handed to another app. Matches
+ * SCRIPT_EXTENSIONS in src-tauri/src/open.rs. */
+export const SCRIPT_EXTENSIONS = [
+	"js",
+	"mjs",
+	"cjs",
+	"py",
+	"rb",
+	"pl",
+	"php",
+	"sh",
+	"bash",
+	"zsh",
+	"ps1",
+	"bat",
+	"lua",
+	"r",
 ];
 
 const EXTENSIONS: Record<string, FileFormat> = {
@@ -61,6 +137,7 @@ const EXTENSIONS: Record<string, FileFormat> = {
 	doc: "doc",
 	odt: "odt",
 	rtf: "rtf",
+	epub: "epub",
 	xlsx: "xlsx",
 	xlsm: "xlsx",
 	xlsb: "xlsx",
@@ -91,6 +168,14 @@ const EXTENSIONS: Record<string, FileFormat> = {
 	gif: "image",
 	webp: "image",
 	bmp: "image",
+	svg: "image",
+	avif: "image",
+	heic: "image",
+	heif: "image",
+	tif: "image",
+	tiff: "image",
+	cbz: "cbz",
+	...Object.fromEntries(CODE_EXTENSIONS.map((ext) => [ext, "txt" as const])),
 };
 
 /** Extensions offered by the file picker. */
@@ -113,6 +198,7 @@ export function kindOf(format: FileFormat): FormatKind {
 		case "doc":
 		case "odt":
 		case "rtf":
+		case "epub":
 			return "doc";
 		case "xlsx":
 		case "xls":
@@ -127,6 +213,7 @@ export function kindOf(format: FileFormat): FormatKind {
 		case "txt":
 			return "text";
 		case "image":
+		case "cbz":
 			return "image";
 		default:
 			return "other";
@@ -219,6 +306,7 @@ const MIME: Record<FileFormat, string> = {
 	doc: "application/msword",
 	odt: "application/vnd.oasis.opendocument.text",
 	rtf: "application/rtf",
+	epub: "application/epub+zip",
 	xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 	xls: "application/vnd.ms-excel",
 	ods: "application/vnd.oasis.opendocument.spreadsheet",
@@ -229,6 +317,7 @@ const MIME: Record<FileFormat, string> = {
 	md: "text/markdown",
 	txt: "text/plain",
 	image: "image/*",
+	cbz: "application/vnd.comicbook+zip",
 	unknown: "application/octet-stream",
 };
 
@@ -239,6 +328,12 @@ const IMAGE_MIME: Record<string, string> = {
 	gif: "image/gif",
 	webp: "image/webp",
 	bmp: "image/bmp",
+	svg: "image/svg+xml",
+	avif: "image/avif",
+	heic: "image/heic",
+	heif: "image/heif",
+	tif: "image/tiff",
+	tiff: "image/tiff",
 };
 
 /** The media type other apps expect for a file of this format. A

@@ -116,7 +116,33 @@ describe("cleanPosition", () => {
 		expect(
 			cleanPosition({ kind: "sheet", sheet: 1, top: 40, left: 8, zoom: 1.5 }),
 		).toEqual({ kind: "sheet", sheet: 1, top: 40, left: 8, zoom: 1.5 });
+		expect(cleanPosition({ kind: "pages", page: 4.6 })).toEqual({
+			kind: "pages",
+			page: 4,
+		});
 		expect(cleanPosition({ kind: "pdf" })).toBeUndefined();
+		expect(cleanPosition({ kind: "nope" })).toBeUndefined();
+	});
+
+	it("keeps two pages side by side across a restart", () => {
+		const pdf = { kind: "pdf", page: 2, scale: "auto", top: 0, left: 0 };
+		expect(cleanPosition({ ...pdf, rotation: 0, spread: true })).toEqual({
+			...pdf,
+			rotation: 0,
+			spread: true,
+		});
+		expect(cleanPosition({ ...pdf, spread: "yes" })).not.toHaveProperty(
+			"spread",
+		);
+		expect(cleanPosition({ ...pdf, spread: true, cover: true })).toMatchObject({
+			spread: true,
+			cover: true,
+		});
+		expect(cleanPosition({ ...pdf, crop: true })).toMatchObject({
+			crop: true,
+		});
+		// A cover only means something beside a second page.
+		expect(cleanPosition({ ...pdf, cover: true })).not.toHaveProperty("cover");
 		expect(cleanPosition({ kind: "nope" })).toBeUndefined();
 	});
 });

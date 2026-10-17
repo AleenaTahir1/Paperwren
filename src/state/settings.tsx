@@ -104,6 +104,12 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 	}, []);
 
 	const theme = resolveTheme(settings.theme, systemDark);
+	// Books, Markdown and reading view take the face the reader picked.
+	useEffect(() => {
+		const root = document.documentElement;
+		if (settings.readingFont === "original") delete root.dataset.readingFont;
+		else root.dataset.readingFont = settings.readingFont;
+	}, [settings.readingFont]);
 	useEffect(() => {
 		document.documentElement.dataset.theme = theme;
 		document

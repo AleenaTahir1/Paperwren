@@ -82,7 +82,7 @@ const STEPS = [
 	{
 		title: msg("Opens everything"),
 		body: msg(
-			"PDF, Word, Excel, PowerPoint, OpenDocument, RTF, CSV and text. Even old .doc and .ppt files.",
+			"PDF, Word, Excel, PowerPoint, OpenDocument, EPUB books, comics, pictures and text. Even old .doc and .ppt files.",
 		),
 		Scene: FormatsScene,
 	},

@@ -26,8 +26,16 @@ import {
 	shellStyles,
 } from "./Shell";
 import { type Heading, HeadingList, readHeadings } from "./headings";
-import { useScrollMemory, useZoom, useZoomLevel } from "./hooks";
+import {
+	useOfficeDetails,
+	useScrollBookmarks,
+	useScrollMemory,
+	useTapToTurn,
+	useZoom,
+	useZoomLevel,
+} from "./hooks";
 import { runWorker } from "./runWorker";
+import { domSpeech } from "./speechSources";
 import type { ViewerProps } from "./types";
 import { useDomFind } from "./useDomFind";
 
@@ -77,6 +85,7 @@ function Blocks({ blocks }: { blocks: Block[] }) {
  * and pictures) and RTF. Honest about what is not shown. */
 export default function ReflowView(props: ViewerProps) {
 	const { name, format, position, onPosition, onClose, active } = props;
+	const details = useOfficeDetails(props.data, format);
 	const scroller = useRef<HTMLDivElement>(null);
 	const stage = useRef<HTMLDivElement>(null);
 	const hud = useRef<HTMLDivElement>(null);
@@ -88,6 +97,7 @@ export default function ReflowView(props: ViewerProps) {
 	const [headings, setHeadings] = useState<Heading[]>([]);
 	const [outlineOpen, setOutlineOpen] = useState(false);
 	const find = useDomFind(content, scroller);
+	const tapTurn = useTapToTurn(scroller);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: extract once per document
 	useEffect(() => {
@@ -119,9 +129,11 @@ export default function ReflowView(props: ViewerProps) {
 		max: 3,
 		enabled: !!doc,
 		active,
-		onTap: () => setChromeHidden((h) => !h),
+		onTap: (_target, x) => tapTurn(x) || setChromeHidden((h) => !h),
 	});
 	useScrollMemory(scroller, !!result?.ok, position, onPosition, zoom);
+	const marks = useScrollBookmarks(scroller, content);
+	const speech = useMemo(() => domSpeech(scroller, content), []);
 
 	const goToHeading = (heading: Heading) => {
 		const el = scroller.current;
@@ -140,6 +152,7 @@ export default function ReflowView(props: ViewerProps) {
 						{
 							id: "contents",
 							label: t("Contents"),
+							icon: <ListTree size={16} />,
 							content: (
 								<HeadingList
 									headings={headings}
@@ -175,6 +188,10 @@ export default function ReflowView(props: ViewerProps) {
 			hud={hud}
 			progressOf={scroller}
 			side={side}
+			paper
+			bookmarks={doc ? marks : undefined}
+			details={details}
+			speech={doc ? speech : undefined}
 			chromeHidden={chromeHidden && !find.open}
 			onFind={doc ? find.start : undefined}
 			menu={
@@ -238,6 +255,8 @@ export default function ReflowView(props: ViewerProps) {
 						onQuery={find.setQuery}
 						onStep={find.step}
 						onClose={find.close}
+						options={find.options}
+						onOptions={find.setOptions}
 					/>
 				) : undefined
 			}
@@ -253,7 +272,7 @@ export default function ReflowView(props: ViewerProps) {
 								{doc.kind === "rich" ? (
 									<RichDocument doc={doc} />
 								) : doc.kind === "document" ? (
-									<article className={d.paper}>
+									<article className={`${d.paper} pw-paper pw-reading`}>
 										<Blocks blocks={doc.blocks} />
 									</article>
 								) : (

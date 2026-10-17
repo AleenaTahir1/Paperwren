@@ -1,8 +1,11 @@
+import { requestForBytes } from "@/lib/backend";
 import { isDesktop } from "@/lib/env";
 import { locale, t, tn } from "@/lib/i18n";
+import { loadEngine, pdfAsset } from "@/lib/pdfEngine";
 import { PrintCancelled } from "@/lib/print";
-import { isDarkTheme } from "@/lib/settings";
+import { resolvePageColor } from "@/lib/settings";
 import type { Position } from "@/lib/types";
+import { useBackClose } from "@/state/navigation";
 import { useSettings } from "@/state/settings";
 import {
 	Button,
@@ -16,29 +19,67 @@ import {
 	toast,
 } from "@/ui";
 import {
+	ArrowLeft,
 	BookOpen,
+	BookOpenText,
+	Crop,
+	GalleryHorizontal,
+	Layers as LayersIcon,
 	LayoutGrid,
 	ListTree,
 	Maximize,
+	MessageSquare,
+	Paperclip,
+	PenLine,
 	RotateCcw,
 	RotateCw,
 	Search,
 	StretchHorizontal,
+	Wrench,
 } from "lucide-react";
-import type { PDFDocumentLoadingTask, PDFDocumentProxy } from "pdfjs-dist";
+import type {
+	PDFDocumentLoadingTask,
+	PDFDocumentProxy,
+	PDFPageProxy,
+} from "pdfjs-dist";
 import type {
 	EventBus,
 	PDFFindController,
+	PDFHistory,
 	PDFLinkService,
 	PDFViewer,
 } from "pdfjs-dist/web/pdf_viewer.mjs";
 import "pdfjs-dist/web/pdf_viewer.css";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FillSign } from "@/screens/tools/FillSign";
+import { announceSaved } from "@/screens/tools/saved";
+import {
+	useCallback,
+	useContext,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { PageJump, PasswordDialog } from "./Dialogs";
+import { ViewerFileContext } from "./FileMenu";
+import {
+	type Attachment,
+	AttachmentList,
+	type Comment,
+	CommentList,
+	type Layer,
+	type LayerConfig,
+	LayerList,
+	pageSize,
+	readAttachments,
+	readLayers,
+	useComments,
+} from "./PdfExtras";
 import { PdfThumbs } from "./PdfThumbs";
 import s from "./PdfView.module.css";
 import { Scrubber } from "./Scrubber";
 import {
+	type BookmarkSource,
 	FindBar,
 	type FindState,
 	Shell,
@@ -49,6 +90,9 @@ import {
 	shellStyles,
 } from "./Shell";
 import { useZoom } from "./hooks";
+import { canCrop, cropPages, whole } from "./pdfCrop";
+import { type Box, findPictures, placePictures } from "./pdfPictures";
+import { pdfSpeech } from "./speechSources";
 import type { ViewerProps } from "./types";
 
 /**
@@ -58,39 +102,40 @@ import type { ViewerProps } from "./types";
  * the shared zoom gestures and position memory.
  */
 
-async function loadEngine() {
-	const pdfjs = await import("pdfjs-dist");
-	pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-		"pdfjs-dist/build/pdf.worker.min.mjs",
-		import.meta.url,
-	).toString();
-	// pdf_viewer.mjs reads the core library from this global.
-	(globalThis as { pdfjsLib?: unknown }).pdfjsLib = pdfjs;
-	const viewer = await import("pdfjs-dist/web/pdf_viewer.mjs");
-	return { pdfjs, viewer };
-}
-
 interface Outline {
 	title: string;
 	dest: unknown;
 	items: Outline[];
 }
 
-/** Where pdf.js finds its character maps and standard fonts: beside
- * the app (see vite.config.ts), never on the network. */
-const pdfAsset = (dir: string) =>
-	new URL(`pdfjs/${dir}/`, document.baseURI).toString();
-
 const MIN_SCALE = 0.25;
 const MAX_SCALE = 8;
 /** pdf.js's AnnotationMode.ENABLE: links and notes work, and a form's
  * fields are drawn as the file saved them. Its default makes them live
  * fields, and what a reader typed there would be neither saved nor
- * printed: Paperwren shows documents, it does not fill them in. */
+ * printed. A form is filled in with Fill & sign, which saves a copy. */
 const ANNOTATIONS_SHOWN = 1;
-/** pdf.js's SpreadMode: one page across, or two with odd pages first. */
+/** pdf.js's SpreadMode: one page across, or two with odd pages first,
+ * or two after a first page on its own (a book's cover). */
 const SPREAD_NONE = 0;
 const SPREAD_ODD = 1;
+const SPREAD_EVEN = 2;
+/** pdf.js's ScrollMode: pages down a long scroll, in a row, or one
+ * (or one pair) at a time. */
+const SCROLL_DOWN = 0;
+const SCROLL_ACROSS = 1;
+const SCROLL_ONE = 3;
+/** pdf.js lays no pairs in a row: pairs are shown one at a time. */
+const scrollMode = (across: boolean, pairs: boolean) =>
+	across ? (pairs ? SCROLL_ONE : SCROLL_ACROSS) : SCROLL_DOWN;
+/** A swipe this long, mostly sideways, turns a page shown on its own. */
+const SWIPE = 60;
+/** Where a followed link was left from, to go back to. */
+type Spot = { page: number; top: number; left: number };
+/** The steps kept to go back through. */
+const TRAIL_MAX = 50;
+/** How long "Back to page 3" stays on show after a link is followed. */
+const TRAIL_HINT_MS = 8000;
 /** The largest bitmap a page is drawn into before pdf.js stretches a
  * smaller one. A desktop has the memory for sharp pages at high zoom;
  * a phone is held to half of that. */
@@ -99,6 +144,21 @@ const ZOOM_LEVELS = [50, 75, 100, 125, 150, 200, 400];
 /** A file longer than this asks which pages to print before any are
  * drawn; a short one just prints. */
 const ASK_PAGES_OVER = 10;
+
+/** The files already said to restrict copying, this run. */
+const toldNoCopy = new Set<string>();
+
+/** pdf.js's RenderingStates.FINISHED. */
+const RENDERED = 3;
+
+/** What this file reads of pdf.js's page view. */
+interface DrawnPage {
+	id: number;
+	div: HTMLElement;
+	pdfPage?: PDFPageProxy;
+	viewport: { rotation: number };
+	renderingState: number;
+}
 
 /** Which pages a print job takes. */
 type PrintChoice = { from: number; to: number };
@@ -133,7 +193,7 @@ export default function PdfView({
 	onClose,
 	active,
 }: ViewerProps) {
-	const { settings, theme } = useSettings();
+	const { settings, theme, update } = useSettings();
 	const container = useRef<HTMLDivElement>(null);
 	const viewerEl = useRef<HTMLDivElement>(null);
 	const hud = useRef<HTMLDivElement>(null);
@@ -159,11 +219,42 @@ export default function PdfView({
 			settings.rememberPosition &&
 			position.spread === true,
 	);
+	const [cover, setCover] = useState(
+		() =>
+			position?.kind === "pdf" &&
+			settings.rememberPosition &&
+			position.cover === true,
+	);
+	const [crop, setCrop] = useState(
+		() =>
+			position?.kind === "pdf" &&
+			settings.rememberPosition &&
+			position.crop === true,
+	);
+	const [cropAvailable, setCropAvailable] = useState(false);
+	const across = settings.pdfFlow === "across";
+	// A page that fits the screen snaps into place after a swipe; a
+	// zoomed one is panned freely.
+	const [fits, setFits] = useState(true);
 	const [chromeHidden, setChromeHidden] = useState(false);
 	const [outline, setOutline] = useState<Outline[] | null>(null);
 	const [outlineOpen, setOutlineOpen] = useState(false);
 	const [thumbsOpen, setThumbsOpen] = useState(false);
 	const [details, setDetails] = useState<Array<[string, string]>>([]);
+	const [attachments, setAttachments] = useState<Attachment[]>([]);
+	const [layers, setLayers] = useState<Layer[]>([]);
+	// What the file's author allows done to it: marks on its pages,
+	// filling in its form.
+	const [rights, setRights] = useState({ mark: true, fill: true });
+	const [filling, setFilling] = useState(false);
+	// The password the reader opened it with, held for saving copies.
+	const passwordRef = useRef<string | undefined>(undefined);
+	const layerConfig = useRef<LayerConfig | null>(null);
+	/** The phone's sheets of comments, attachments and layers. */
+	const [extra, setExtra] = useState<
+		"comments" | "attachments" | "layers" | null
+	>(null);
+	const file = useContext(ViewerFileContext);
 	const [findOpen, setFindOpen] = useState(false);
 	const [find, setFind] = useState<FindState>({
 		query: "",
@@ -182,6 +273,36 @@ export default function PdfView({
 	const fitWidthRef = useRef<() => number>(() => 1);
 	const spreadRef = useRef(spread);
 	spreadRef.current = spread;
+	const coverRef = useRef(cover);
+	coverRef.current = cover;
+	const cropRef = useRef(crop);
+	cropRef.current = crop;
+	/** Puts the pages' own boxes back (crop margins off). */
+	const cropStop = useRef<(() => void) | null>(null);
+	/** Lays the pages out again (their boxes changed), where they were,
+	 * at a zoom given or the one they had. */
+	const relayout = useRef<(scale?: string) => void>(() => {});
+	const relaidAt = useRef<{
+		page: number;
+		scale: string;
+		rotation: number;
+	} | null>(null);
+	const acrossRef = useRef(across);
+	acrossRef.current = across;
+	/** Where the reader is now, and the places links were followed from
+	 * (and, after going back, to). */
+	const here = useRef<Spot | null>(null);
+	const trail = useRef<{ back: Spot[]; forward: Spot[] }>({
+		back: [],
+		forward: [],
+	});
+	const [steps, setSteps] = useState({ back: 0, forward: 0 });
+	const [trailHint, setTrailHint] = useState(false);
+	const tintedRef = useRef(false);
+	tintedRef.current =
+		resolvePageColor(settings.pageColor, theme) !== "original";
+	/** Leave a drawn page's pictures as they are on coloured paper. */
+	const keepPictures = useRef<(view: DrawnPage) => void>(() => {});
 
 	// --- open the document ---
 	// pdf.js takes the bytes over: they move to its worker rather than
@@ -189,6 +310,8 @@ export default function PdfView({
 	// file asks for its password through the same load, so trying a
 	// password never reads the file again.
 	const unlock = useRef<((password: string) => void) | null>(null);
+	const nameRef = useRef(name);
+	nameRef.current = name;
 	useEffect(() => {
 		let alive = true;
 		let task: PDFDocumentLoadingTask | null = null;
@@ -229,12 +352,37 @@ export default function PdfView({
 						.getOutline()
 						.then((o) => setOutline((o as unknown as Outline[]) ?? []))
 						.catch(() => setOutline([]));
+					readAttachments(pdf)
+						.then((found) => alive && setAttachments(found))
+						.catch(() => {});
 					// What the file says about itself, for Details.
-					pdf
-						.getMetadata()
-						.then(({ info }) => {
+					Promise.all([
+						pdf.getMetadata(),
+						pdf.getPage(1).catch(() => null),
+						pdf.getPermissions().catch(() => null),
+					])
+						.then(([{ info }, first, permissions]) => {
 							if (!alive) return;
 							const meta = info as Record<string, unknown>;
+							const [x0, y0, x1, y1] = first?.view ?? [0, 0, 0, 0];
+							const turned = (first?.rotate ?? 0) % 180 !== 0;
+							const [w, h] = [Math.abs(x1 - x0), Math.abs(y1 - y0)];
+							// Its author may ask that its text not be copied: the
+							// reader is told, not stopped.
+							const noCopy =
+								Array.isArray(permissions) &&
+								!permissions.includes(pdfjs.PermissionFlag.COPY);
+							if (Array.isArray(permissions)) {
+								const flag = pdfjs.PermissionFlag;
+								const mark =
+									permissions.includes(flag.MODIFY_CONTENTS) ||
+									permissions.includes(flag.MODIFY_ANNOTATIONS);
+								setRights({
+									mark,
+									fill:
+										mark || permissions.includes(flag.FILL_INTERACTIVE_FORMS),
+								});
+							}
 							const text = (key: string) =>
 								typeof meta[key] === "string" && (meta[key] as string).trim()
 									? (meta[key] as string).trim()
@@ -245,7 +393,23 @@ export default function PdfView({
 								[t("Author"), text("Author")],
 								[t("Created"), pdfDate(meta.CreationDate)],
 								[t("Made with"), text("Creator") ?? text("Producer")],
+								[
+									t("Page size"),
+									w && h ? pageSize(turned ? h : w, turned ? w : h) : null,
+								],
+								[t("PDF version"), text("PDFFormatVersion")],
+								[
+									t("Copying"),
+									noCopy
+										? t("The author asks that its text not be copied")
+										: null,
+								],
 							];
+							// Said once a run for each file, not at every opening.
+							if (noCopy && !toldNoCopy.has(nameRef.current)) {
+								toldNoCopy.add(nameRef.current);
+								toast(t("This PDF restricts copying"));
+							}
 							setDetails(
 								rows.filter((row): row is [string, string] => !!row[1]),
 							);
@@ -268,7 +432,7 @@ export default function PdfView({
 		if (!doc || !container.current || !viewerEl.current) return;
 		let cancelled = false;
 		let cleanup = () => {};
-		loadEngine().then(({ viewer }) => {
+		loadEngine().then(({ pdfjs, viewer }) => {
 			if (cancelled || !container.current || !viewerEl.current) return;
 			const eventBus = new viewer.EventBus();
 			const linkService = new viewer.PDFLinkService({
@@ -291,16 +455,55 @@ export default function PdfView({
 				removePageBorders: true,
 				maxCanvasPixels: MAX_CANVAS,
 				annotationMode: ANNOTATIONS_SHOWN,
+				// The icon of a note left on a page.
+				imageResourcesPath: pdfAsset("images"),
 			});
 			linkService.setViewer(v);
 			pdfViewer.current = v;
 			bus.current = eventBus;
 			links.current = linkService;
 
+			// Following a link (or a contents entry) remembers where it was
+			// followed from: Back returns there, as in a browser.
+			const history = {
+				pushCurrentPosition() {
+					const spot = here.current;
+					if (!spot) return;
+					const { back } = trail.current;
+					trail.current = {
+						back: [...back, spot].slice(-TRAIL_MAX),
+						forward: [],
+					};
+					setSteps({ back: trail.current.back.length, forward: 0 });
+					setTrailHint(true);
+				},
+				push() {},
+				pushPage() {},
+				back: () => stepRef.current(-1),
+				forward: () => stepRef.current(1),
+			};
+			linkService.setHistory(history as unknown as PDFHistory);
+
 			eventBus.on("pagesinit", () => {
+				// Layers the file lets a reader show or hide.
+				v.optionalContentConfigPromise
+					?.then((config) => {
+						if (cancelled) return;
+						layerConfig.current = config as unknown as LayerConfig;
+						setLayers(readLayers(layerConfig.current));
+					})
+					.catch(() => {});
 				const saved = positionRef.current;
-				if (spreadRef.current) v.spreadMode = SPREAD_ODD;
-				if (saved?.kind === "pdf" && rememberRef.current) {
+				const again = relaidAt.current;
+				relaidAt.current = null;
+				v.scrollMode = scrollMode(acrossRef.current, spreadRef.current);
+				if (spreadRef.current)
+					v.spreadMode = coverRef.current ? SPREAD_EVEN : SPREAD_ODD;
+				if (again) {
+					v.pagesRotation = again.rotation;
+					v.currentScaleValue = again.scale;
+					v.currentPageNumber = again.page;
+				} else if (saved?.kind === "pdf" && rememberRef.current) {
 					v.pagesRotation = saved.rotation;
 					const numeric = /^[\d.]+$/.test(saved.scale);
 					v.currentScaleValue = numeric
@@ -312,10 +515,32 @@ export default function PdfView({
 						allowNegativeOffset: true,
 					});
 				} else {
-					v.currentScaleValue = defaultZoom.current;
+					// Pages in a row are read a whole page at a time.
+					v.currentScaleValue = acrossRef.current
+						? "page-fit"
+						: defaultZoom.current;
 				}
 				setRotation(v.pagesRotation);
 			});
+			// The pictures of each page are read once, the first time it is
+			// drawn on coloured paper.
+			const pictures = new Map<number, Promise<Box[]>>();
+			keepPictures.current = (view: DrawnPage) => {
+				const page = view.pdfPage;
+				if (!tintedRef.current || !page) return;
+				let boxes = pictures.get(view.id);
+				if (!boxes) {
+					boxes = findPictures(page, pdfjs.OPS).catch(() => []);
+					pictures.set(view.id, boxes);
+				}
+				boxes.then((found) => {
+					if (!cancelled && view.div.isConnected)
+						placePictures(page, view.div, found, view.viewport.rotation);
+				});
+			};
+			eventBus.on("pagerendered", (e: { source: DrawnPage }) =>
+				keepPictures.current(e.source),
+			);
 			eventBus.on(
 				"pagechanging",
 				(e: { pageNumber: number; pageLabel?: string | null }) => {
@@ -358,6 +583,12 @@ export default function PdfView({
 					};
 				}) => {
 					const loc = e.location;
+					if (loc)
+						here.current = {
+							page: loc.pageNumber,
+							top: loc.top,
+							left: loc.left,
+						};
 					if (!loc || !rememberRef.current) return;
 					window.clearTimeout(saveTimer);
 					saveTimer = window.setTimeout(() => {
@@ -369,6 +600,8 @@ export default function PdfView({
 							left: loc.left,
 							rotation: loc.rotation,
 							...(spreadRef.current ? { spread: true } : {}),
+							...(spreadRef.current && coverRef.current ? { cover: true } : {}),
+							...(cropRef.current ? { crop: true } : {}),
 						};
 						positionRef.current = pos;
 						onPositionRef.current(pos);
@@ -399,8 +632,33 @@ export default function PdfView({
 					})),
 			);
 
-			v.setDocument(doc);
-			linkService.setDocument(doc);
+			relayout.current = (scale) => {
+				pictures.clear();
+				relaidAt.current = {
+					page: v.currentPageNumber,
+					scale: scale ?? v.currentScaleValue,
+					rotation: v.pagesRotation,
+				};
+				v.setDocument(doc);
+			};
+			const show = () => {
+				v.setDocument(doc);
+				linkService.setDocument(doc);
+			};
+			doc
+				.getPage(1)
+				.then((first) => !cancelled && setCropAvailable(canCrop(first)))
+				.catch(() => {});
+			// A document read with its margins cropped opens that way.
+			if (cropRef.current)
+				cropPages(doc)
+					.then((stop) => {
+						if (cancelled) return stop();
+						cropStop.current = stop;
+						show();
+					})
+					.catch(show);
+			else show();
 			// A document that numbers its own pages ("iv", "A-3") is read by
 			// those numbers.
 			doc
@@ -414,6 +672,8 @@ export default function PdfView({
 			cleanup = () => {
 				window.clearTimeout(saveTimer);
 				v.cleanup();
+				cropStop.current?.();
+				cropStop.current = null;
 			};
 		});
 		return () => {
@@ -462,7 +722,17 @@ export default function PdfView({
 			(pdfViewer.current?.getPageView(pdfViewer.current.currentPageNumber - 1)
 				?.div as HTMLElement | undefined) ??
 			null,
-		onTap: () => setChromeHidden((h) => !h),
+		onTap: (_target, x) => {
+			// Pages in a row turn with a tap on either side, and so do pages
+			// down a scroll where the reader asked for it.
+			const box = container.current?.getBoundingClientRect();
+			if ((acrossRef.current || settings.tapToTurn) && box) {
+				const at = (x - box.left) / box.width;
+				if (at < 0.25) return turn(-1);
+				if (at > 0.75) return turn(1);
+			}
+			setChromeHidden((h) => !h);
+		},
 		onDoubleTap: (x, y) => {
 			const v = pdfViewer.current;
 			if (!v) return;
@@ -513,6 +783,14 @@ export default function PdfView({
 		const v = pdfViewer.current;
 		if (v && n >= 1 && n <= pages) v.currentPageNumber = n;
 	};
+	/** The next or the previous page, or pair of pages. */
+	const turn = (dir: 1 | -1) => {
+		const v = pdfViewer.current;
+		if (dir > 0) v?.nextPage();
+		else v?.previousPage();
+	};
+	const turnRef = useRef(turn);
+	turnRef.current = turn;
 	const rotate = (by: 90 | -90) => {
 		const v = pdfViewer.current;
 		if (v) v.pagesRotation = (v.pagesRotation + by + 360) % 360;
@@ -522,10 +800,162 @@ export default function PdfView({
 		if (!v) return;
 		const next = !spreadRef.current;
 		setSpread(next);
-		v.spreadMode = next ? SPREAD_ODD : SPREAD_NONE;
+		v.scrollMode = scrollMode(acrossRef.current, next);
+		v.spreadMode = next
+			? coverRef.current
+				? SPREAD_EVEN
+				: SPREAD_ODD
+			: SPREAD_NONE;
 		// A pair needs the width one page had: fit it again.
-		v.currentScaleValue = "page-width";
+		v.currentScaleValue = acrossRef.current ? "page-fit" : "page-width";
 	};
+	const toggleCrop = async () => {
+		if (!doc) return;
+		const next = !cropRef.current;
+		cropRef.current = next;
+		setCrop(next);
+		if (next) {
+			cropStop.current = await cropPages(doc);
+		} else {
+			cropStop.current?.();
+			cropStop.current = null;
+		}
+		// The point of cropping is a page that fills the screen.
+		relayout.current(acrossRef.current ? "page-fit" : "page-width");
+	};
+	const toggleCover = () => {
+		const v = pdfViewer.current;
+		if (!v) return;
+		const next = !coverRef.current;
+		setCover(next);
+		v.spreadMode = next ? SPREAD_EVEN : SPREAD_ODD;
+	};
+
+	// The pages change from a scroll to a row, or back, while reading.
+	const shownAcross = useRef(across);
+	useEffect(() => {
+		const v = pdfViewer.current;
+		if (!v || shownAcross.current === across) return;
+		shownAcross.current = across;
+		const at = v.currentPageNumber;
+		v.scrollMode = scrollMode(across, spreadRef.current);
+		v.currentScaleValue = across ? "page-fit" : defaultZoom.current;
+		v.currentPageNumber = at;
+	}, [across]);
+
+	// Whether the page on show fits the screen (then a swipe snaps to
+	// the next one).
+	const measureFit = useCallback(() => {
+		const v = pdfViewer.current;
+		const box = container.current;
+		const view = v?.getPageView(v.currentPageNumber - 1) as
+			| { width: number }
+			| undefined;
+		if (!v || !box || !view?.width) return;
+		const across = v.spreadMode === SPREAD_NONE ? 1 : 2;
+		setFits(view.width * across <= box.clientWidth + 2);
+	}, []);
+
+	// Back through the links followed, and forward again.
+	const step = (dir: -1 | 1) => {
+		const v = pdfViewer.current;
+		const { back, forward } = trail.current;
+		const from = dir < 0 ? back : forward;
+		const to = from[from.length - 1];
+		if (!v || !to) return;
+		const now = here.current;
+		trail.current =
+			dir < 0
+				? {
+						back: back.slice(0, -1),
+						forward: now ? [...forward, now] : forward,
+					}
+				: {
+						back: now ? [...back, now] : back,
+						forward: forward.slice(0, -1),
+					};
+		setSteps({
+			back: trail.current.back.length,
+			forward: trail.current.forward.length,
+		});
+		v.scrollPageIntoView({
+			pageNumber: Math.min(Math.max(1, to.page), v.pagesCount),
+			destArray: [null, { name: "XYZ" }, to.left, to.top, null],
+			allowNegativeOffset: true,
+		});
+	};
+	const stepRef = useRef(step);
+	stepRef.current = step;
+	// System Back (and Alt+Left, a mouse's back button) retraces a link
+	// before it leaves the document; the arrow in the bar still closes it.
+	useBackClose("pdf-trail", active && steps.back > 0, () =>
+		stepRef.current(-1),
+	);
+	useEffect(() => {
+		if (!trailHint) return;
+		const timer = window.setTimeout(() => setTrailHint(false), TRAIL_HINT_MS);
+		return () => window.clearTimeout(timer);
+	}, [trailHint]);
+	// Alt+Right goes forward again.
+	useEffect(() => {
+		if (!active || !steps.forward) return;
+		const onKey = (e: KeyboardEvent) => {
+			if (!e.altKey || e.ctrlKey || e.metaKey || e.key !== "ArrowRight") return;
+			e.preventDefault();
+			stepRef.current(1);
+		};
+		window.addEventListener("keydown", onKey);
+		return () => window.removeEventListener("keydown", onKey);
+	}, [active, steps.forward]);
+
+	// A mouse wheel turns pages in a row when there is nothing to scroll
+	// down to; a trackpad's small steps add up to a page.
+	useEffect(() => {
+		const el = container.current;
+		if (!el || !across || status !== "ready") return;
+		let sum = 0;
+		let last = 0;
+		const onWheel = (e: WheelEvent) => {
+			if (e.ctrlKey || e.metaKey) return;
+			if (Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
+			// A page taller than the screen scrolls down first.
+			if (el.scrollHeight > el.clientHeight + 8) return;
+			e.preventDefault();
+			if (e.timeStamp - last > 400) sum = 0;
+			last = e.timeStamp;
+			sum += e.deltaY;
+			if (Math.abs(sum) < 60) return;
+			turnRef.current(Math.sign(sum) as 1 | -1);
+			sum = 0;
+		};
+		// Pages shown one (or one pair) at a time do not scroll: a swipe
+		// across turns them. Pages in a row scroll and snap on their own.
+		let start: { x: number; y: number } | null = null;
+		const onStart = (e: TouchEvent) => {
+			start =
+				e.touches.length === 1
+					? { x: e.touches[0].clientX, y: e.touches[0].clientY }
+					: null;
+		};
+		const onEnd = (e: TouchEvent) => {
+			const from = start;
+			start = null;
+			const touch = e.changedTouches[0];
+			if (!from || !touch || el.scrollWidth > el.clientWidth + 1) return;
+			const dx = touch.clientX - from.x;
+			const dy = touch.clientY - from.y;
+			if (Math.abs(dx) > SWIPE && Math.abs(dx) > 2 * Math.abs(dy))
+				turnRef.current(dx < 0 ? 1 : -1);
+		};
+		el.addEventListener("wheel", onWheel, { passive: false });
+		el.addEventListener("touchstart", onStart, { passive: true });
+		el.addEventListener("touchend", onEnd);
+		return () => {
+			el.removeEventListener("wheel", onWheel);
+			el.removeEventListener("touchstart", onStart);
+			el.removeEventListener("touchend", onEnd);
+		};
+	}, [across, status]);
 
 	// Ctrl+] and Ctrl+[ turn the pages, as in other desktop readers.
 	const rotateRef = useRef(rotate);
@@ -543,23 +973,68 @@ export default function PdfView({
 		return () => window.removeEventListener("keydown", onKey);
 	}, [active, status]);
 
-	const darkPages = settings.darkPages && isDarkTheme(theme);
+	// Pages already drawn when the paper takes a colour get their
+	// pictures back now; the rest as they are drawn.
+	const tinted = tintedRef.current;
+	useEffect(() => {
+		const v = pdfViewer.current;
+		if (!tinted || !v) return;
+		for (let i = 0; i < v.pagesCount; i++) {
+			const view = v.getPageView(i) as DrawnPage | undefined;
+			if (view?.renderingState === RENDERED) keepPictures.current(view);
+		}
+	}, [tinted]);
 	// Two pages side by side need the room: a wide window, a tablet or an
 	// unfolded phone held sideways.
 	const [roomForTwo, setRoomForTwo] = useState(false);
 	useEffect(() => {
 		const el = container.current;
 		if (!el) return;
-		const measure = () =>
+		const measure = () => {
 			setRoomForTwo(el.clientWidth >= 700 && el.clientWidth > el.clientHeight);
+			measureFit();
+		};
 		measure();
 		const ro = new ResizeObserver(measure);
 		ro.observe(el);
 		return () => ro.disconnect();
-	}, []);
+	}, [measureFit]);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: measured again at each page and zoom
+	useEffect(() => {
+		measureFit();
+	}, [page, scale, measureFit]);
 
 	const pdfMenu = (close: () => void) => (
 		<>
+			<SheetItem
+				icon={<PenLine size={20} />}
+				disabled={!rights.fill}
+				hint={
+					rights.fill
+						? t("Fill in its form, sign it, add text or a date")
+						: t("Its author doesn't allow changes")
+				}
+				onClick={() => {
+					close();
+					setFilling(true);
+				}}
+				testId="pdf-fill-sign"
+			>
+				{t("Fill & sign")}
+			</SheetItem>
+			{file?.openTools && (
+				<SheetItem
+					icon={<Wrench size={20} />}
+					hint={t("Merge, split, organize pages, number them, add a password")}
+					onClick={() => {
+						close();
+						file.openTools?.();
+					}}
+					testId="pdf-tools"
+				>
+					{t("More PDF tools")}
+				</SheetItem>
+			)}
 			{!isDesktop && (
 				<>
 					<SheetItem
@@ -582,6 +1057,17 @@ export default function PdfView({
 					</SheetItem>
 				</>
 			)}
+			<SheetItem
+				icon={<GalleryHorizontal size={20} />}
+				checked={across}
+				onClick={() => {
+					update("pdfFlow", across ? "down" : "across");
+					close();
+				}}
+				testId="pdf-across"
+			>
+				{t("Scroll pages sideways")}
+			</SheetItem>
 			{(roomForTwo || spread) && (
 				<SheetItem
 					icon={<BookOpen size={20} />}
@@ -593,6 +1079,32 @@ export default function PdfView({
 					testId="pdf-spread"
 				>
 					{t("Two pages side by side")}
+				</SheetItem>
+			)}
+			{spread && (
+				<SheetItem
+					icon={<BookOpenText size={20} />}
+					checked={cover}
+					onClick={() => {
+						toggleCover();
+						close();
+					}}
+					testId="pdf-cover"
+				>
+					{t("First page on its own")}
+				</SheetItem>
+			)}
+			{cropAvailable && (
+				<SheetItem
+					icon={<Crop size={20} />}
+					checked={crop}
+					onClick={() => {
+						close();
+						toggleCrop();
+					}}
+					testId="pdf-crop"
+				>
+					{t("Crop margins")}
 				</SheetItem>
 			)}
 			<SheetItem
@@ -644,6 +1156,41 @@ export default function PdfView({
 					>
 						{t("Contents")}
 					</SheetItem>
+					<SheetItem
+						icon={<MessageSquare size={20} />}
+						onClick={() => {
+							close();
+							setExtra("comments");
+						}}
+						testId="pdf-comments"
+					>
+						{t("Comments")}
+					</SheetItem>
+					{attachments.length > 0 && (
+						<SheetItem
+							icon={<Paperclip size={20} />}
+							hint={String(attachments.length)}
+							onClick={() => {
+								close();
+								setExtra("attachments");
+							}}
+							testId="pdf-attachments"
+						>
+							{t("Attachments")}
+						</SheetItem>
+					)}
+					{layers.length > 0 && (
+						<SheetItem
+							icon={<LayersIcon size={20} />}
+							onClick={() => {
+								close();
+								setExtra("layers");
+							}}
+							testId="pdf-layers"
+						>
+							{t("Layers")}
+						</SheetItem>
+					)}
 				</>
 			)}
 		</>
@@ -680,12 +1227,17 @@ export default function PdfView({
 			const pdfPage = await doc.getPage(n);
 			const turn =
 				(pdfPage.rotate + (pdfViewer.current?.pagesRotation ?? 0)) % 360;
-			const base = pdfPage.getViewport({ scale: 1, rotation: turn });
+			// Paper takes the whole page, margins and all.
+			const base = whole(pdfPage, () =>
+				pdfPage.getViewport({ scale: 1, rotation: turn }),
+			);
 			const scale = Math.min(
 				count <= 20 ? 3.3 : 2.2,
 				target / Math.max(base.width, base.height),
 			);
-			const viewport = pdfPage.getViewport({ scale, rotation: turn });
+			const viewport = whole(pdfPage, () =>
+				pdfPage.getViewport({ scale, rotation: turn }),
+			);
 			const canvas = document.createElement("canvas");
 			canvas.width = Math.ceil(viewport.width);
 			canvas.height = Math.ceil(viewport.height);
@@ -717,7 +1269,92 @@ export default function PdfView({
 		return from >= 1 && to >= from && to <= pages ? { from, to } : null;
 	};
 
+	// --- bookmarks: a page, and the spot on it ---
+	const marks = useMemo<BookmarkSource>(
+		() => ({
+			here: () => {
+				const v = pdfViewer.current;
+				const spot = here.current;
+				if (!v || !spot) return null;
+				return {
+					// Named as the page counter shows it.
+					label: t("Page {n}", {
+						n: v.currentPageLabel || v.currentPageNumber,
+					}),
+					position: {
+						kind: "pdf",
+						page: spot.page,
+						top: spot.top,
+						left: spot.left,
+						scale: String(v.currentScaleValue),
+						rotation: v.pagesRotation,
+					},
+				};
+			},
+			go: (p) => {
+				const v = pdfViewer.current;
+				if (!v || p.kind !== "pdf") return;
+				v.scrollPageIntoView({
+					pageNumber: Math.min(Math.max(1, p.page), v.pagesCount),
+					destArray: [null, { name: "XYZ" }, p.left, p.top, null],
+					allowNegativeOffset: true,
+				});
+			},
+		}),
+		[],
+	);
+
+	// --- read aloud: the text of each page, from the one on show ---
+	const speech = useMemo(
+		() =>
+			doc && status === "ready"
+				? pdfSpeech(
+						doc,
+						() => pdfViewer.current?.currentPageNumber ?? 1,
+						(n) => {
+							const v = pdfViewer.current;
+							if (v) v.currentPageNumber = n;
+						},
+					)
+				: undefined,
+		[doc, status],
+	);
+
+	// --- comments, attachments and layers ---
+	const showComment = (item: Comment) => {
+		const v = pdfViewer.current;
+		if (!v) return;
+		const [x0, , , y1] = item.rect;
+		v.scrollPageIntoView({
+			pageNumber: item.page,
+			destArray:
+				item.rect.length === 4
+					? [null, { name: "XYZ" }, x0, y1 + 24, null]
+					: undefined,
+			allowNegativeOffset: true,
+		});
+		setExtra(null);
+	};
+	const openAttachment = (item: Attachment) => {
+		setExtra(null);
+		file?.openOver?.(requestForBytes(item.name, item.bytes));
+	};
+	const toggleLayer = (layer: Layer) => {
+		const v = pdfViewer.current;
+		const config = layerConfig.current;
+		if (!v || !config) return;
+		config.setVisibility(layer.id, !layer.visible);
+		// Handing the config back makes pdf.js draw the pages again.
+		v.optionalContentConfigPromise = Promise.resolve(
+			config as unknown as NonNullable<
+				Awaited<PDFViewer["optionalContentConfigPromise"]>
+			>,
+		);
+		setLayers(readLayers(config));
+	};
+
 	// --- the panel beside the document (desktop) ---
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the handlers only read refs and the viewer
 	const side = useMemo<SideTab[]>(() => {
 		if (!doc || status !== "ready") return [];
 		const pick = (dest: unknown) =>
@@ -726,6 +1363,7 @@ export default function PdfView({
 			{
 				id: "pages",
 				label: t("Pages"),
+				icon: <LayoutGrid size={16} />,
 				content: (
 					<PdfThumbs
 						doc={doc}
@@ -742,6 +1380,7 @@ export default function PdfView({
 			{
 				id: "contents",
 				label: t("Contents"),
+				icon: <ListTree size={16} />,
 				content: outline?.length ? (
 					<OutlineList items={outline} depth={0} onPick={pick} compact />
 				) : (
@@ -750,8 +1389,42 @@ export default function PdfView({
 					</p>
 				),
 			},
+			{
+				id: "comments",
+				label: t("Comments"),
+				icon: <MessageSquare size={16} />,
+				content: <Comments doc={doc} onPick={showComment} compact />,
+			},
+			...(attachments.length
+				? [
+						{
+							id: "attachments",
+							label: t("Attachments"),
+							icon: <Paperclip size={16} />,
+							content: (
+								<AttachmentList
+									items={attachments}
+									onOpen={openAttachment}
+									compact
+								/>
+							),
+						},
+					]
+				: []),
+			...(layers.length
+				? [
+						{
+							id: "layers",
+							label: t("Layers"),
+							icon: <LayersIcon size={16} />,
+							content: (
+								<LayerList items={layers} onToggle={toggleLayer} compact />
+							),
+						},
+					]
+				: []),
 		];
-	}, [doc, status, page, rotation, outline]);
+	}, [doc, status, page, rotation, outline, attachments, layers]);
 
 	const presets: ZoomPreset[] = [
 		{
@@ -826,10 +1499,15 @@ export default function PdfView({
 			pager={pager}
 			side={side}
 			details={details}
-			onStep={(dir) => goTo(page + dir)}
+			onStep={turn}
+			bookmarks={status === "ready" ? marks : undefined}
+			speech={speech}
+			turnPages={across}
+			onEdge={across ? (end) => goTo(end ? pages : 1) : undefined}
 			onFind={status === "ready" ? openFind : undefined}
 			menu={status === "ready" ? pdfMenu : undefined}
 			onPrint={doc ? printPages : undefined}
+			paper
 			chromeHidden={chromeHidden && !findOpen}
 			find={
 				findOpen ? (
@@ -840,41 +1518,20 @@ export default function PdfView({
 						}
 						onStep={(dir) => runFind(find.query, true, dir === -1)}
 						onClose={closeFind}
-						options={
-							isDesktop ? (
-								<>
-									<button
-										type="button"
-										className={shellStyles.findOption}
-										aria-pressed={matchCase}
-										title={t("Match case")}
-										aria-label={t("Match case")}
-										onClick={() => setMatchCase((v) => !v)}
-										data-testid="find-case"
-									>
-										Aa
-									</button>
-									<button
-										type="button"
-										className={shellStyles.findOption}
-										aria-pressed={wholeWords}
-										title={t("Whole words")}
-										aria-label={t("Whole words")}
-										onClick={() => setWholeWords((v) => !v)}
-										data-testid="find-words"
-									>
-										“ab”
-									</button>
-								</>
-							) : undefined
-						}
+						options={{ matchCase, wholeWords }}
+						onOptions={(o) => {
+							setMatchCase(o.matchCase);
+							setWholeWords(o.wholeWords);
+						}}
 					/>
 				) : undefined
 			}
 		>
 			<div
 				ref={container}
-				className={`${s.container} ${darkPages ? s.dark : ""}`}
+				className={`${s.container} ${across && fits ? s.snap : ""}`}
+				data-flow={across ? "across" : undefined}
+				data-one={across && spread ? "" : undefined}
 				data-testid="pdf-scroll"
 				tabIndex={-1}
 			>
@@ -883,8 +1540,21 @@ export default function PdfView({
 			<Scrubber
 				of={container}
 				label={`${page} / ${pages}`}
-				enabled={status === "ready"}
+				enabled={status === "ready" && !across}
 			/>
+			{steps.back > 0 && trailHint && (
+				<button
+					type="button"
+					className={s.trail}
+					onClick={() => step(-1)}
+					data-testid="pdf-trail"
+				>
+					<ArrowLeft size={16} className="pw-flip" />
+					{t("Back to page {n}", {
+						n: trail.current.back[trail.current.back.length - 1]?.page ?? 1,
+					})}
+				</button>
+			)}
 
 			{status === "loading" && (
 				<StateView>
@@ -902,12 +1572,23 @@ export default function PdfView({
 				</StateView>
 			)}
 
+			{filling && doc && (
+				<FillSign
+					doc={doc}
+					name={name}
+					password={passwordRef.current}
+					canMark={rights.mark}
+					onClose={() => setFilling(false)}
+					onSaved={(saved) => announceSaved(saved, file?.openOver)}
+				/>
+			)}
 			<PasswordDialog
 				open={status === "password"}
 				name={name}
 				wrong={passwordWrong}
 				onSubmit={(password) => {
 					setStatus("loading");
+					passwordRef.current = password;
 					unlock.current?.(password);
 				}}
 				onCancel={onClose}
@@ -1017,7 +1698,47 @@ export default function PdfView({
 					}}
 				/>
 			</Sheet>
+
+			<Sheet
+				open={extra !== null}
+				title={
+					extra === "comments"
+						? t("Comments")
+						: extra === "attachments"
+							? t("Attachments")
+							: t("Layers")
+				}
+				onClose={() => setExtra(null)}
+				wide
+				testId="pdf-extra"
+			>
+				{extra === "comments" && doc && (
+					<Comments doc={doc} onPick={showComment} />
+				)}
+				{extra === "attachments" && (
+					<AttachmentList items={attachments} onOpen={openAttachment} />
+				)}
+				{extra === "layers" && (
+					<LayerList items={layers} onToggle={toggleLayer} />
+				)}
+			</Sheet>
 		</Shell>
+	);
+}
+
+/** The comments of a document, read once this list is first shown. */
+function Comments({
+	doc,
+	onPick,
+	compact,
+}: {
+	doc: PDFDocumentProxy;
+	onPick: (item: Comment) => void;
+	compact?: boolean;
+}) {
+	const { items, done } = useComments(doc, true);
+	return (
+		<CommentList items={items} done={done} onPick={onPick} compact={compact} />
 	);
 }
 

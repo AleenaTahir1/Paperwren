@@ -31,7 +31,15 @@ import {
 	shellStyles,
 } from "./Shell";
 import { type Heading, HeadingList, readHeadings } from "./headings";
-import { useScrollMemory, useZoom, useZoomLevel } from "./hooks";
+import {
+	useOfficeDetails,
+	useScrollBookmarks,
+	useScrollMemory,
+	useTapToTurn,
+	useZoom,
+	useZoomLevel,
+} from "./hooks";
+import { domSpeech } from "./speechSources";
 import type { ViewerProps } from "./types";
 import { useDomFind } from "./useDomFind";
 
@@ -71,6 +79,7 @@ export default function DocxView({
 	active,
 }: ViewerProps) {
 	const { settings, update } = useSettings();
+	const details = useOfficeDetails(data, format);
 	const reading = settings.readingView;
 	const scroller = useRef<HTMLDivElement>(null);
 	const stage = useRef<HTMLDivElement>(null);
@@ -172,9 +181,11 @@ export default function DocxView({
 		min: MIN_ZOOM,
 		max: MAX_ZOOM,
 		active,
-		onTap: () => setChromeHidden((h) => !h),
+		onTap: (_target, x) => tapTurn(x) || setChromeHidden((h) => !h),
 	});
 	useScrollMemory(scroller, status === "ready", position, onPosition, zoom);
+	const marks = useScrollBookmarks(scroller, host);
+	const speech = useMemo(() => domSpeech(scroller, host), []);
 
 	// Which page the reader is on: the one under a line a third of the
 	// way down the screen (the last one, at the very end).
@@ -228,6 +239,11 @@ export default function DocxView({
 	};
 
 	const paged = !reading && pageCount > 0;
+	// A tap on a side turns a page of paper, or scrolls the flowing text.
+	const tapTurn = useTapToTurn(
+		scroller,
+		paged ? (dir) => goTo(page + dir) : undefined,
+	);
 	const side = useMemo<SideTab[]>(
 		() =>
 			status === "ready"
@@ -235,6 +251,7 @@ export default function DocxView({
 						{
 							id: "contents",
 							label: t("Contents"),
+							icon: <ListTree size={16} />,
 							content: (
 								<HeadingList
 									headings={headings}
@@ -264,6 +281,10 @@ export default function DocxView({
 			hud={hud}
 			progressOf={scroller}
 			side={side}
+			paper
+			bookmarks={status === "ready" ? marks : undefined}
+			details={details}
+			speech={status === "ready" ? speech : undefined}
 			onStep={paged ? (dir) => goTo(page + dir) : undefined}
 			chromeHidden={chromeHidden && !find.open}
 			onFind={status === "ready" ? find.start : undefined}
@@ -368,6 +389,8 @@ export default function DocxView({
 						onQuery={find.setQuery}
 						onStep={find.step}
 						onClose={find.close}
+						options={find.options}
+						onOptions={find.setOptions}
 					/>
 				) : undefined
 			}
@@ -421,7 +444,7 @@ export default function DocxView({
 				<div ref={stage} className={`${s.stage} ${reading ? s.reflow : ""}`}>
 					<div
 						ref={pages}
-						className={`${s.pages} ${s.docx} ${reading ? s.reading : ""}`}
+						className={`${s.pages} ${s.docx} ${reading ? `${s.reading} pw-reading` : ""}`}
 						style={{ zoom: scale }}
 					>
 						<div ref={host} />

@@ -5,8 +5,10 @@ import { language, subscribe, t } from "@/lib/i18n";
 import { isFullscreenKey } from "@/lib/keys";
 import { FIND_EVENT, SELECT_ALL_EVENT } from "@/lib/signals";
 import type { OpenRequest, RecentEntry } from "@/lib/types";
+import { type Tab, TabStrip } from "@/screens/TabStrip";
 import { Home } from "@/screens/home/Home";
 import { SettingsScreen } from "@/screens/settings/Settings";
+import type { ToolId } from "@/screens/tools/ToolsScreen";
 import { NavigationProvider, useNav } from "@/state/navigation";
 import { RecentsProvider, useRecents } from "@/state/recents";
 import { SettingsProvider } from "@/state/settings";
@@ -18,6 +20,7 @@ import {
 	SheetItem,
 	ToastHost,
 	WindowControls,
+	modalOpen,
 	toast,
 } from "@/ui";
 import { Copy, Search, TextSelect } from "lucide-react";
@@ -34,10 +37,18 @@ import {
 // The viewer engines (pdf.js, docx-preview, the grid) are the bulk of
 // the code; Home must not pay for them at cold start.
 const ViewerScreen = lazy(() => import("@/screens/viewer/ViewerScreen"));
+const ToolsScreen = lazy(() =>
+	import("@/screens/tools/ToolsScreen").then((m) => ({
+		default: m.ToolsScreen,
+	})),
+);
 // Shown once; never part of a regular launch's bundle.
 const Onboarding = lazy(() => import("@/screens/onboarding/Onboarding"));
 
 const ONBOARDED_KEY = "onboarded";
+/** Tabs kept drawn besides the one on show, so a switch back is
+ * instant; older ones are read again when shown. */
+const KEPT_TABS = 4;
 
 declare global {
 	interface Window {
@@ -49,7 +60,7 @@ function Root() {
 	// Every screen is drawn from here, so a change of language redraws
 	// them all.
 	const lang = useSyncExternalStore(subscribe, language);
-	const { state, push, replace, back } = useNav();
+	const { state, push, replace, back, close, reset } = useNav();
 	const { entries, remove } = useRecents();
 	const nextKey = useRef(1);
 	const picking = useRef(false);
@@ -66,11 +77,104 @@ function Root() {
 		backend.storeSet(ONBOARDED_KEY, true).catch(() => {});
 	}, []);
 
-	const open = useCallback(
-		(request: OpenRequest) =>
-			push({ kind: "viewer", request, key: nextKey.current++ }),
-		[push],
+	// --- a desktop's tabs: every document opened in the window, one on
+	// show (or none, on Home). A phone stacks documents instead. ---
+	const [tabs, setTabs] = useState<Tab[]>([]);
+	const tabsRef = useRef(tabs);
+	tabsRef.current = tabs;
+	/** Tabs by when they were last on show, the latest last. */
+	const used = useRef<number[]>([]);
+	/** A change of tab is under way; anything else that takes the
+	 * document away (Back) closes its tab. */
+	const leaving = useRef(false);
+	const top = state.screens[state.screens.length - 1];
+	const current = top?.kind === "viewer" ? top.key : null;
+
+	const show = useCallback(
+		(tab: Tab) => {
+			used.current = [...used.current.filter((k) => k !== tab.key), tab.key];
+			leaving.current = true;
+			reset([{ kind: "viewer", request: tab.request, key: tab.key }]);
+		},
+		[reset],
 	);
+	const closeTab = useCallback(
+		(key: number) => {
+			const rest = tabsRef.current.filter((tab) => tab.key !== key);
+			setTabs(rest);
+			tabsRef.current = rest;
+			used.current = used.current.filter((k) => k !== key);
+			const shown = stateRef.current.screens.some(
+				(screen) => screen.kind === "viewer" && screen.key === key,
+			);
+			if (!shown) return;
+			// The one shown last before it takes its place, as a browser does.
+			const next = [...used.current]
+				.reverse()
+				.map((k) => rest.find((tab) => tab.key === k))
+				.find(Boolean);
+			if (next) show(next);
+			else {
+				leaving.current = true;
+				reset([]);
+			}
+		},
+		[show, reset],
+	);
+	const goHome = useCallback(() => {
+		leaving.current = true;
+		reset([]);
+	}, [reset]);
+
+	const open = useCallback(
+		(request: OpenRequest) => {
+			if (!isDesktop) {
+				push({ kind: "viewer", request, key: nextKey.current++ });
+				return;
+			}
+			// A document already open is shown again, not opened twice.
+			const already = tabsRef.current.find(
+				(tab) => tab.request.id === request.id,
+			);
+			if (already) return show(already);
+			const tab = { key: nextKey.current++, request };
+			tabsRef.current = [...tabsRef.current, tab];
+			setTabs(tabsRef.current);
+			show(tab);
+		},
+		[push, show],
+	);
+	const replaceTab = useCallback(
+		(key: number, request: OpenRequest) => {
+			const fresh = { key: nextKey.current++, request };
+			tabsRef.current = tabsRef.current.map((tab) =>
+				tab.key === key ? fresh : tab,
+			);
+			setTabs(tabsRef.current);
+			used.current = used.current.filter((k) => k !== key);
+			show(fresh);
+		},
+		[show],
+	);
+
+	// Back (Alt+Left, a mouse's back button) took the document away:
+	// that closes its tab, as the arrow in the bar does.
+	const shownBefore = useRef<number | null>(null);
+	useEffect(() => {
+		const was = shownBefore.current;
+		shownBefore.current = current;
+		if (!isDesktop || leaving.current) {
+			leaving.current = false;
+			return;
+		}
+		const stillOpen = state.screens.some(
+			(screen) => screen.kind === "viewer" && screen.key === was,
+		);
+		if (was !== null && !stillOpen) closeTab(was);
+	}, [current, state.screens, closeTab]);
+
+	const stateRef = useRef(state);
+	stateRef.current = state;
 
 	const pick = useCallback(
 		async (replacing?: RecentEntry) => {
@@ -124,15 +228,13 @@ function Root() {
 		return () => window.removeEventListener("paperwren-file", drain);
 	}, [open, finishWelcome]);
 
-	// Desktop: files handed to the window open straight away, the first
-	// of them when there are several.
+	// Desktop: files handed to the window open straight away, a tab
+	// each.
 	const openGiven = useCallback(
 		(requests: OpenRequest[]) => {
 			if (!requests.length) return;
 			finishWelcome();
-			open(requests[0]);
-			if (requests.length > 1)
-				toast(t("Opened the first of {n} files", { n: requests.length }));
+			for (const request of requests) open(request);
 		},
 		[open, finishWelcome],
 	);
@@ -158,6 +260,8 @@ function Root() {
 	// so they are not let through (a viewer's own Ctrl+F still opens its
 	// find bar).
 	const deep = state.screens.length > 1;
+	const shownKey = useRef(current);
+	shownKey.current = current;
 	useEffect(() => {
 		const onKey = (e: KeyboardEvent) => {
 			const mod = (e.ctrlKey || e.metaKey) && !e.altKey;
@@ -170,7 +274,28 @@ function Root() {
 				pick();
 			} else if (mod && !e.shiftKey && key === "w" && deep) {
 				e.preventDefault();
-				back();
+				if (shownKey.current !== null) closeTab(shownKey.current);
+				else close();
+			} else if (
+				isDesktop &&
+				e.ctrlKey &&
+				!e.altKey &&
+				(e.key === "Tab" || /^[1-9]$/.test(e.key)) &&
+				tabsRef.current.length > 1 &&
+				!modalOpen()
+			) {
+				// Ctrl+Tab and Ctrl+Shift+Tab step through the tabs; Ctrl+1 to
+				// Ctrl+8 go to one, Ctrl+9 to the last.
+				e.preventDefault();
+				const list = tabsRef.current;
+				const at = list.findIndex((tab) => tab.key === shownKey.current);
+				const to =
+					e.key === "Tab"
+						? (at + (e.shiftKey ? -1 : 1) + list.length) % list.length
+						: e.key === "9"
+							? list.length - 1
+							: Math.min(Number(e.key) - 1, list.length - 1);
+				show(list[to]);
 			} else if (
 				e.altKey &&
 				!e.ctrlKey &&
@@ -207,7 +332,7 @@ function Root() {
 		};
 		window.addEventListener("keydown", onKey);
 		return () => window.removeEventListener("keydown", onKey);
-	}, [pick, back, deep]);
+	}, [pick, back, close, closeTab, show, deep]);
 
 	// Ctrl+wheel, which is also how a trackpad pinch arrives: the same
 	// rule as the zoom keys above. A viewer takes it for its document
@@ -222,6 +347,16 @@ function Root() {
 	}, []);
 
 	useEffect(() => (isDesktop ? watchFullscreen() : undefined), []);
+
+	// The row of tabs: while two documents or more are open, or one is
+	// open behind Home or Settings.
+	const stripShown =
+		isDesktop &&
+		!welcome &&
+		(tabs.length > 1 || (tabs.length > 0 && current === null));
+	useEffect(() => {
+		document.documentElement.classList.toggle("tabbed", stripShown);
+	}, [stripShown]);
 
 	// A Mac's menu bar, in the app's language. Its commands press the
 	// keys above; Settings has no key of its own to press. Only a Mac
@@ -306,15 +441,27 @@ function Root() {
 				onOpenRecent={openRecent}
 				onOpenRequest={open}
 				onSettings={() => push({ kind: "settings" })}
+				onTools={() => push({ kind: "tools" })}
 			/>
 			{state.screens.map((screen, i) => {
-				const top = i === state.screens.length - 1;
+				const atTop = i === state.screens.length - 1;
 				if (screen.kind === "settings")
 					return <SettingsScreen key="settings" />;
+				if (screen.kind === "tools")
+					return (
+						<Suspense key={`tools-${i}`} fallback={null}>
+							<ToolsScreen
+								start={screen.tool as ToolId | undefined}
+								file={screen.file}
+								onOpen={open}
+							/>
+						</Suspense>
+					);
 				// A document under another one (several shared at once, a file
 				// dropped while reading) is not kept in memory: Back opens it
-				// again, where the reader left it.
-				if (screen.kind !== "viewer" || !top) return null;
+				// again, where the reader left it. A desktop draws its tabs
+				// below instead.
+				if (isDesktop || screen.kind !== "viewer" || !atTop) return null;
 				return (
 					<Suspense
 						key={screen.key}
@@ -322,11 +469,13 @@ function Root() {
 					>
 						<ViewerScreen
 							request={screen.request}
-							active={top}
-							onClose={back}
+							active={atTop}
+							onClose={close}
 							onReplace={(request) =>
 								replace({ kind: "viewer", request, key: nextKey.current++ })
 							}
+							onOpen={open}
+							onTools={(tool, file) => push({ kind: "tools", tool, file })}
 							onLocate={() => {
 								const entry = entriesRef.current.find(
 									(e) => e.id === screen.request.id,
@@ -338,6 +487,49 @@ function Root() {
 					</Suspense>
 				);
 			})}
+			{isDesktop &&
+				tabs
+					.filter(
+						(tab) =>
+							tab.key === current ||
+							used.current.slice(-KEPT_TABS).includes(tab.key),
+					)
+					.map((tab) => (
+						<Suspense
+							key={tab.key}
+							fallback={
+								tab.key === current ? (
+									<OpeningView name={tab.request.name} />
+								) : null
+							}
+						>
+							<ViewerScreen
+								request={tab.request}
+								// Under Settings, or behind another tab: kept, not shown.
+								active={tab.key === current && top?.kind === "viewer"}
+								onClose={() => closeTab(tab.key)}
+								onReplace={(request) => replaceTab(tab.key, request)}
+								onOpen={open}
+								onTools={(tool, file) => push({ kind: "tools", tool, file })}
+								onLocate={() => {
+									const entry = entriesRef.current.find(
+										(e) => e.id === tab.request.id,
+									);
+									closeTab(tab.key);
+									pick(entry);
+								}}
+							/>
+						</Suspense>
+					))}
+			{stripShown && (
+				<TabStrip
+					tabs={tabs}
+					current={current}
+					onShow={show}
+					onClose={(tab) => closeTab(tab.key)}
+					onHome={goHome}
+				/>
+			)}
 			{welcome && (
 				<Suspense fallback={null}>
 					<Onboarding onDone={finishWelcome} />
