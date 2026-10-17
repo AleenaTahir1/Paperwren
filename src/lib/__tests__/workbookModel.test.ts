@@ -228,6 +228,7 @@ describe("workbook meaning (audit XLS-04)", () => {
 			styles: [{ wrap: true }],
 			sheets: new Map([["S1", new Map([["A1", 0]])]]),
 			freeze: new Map(),
+			gridless: new Set(),
 			anchors: new Map(),
 			media: [],
 			accents: [],

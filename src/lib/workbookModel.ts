@@ -25,6 +25,8 @@
 import type * as XLSXNamespace from "xlsx";
 import {
 	type CellStyle,
+	type CondLook,
+	type CondRule,
 	type WorkbookStyles,
 	isDefaultInk,
 } from "./sheetStyles";
@@ -106,6 +108,8 @@ export interface GridSheet {
 	/** Rows and columns the file freezes at the top / left, counted in
 	 * VISIBLE rows and columns. */
 	freeze?: { rows: number; cols: number };
+	/** False when the file draws the sheet without gridlines. */
+	gridlines?: false;
 	/** Pictures and charts on the sheet, in sheet pixels. */
 	objects?: GridObject[];
 }
@@ -263,6 +267,168 @@ function cellValue(cell: CellObject): {
 	return { value };
 }
 
+/** Past this many rule-and-cell checks a sheet's conditional formatting
+ * is left out, so a huge sheet still opens at once. */
+const MAX_COND_CHECKS = 4_000_000;
+
+function mixColor(a: string, b: string, share: number): string {
+	const ch = (hex: string, i: number) =>
+		Number.parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16);
+	return `#${[0, 1, 2]
+		.map((i) =>
+			Math.round(ch(a, i) + (ch(b, i) - ch(a, i)) * share)
+				.toString(16)
+				.padStart(2, "0"),
+		)
+		.join("")}`;
+}
+
+/** Whether a compare or text rule matches a cell's stored value. */
+function matchesRule(rule: CondRule, raw: unknown, shown: string): boolean {
+	if (rule.kind === "text") {
+		const text = shown.toLocaleLowerCase();
+		const want = rule.text.toLocaleLowerCase();
+		if (rule.operator === "containsText") return text.includes(want);
+		if (rule.operator === "notContainsText") return !text.includes(want);
+		if (rule.operator === "beginsWith") return text.startsWith(want);
+		return text.endsWith(want);
+	}
+	if (rule.kind !== "compare") return false;
+	const [a, b] = rule.values;
+	if (typeof a === "string") {
+		const same = shown.toLocaleLowerCase() === a.toLocaleLowerCase();
+		return rule.operator === "equal"
+			? same
+			: rule.operator === "notEqual"
+				? !same
+				: false;
+	}
+	if (typeof raw !== "number") return false;
+	const low = typeof b === "number" ? Math.min(a, b) : a;
+	const high = typeof b === "number" ? Math.max(a, b) : a;
+	switch (rule.operator) {
+		case "equal":
+			return raw === a;
+		case "notEqual":
+			return raw !== a;
+		case "greaterThan":
+			return raw > a;
+		case "lessThan":
+			return raw < a;
+		case "greaterThanOrEqual":
+			return raw >= a;
+		case "lessThanOrEqual":
+			return raw <= a;
+		case "between":
+			return raw >= low && raw <= high;
+		case "notBetween":
+			return raw < low || raw > high;
+	}
+	return false;
+}
+
+/**
+ * A sheet's conditional formatting, judged once against the values
+ * the file stored: each matching cell gets its own style, the rules of
+ * higher priority winning, as in Excel. Formulas are never run, so a
+ * rule that needs one is not applied.
+ */
+function applyConditional(
+	rules: CondRule[],
+	cells: Array<[number, number, GridCell]>,
+	rowOrigins: number[],
+	colOrigins: number[],
+	rawAt: (r: number, c: number) => unknown,
+	styles: CellStyle[],
+	made: Map<string, number>,
+) {
+	if (rules.length * cells.length > MAX_COND_CHECKS) return;
+	const inside = (rule: CondRule, r: number, c: number) =>
+		rule.ranges.some(
+			(box) => r >= box.r0 && r <= box.r1 && c >= box.c0 && c <= box.c1,
+		);
+	// Colour scales run from the lowest number in their ranges to the highest.
+	const scales = new Map<CondRule, number[]>();
+	for (const rule of rules) {
+		if (rule.kind !== "scale") continue;
+		const values: number[] = [];
+		for (const [vr, vc] of cells) {
+			const r = rowOrigins[vr];
+			const c = colOrigins[vc];
+			const raw = rawAt(r, c);
+			if (typeof raw === "number" && inside(rule, r, c)) values.push(raw);
+		}
+		scales.set(
+			rule,
+			values.sort((x, y) => x - y),
+		);
+	}
+	const stopAt = (
+		stop: Extract<CondRule, { kind: "scale" }>["stops"][number],
+		sorted: number[],
+	) => {
+		const min = sorted[0];
+		const max = sorted[sorted.length - 1];
+		const v = stop.value ?? 0;
+		if (stop.type === "min") return min;
+		if (stop.type === "max") return max;
+		if (stop.type === "percent") return min + ((max - min) * v) / 100;
+		if (stop.type === "percentile")
+			return sorted[
+				Math.min(
+					sorted.length - 1,
+					Math.max(0, Math.round(((sorted.length - 1) * v) / 100)),
+				)
+			];
+		return v;
+	};
+	for (const entry of cells) {
+		const [vr, vc, cell] = entry;
+		const r = rowOrigins[vr];
+		const c = colOrigins[vc];
+		const raw = rawAt(r, c);
+		const look: CondLook = {};
+		for (const rule of rules) {
+			if (!inside(rule, r, c)) continue;
+			let hit = false;
+			if (rule.kind === "scale") {
+				const sorted = scales.get(rule) ?? [];
+				if (typeof raw !== "number" || !sorted.length) continue;
+				const at = rule.stops.map((stop) => stopAt(stop, sorted));
+				let color = rule.stops[0].color;
+				for (let i = 1; i < at.length; i++) {
+					if (raw <= at[i] || i === at.length - 1) {
+						const span = at[i] - at[i - 1];
+						const share = span > 0 ? (raw - at[i - 1]) / span : 1;
+						color = mixColor(
+							rule.stops[i - 1].color,
+							rule.stops[i].color,
+							Math.max(0, Math.min(1, share)),
+						);
+						break;
+					}
+				}
+				look.fill ??= color;
+				hit = true;
+			} else if (cell.value && matchesRule(rule, raw, cell.value)) {
+				for (const k of Object.keys(rule.look) as Array<keyof CondLook>)
+					if (look[k] === undefined)
+						(look as Record<string, unknown>)[k] = rule.look[k];
+				hit = true;
+			}
+			if (hit && rule.stop) break;
+		}
+		if (!Object.keys(look).length) continue;
+		const id = `${cell.style ?? ""}|${JSON.stringify(look)}`;
+		let index = made.get(id);
+		if (index === undefined) {
+			index = styles.push({ ...(styles[cell.style ?? -1] ?? {}), ...look }) - 1;
+			made.set(id, index);
+		}
+		entry[2] = { ...cell, style: index };
+	}
+}
+
 export function parseWorkbook(
 	XLSX: typeof XLSXNamespace,
 	data: ArrayBuffer | string,
@@ -295,6 +461,8 @@ export function parseWorkbook(
 		const { color: _, ...rest } = s;
 		return rest;
 	});
+	// The styles conditional formatting adds, by what they combine.
+	const made = new Map<string, number>();
 	const styled = (i: number | undefined) =>
 		i !== undefined && styles && Object.keys(styles[i] ?? {}).length > 0
 			? i
@@ -493,6 +661,19 @@ export function parseWorkbook(
 			}
 		}
 
+		const rules = authored?.conditional?.get(sheetName);
+		if (rules && styles)
+			applyConditional(
+				rules,
+				cells,
+				rowOrigins,
+				colOrigins,
+				(r, c) =>
+					(ws[XLSX.utils.encode_cell({ r, c })] as CellObject | undefined)?.v,
+				styles,
+				made,
+			);
+
 		// A file that says nothing about its columns (CSV, most
 		// OpenDocument sheets) gets each one as wide as its text, within
 		// reason, instead of a row of equal boxes that cut everything off.
@@ -635,6 +816,7 @@ export function parseWorkbook(
 			hiddenSheet: hidden || undefined,
 			freeze:
 				freeze && (freeze.rows > 0 || freeze.cols > 0) ? freeze : undefined,
+			gridlines: authored?.gridless.has(sheetName) ? false : undefined,
 			objects: objects.length ? objects : undefined,
 		});
 	}

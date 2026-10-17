@@ -11,7 +11,7 @@ import { prettyJson } from "@/lib/json";
 import { jsonTree } from "@/lib/jsonTree";
 import { drawMaths, markdownMath } from "@/lib/markdownMath";
 import { sheet } from "@/lib/print";
-import { decodeText } from "@/lib/text";
+import { ENCODINGS, decodeText } from "@/lib/text";
 import { prettyXml } from "@/lib/xml";
 import { useSettings } from "@/state/settings";
 import { Button, IconButton, Sheet, SheetItem } from "@/ui";
@@ -479,19 +479,7 @@ export default function TextView({
 				title={t("Text encoding")}
 				onClose={() => setEncodingOpen(false)}
 			>
-				{[
-					"auto",
-					"utf-8",
-					"utf-16le",
-					"utf-16be",
-					"windows-1252",
-					"windows-1251",
-					"windows-1256",
-					"shift-jis",
-					"gb18030",
-					"big5",
-					"euc-kr",
-				].map((value) => (
+				{ENCODINGS.map((value) => (
 					<SheetItem
 						key={value}
 						checked={encoding === value}

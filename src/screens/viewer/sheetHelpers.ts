@@ -490,3 +490,106 @@ export function printSheet(
 	wrap.prepend(title);
 	root.appendChild(wrap);
 }
+
+/** How the reader has the rows of a sheet laid out, without changing
+ * the file: sorted by a column, and showing only the rows whose value
+ * in a column holds some text. */
+export interface Arrangement {
+	sort?: { col: number; dir: 1 | -1 };
+	filter?: { col: number; text: string };
+}
+
+/**
+ * The rows that stay put above sorted or filtered ones: the frozen
+ * rows, or else a first row of labels (text over data, as a header is
+ * written).
+ */
+export function headerRows(sheet: Sheet): number {
+	if (sheet.freeze?.rows) return sheet.freeze.rows;
+	if (sheet.rows < 2) return 0;
+	let labels = 0;
+	for (let c = 0; c < sheet.cols; c++) {
+		const value = sheet.cells.get(key(0, c))?.value;
+		if (!value) continue;
+		if (toNumber(value) !== null) return 0;
+		labels++;
+	}
+	return labels ? 1 : 0;
+}
+
+const collator = new Intl.Collator(undefined, {
+	numeric: true,
+	sensitivity: "base",
+});
+
+/**
+ * The sheet with its rows sorted and filtered as `how` says. Rows keep
+ * their own addresses (`rowOrigins`), so the cell detail still names
+ * the cell as the file has it. Merged cells below the header cannot
+ * travel with a sort and are drawn apart; pictures and charts, which
+ * sit over particular rows, are left out while the rows are moved.
+ */
+export function arrange(sheet: Sheet, how: Arrangement): Sheet {
+	const { sort, filter } = how;
+	const needle = filter?.text.trim().toLocaleLowerCase();
+	if (!sort && !needle) return sheet;
+	const top = headerRows(sheet);
+	const valueAt = (r: number, c: number) =>
+		sheet.cells.get(key(r, c))?.value ?? "";
+	let rows: number[] = [];
+	for (let r = top; r < sheet.rows; r++) rows.push(r);
+	if (needle && filter)
+		rows = rows.filter((r) =>
+			valueAt(r, filter.col).toLocaleLowerCase().includes(needle),
+		);
+	if (sort) {
+		const keys = new Map<number, { n: number | null; text: string }>();
+		for (const r of rows) {
+			const text = valueAt(r, sort.col);
+			keys.set(r, { n: toNumber(text), text });
+		}
+		rows.sort((a, b) => {
+			const x = keys.get(a);
+			const y = keys.get(b);
+			if (!x || !y) return 0;
+			// Empty cells go last whichever way the column is sorted.
+			if (!x.text || !y.text) return x.text ? -1 : y.text ? 1 : a - b;
+			// Numbers come before text, as in a spreadsheet.
+			const order =
+				x.n !== null && y.n !== null
+					? x.n - y.n
+					: x.n !== null
+						? -1
+						: y.n !== null
+							? 1
+							: collator.compare(x.text, y.text);
+			return order * sort.dir || a - b;
+		});
+	}
+	const order = [...Array(top).keys(), ...rows];
+	// A filter that leaves nothing still leaves one empty row to draw.
+	const blank = !order.length;
+	if (blank) order.push(0);
+	const at = new Map<number, number>();
+	order.forEach((r, i) => at.set(r, i));
+	const cells = new Map<number, GridCell>();
+	if (!blank)
+		for (const [k, cell] of sheet.cells) {
+			const r = at.get(Math.floor(k / 1024));
+			if (r !== undefined) cells.set(key(r, k % 1024), cell);
+		}
+	const rowHeights = order.map((r) => sheet.rowHeights[r]);
+	const rowPrefix = [0];
+	for (const h of rowHeights)
+		rowPrefix.push(rowPrefix[rowPrefix.length - 1] + h);
+	return {
+		...sheet,
+		rows: order.length,
+		rowHeights,
+		rowPrefix,
+		cells,
+		rowOrigins: order.map((r) => sheet.rowOrigins[r] ?? r),
+		merges: sheet.merges.filter((m) => m.r1 < top),
+		objects: undefined,
+	};
+}

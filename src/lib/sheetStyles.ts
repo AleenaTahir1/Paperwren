@@ -2,7 +2,8 @@
  * What SheetJS Community does not expose about an .xlsx / .xlsm
  * workbook, read straight from the package: cell styling (font
  * emphasis and colour, fills, borders, alignment, wrapping), frozen
- * panes, and the pictures and charts placed on each sheet.
+ * panes, gridlines, conditional formatting, and the pictures and charts
+ * placed on each sheet.
  *
  * Runs inside the parse worker, where there is no DOMParser, so the
  * few elements needed are picked out with bounded regular expressions.
@@ -31,6 +32,51 @@ export interface CellStyle {
 	/** Authored borders per side, each a CSS border value. */
 	border?: { t?: string; r?: string; b?: string; l?: string };
 }
+
+/** How a conditional rule changes a cell it matches. */
+export type CondLook = Pick<
+	CellStyle,
+	"fill" | "color" | "bold" | "italic" | "underline" | "strike"
+>;
+
+/** A cell range in the file's own 0-based rows and columns. */
+export interface CellBox {
+	r0: number;
+	c0: number;
+	r1: number;
+	c1: number;
+}
+
+/** One conditional-formatting rule of a sheet, of the kinds a viewer
+ * can judge without a formula engine. */
+export type CondRule = {
+	ranges: CellBox[];
+	priority: number;
+	stop?: boolean;
+} & (
+	| {
+			kind: "compare";
+			operator: string;
+			/** Numbers, or text (unquoted) to compare equal to. */
+			values: Array<number | string>;
+			look: CondLook;
+	  }
+	| {
+			kind: "text";
+			operator: "containsText" | "notContainsText" | "beginsWith" | "endsWith";
+			text: string;
+			look: CondLook;
+	  }
+	| {
+			kind: "scale";
+			/** Two or three stops, lowest first. */
+			stops: Array<{
+				type: "min" | "max" | "num" | "percent" | "percentile";
+				value?: number;
+				color: string;
+			}>;
+	  }
+);
 
 /** A cell position plus an offset into the cell, in EMU. */
 export interface AnchorPoint {
@@ -61,6 +107,10 @@ export interface WorkbookStyles {
 	/** Sheet name -> rows and columns frozen at the top / left (as
 	 * counted in the file, hidden ones included). */
 	freeze: Map<string, { rows: number; cols: number }>;
+	/** Sheets the file draws without gridlines. */
+	gridless: Set<string>;
+	/** Sheet name -> its conditional-formatting rules. */
+	conditional?: Map<string, CondRule[]>;
 	/** Sheet name -> pictures and charts on it. */
 	anchors: Map<string, SheetAnchor[]>;
 	media: Array<{ bytes: Uint8Array; type: string }>;
@@ -322,6 +372,178 @@ function readStyleTable(xml: string, theme: string[]): CellStyle[] {
 	});
 }
 
+/** The looks conditional rules apply (styles.xml's dxfs). A dxf's
+ * solid fill keeps its colour in bgColor, unlike a cell style's. */
+function readDxfs(xml: string, theme: string[]): CondLook[] {
+	return section(xml, "dxfs", "dxf").map((dxf) => {
+		const font = /<font\b[\s\S]*?<\/font>/.exec(dxf)?.[0] ?? "";
+		const pattern = tagOf(dxf, "patternFill");
+		const look: CondLook = {
+			color: readColor(tagOf(font, "color"), theme),
+			bold: truthy(tagOf(font, "b")) || undefined,
+			italic: truthy(tagOf(font, "i")) || undefined,
+			strike: truthy(tagOf(font, "strike")) || undefined,
+			underline:
+				(tagOf(font, "u") !== undefined &&
+					!/\sval="none"/.test(tagOf(font, "u") ?? "")) ||
+				undefined,
+			fill:
+				pattern && attr(pattern, "patternType") === "none"
+					? undefined
+					: (readColor(tagOf(dxf, "bgColor"), theme) ??
+						readColor(tagOf(dxf, "fgColor"), theme)),
+		};
+		for (const k of Object.keys(look) as Array<keyof CondLook>)
+			if (look[k] === undefined) delete look[k];
+		return look;
+	});
+}
+
+/** "B2:D9 F1" as boxes, in 0-based rows and columns. */
+export function readBoxes(sqref: string): CellBox[] {
+	const col = (letters: string) =>
+		[...letters].reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0) - 1;
+	const out: CellBox[] = [];
+	for (const part of sqref.trim().split(/\s+/).slice(0, 64)) {
+		const m = /^\$?([A-Z]{1,3})\$?(\d+)(?::\$?([A-Z]{1,3})\$?(\d+))?$/.exec(
+			part,
+		);
+		if (!m) continue;
+		const a = { r: Number(m[2]) - 1, c: col(m[1]) };
+		const b = m[3] ? { r: Number(m[4]) - 1, c: col(m[3]) } : a;
+		out.push({
+			r0: Math.min(a.r, b.r),
+			c0: Math.min(a.c, b.c),
+			r1: Math.max(a.r, b.r),
+			c1: Math.max(a.c, b.c),
+		});
+	}
+	return out;
+}
+
+const MAX_RULES = 200;
+const COMPARE = new Set([
+	"equal",
+	"notEqual",
+	"greaterThan",
+	"lessThan",
+	"greaterThanOrEqual",
+	"lessThanOrEqual",
+	"between",
+	"notBetween",
+]);
+
+/** A rule's formula when it is a constant: a number or quoted text.
+ * Anything else (a cell reference, a function) needs a formula engine,
+ * and the rule is left out. */
+function constant(formula: string): number | string | undefined {
+	const f = decodeXml(formula).trim();
+	if (/^-?\d+(\.\d+)?(E[-+]?\d+)?$/i.test(f)) return Number(f);
+	const quoted = /^"((?:[^"]|"")*)"$/.exec(f);
+	return quoted ? quoted[1].replace(/""/g, '"') : undefined;
+}
+
+/** The conditional-formatting rules of one sheet's XML. */
+export function readConditional(
+	xml: string,
+	dxfs: CondLook[],
+	theme: string[],
+): CondRule[] {
+	const rules: CondRule[] = [];
+	const blocks =
+		xml.match(
+			/<conditionalFormatting\b[^>]*>[\s\S]*?<\/conditionalFormatting>/g,
+		) ?? [];
+	for (const block of blocks) {
+		const ranges = readBoxes(
+			attr(tagOf(block, "conditionalFormatting") ?? "", "sqref") ?? "",
+		);
+		if (!ranges.length) continue;
+		for (const rule of block.match(
+			/<cfRule\b[^>]*?(?:\/>|>[\s\S]*?<\/cfRule>)/g,
+		) ?? []) {
+			if (rules.length >= MAX_RULES) return rules;
+			const head = tagOf(rule, "cfRule") ?? "";
+			const type = attr(head, "type");
+			const base = {
+				ranges,
+				priority: Number(attr(head, "priority")) || rules.length + 1,
+				stop: /^(1|true)$/.test(attr(head, "stopIfTrue") ?? "") || undefined,
+			};
+			const look = dxfs[Number(attr(head, "dxfId") ?? -1)];
+			if (type === "cellIs" && look) {
+				const operator = attr(head, "operator") ?? "";
+				const values = (
+					rule.match(/<formula>([\s\S]*?)<\/formula>/g) ?? []
+				).map((f) => constant(f.replace(/<\/?formula>/g, "")));
+				if (
+					COMPARE.has(operator) &&
+					values.length &&
+					values.every((v) => v !== undefined)
+				)
+					rules.push({
+						...base,
+						kind: "compare",
+						operator,
+						values: values as Array<number | string>,
+						look,
+					});
+			} else if (
+				(type === "containsText" ||
+					type === "notContainsText" ||
+					type === "beginsWith" ||
+					type === "endsWith") &&
+				look
+			) {
+				const text = decodeXml(attr(head, "text") ?? "");
+				if (text)
+					rules.push({ ...base, kind: "text", operator: type, text, look });
+			} else if (type === "colorScale") {
+				const scale =
+					/<colorScale\b[\s\S]*?<\/colorScale>/.exec(rule)?.[0] ?? "";
+				const points = scale.match(/<cfvo\b[^>]*>/g) ?? [];
+				const colors = scale.match(/<color\b[^>]*>/g) ?? [];
+				const stops = points.map((point, i) => ({
+					type: attr(point, "type") as
+						| "min"
+						| "max"
+						| "num"
+						| "percent"
+						| "percentile",
+					value:
+						attr(point, "val") !== undefined
+							? constant(attr(point, "val") ?? "")
+							: undefined,
+					color: readColor(colors[i], theme),
+				}));
+				if (
+					(stops.length === 2 || stops.length === 3) &&
+					stops.every(
+						(stop) =>
+							stop.color &&
+							["min", "max", "num", "percent", "percentile"].includes(
+								stop.type,
+							) &&
+							(stop.type === "min" ||
+								stop.type === "max" ||
+								typeof stop.value === "number"),
+					)
+				)
+					rules.push({
+						...base,
+						kind: "scale",
+						stops: stops.map((stop) => ({
+							type: stop.type,
+							value: typeof stop.value === "number" ? stop.value : undefined,
+							color: stop.color as string,
+						})),
+					});
+			}
+		}
+	}
+	return rules.sort((a, b) => a.priority - b.priority);
+}
+
 /** Text colours that only restate "the default ink": on an unfilled
  * cell they must not fight the app theme (black on the dark theme). */
 export function isDefaultInk(color: string | undefined): boolean {
@@ -448,6 +670,7 @@ export function readXlsxStyles(bytes: Uint8Array): WorkbookStyles | null {
 		const theme = readTheme(themeName ? decode(meta[themeName]) : undefined);
 		const stylesXml = meta["xl/styles.xml"];
 		const table = stylesXml ? readStyleTable(decode(stylesXml), theme) : [];
+		const dxfs = stylesXml ? readDxfs(decode(stylesXml), theme) : [];
 		// Only styles that change how a cell looks are worth carrying.
 		const visible = table.map((s) => Object.keys(s).length > 0);
 
@@ -464,6 +687,8 @@ export function readXlsxStyles(bytes: Uint8Array): WorkbookStyles | null {
 		});
 		const sheets = new Map<string, Map<string, number>>();
 		const freeze = new Map<string, { rows: number; cols: number }>();
+		const gridless = new Set<string>();
+		const conditional = new Map<string, CondRule[]>();
 		const anchors = new Map<string, SheetAnchor[]>();
 		// Pictures are inflated once, at the end, for those actually placed.
 		const mediaIndex = new Map<string, number>();
@@ -498,8 +723,22 @@ export function readXlsxStyles(bytes: Uint8Array): WorkbookStyles | null {
 			}
 			if (cells.size) sheets.set(name, cells);
 
-			// The pane sits in the sheet's header, before any cell data.
-			const pane = /<pane\b[^>]*>/.exec(xml.slice(0, 20_000))?.[0];
+			// The view and its pane sit in the sheet's header, before any
+			// cell data.
+			const head = xml.slice(0, 20_000);
+			const sheetView = /<sheetView\b[^>]*>/.exec(head)?.[0];
+			if (sheetView && /\bshowGridLines="(0|false)"/.test(sheetView))
+				gridless.add(name);
+			const pane = /<pane\b[^>]*>/.exec(head)?.[0];
+			// Conditional formatting follows the cell data.
+			const tail = xml.indexOf(
+				"<conditionalFormatting",
+				xml.lastIndexOf("</sheetData>"),
+			);
+			if (tail >= 0) {
+				const rules = readConditional(xml.slice(tail), dxfs, theme);
+				if (rules.length) conditional.set(name, rules);
+			}
 			if (pane && /state="frozen(Split)?"/.test(pane)) {
 				const rows = Math.round(Number(attr(pane, "ySplit") ?? 0)) || 0;
 				const cols = Math.round(Number(attr(pane, "xSplit") ?? 0)) || 0;
@@ -547,11 +786,20 @@ export function readXlsxStyles(bytes: Uint8Array): WorkbookStyles | null {
 			}
 		}
 
-		if (!sheets.size && !freeze.size && !anchors.size) return null;
+		if (
+			!sheets.size &&
+			!freeze.size &&
+			!gridless.size &&
+			!conditional.size &&
+			!anchors.size
+		)
+			return null;
 		return {
 			styles: table,
 			sheets,
 			freeze,
+			gridless,
+			conditional,
 			anchors,
 			media,
 			accents: theme.slice(4, 10).map((hex) => `#${hex.toLowerCase()}`),

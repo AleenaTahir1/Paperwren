@@ -2,7 +2,8 @@
 an outline, an EPUB, a comic archive and pictures in newer formats.
 
 Usage: python3 scripts/make-feature-fixtures.py
-Needs reportlab, pypdf, Pillow and pillow-heif. Writes fixtures/features/.
+Needs reportlab, pypdf, Pillow, pillow-heif and openpyxl. Writes
+fixtures/features/.
 """
 import io
 import os
@@ -277,6 +278,49 @@ def heic_and_avif():
     Image.new("RGB", (160, 120), (60, 160, 60)).save(os.path.join(OUT, "photo.avif"))
 
 
+def sheets():
+    """A workbook to sort and filter, drawn without gridlines and with
+    conditional formatting, and a CSV saved in a Windows code page."""
+    from openpyxl import Workbook
+    from openpyxl.formatting.rule import CellIsRule, ColorScaleRule
+    from openpyxl.styles import Font, PatternFill
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Birds"
+    rows = [
+        ("Bird", "Count", "Place"),
+        ("Wren", 41, "Lahore"),
+        ("robin", 9, "Karachi"),
+        ("Finch", None, "Lahore"),
+        ("Owl", 120, "Paris"),
+        ("Kite", 64, "Lahore"),
+    ]
+    for row in rows:
+        ws.append(row)
+    ws.sheet_view.showGridLines = False
+    ws.column_dimensions["A"].width = 14
+    ws.column_dimensions["C"].width = 14
+    red = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
+    ws.conditional_formatting.add(
+        "B2:B6",
+        CellIsRule(operator="greaterThan", formula=["100"], fill=red, font=Font(color="9C0006")),
+    )
+    ws.conditional_formatting.add(
+        "D2:D6",
+        ColorScaleRule(start_type="min", start_color="FFFFFF", end_type="max", end_color="63BE7B"),
+    )
+    for r, v in enumerate([1, 2, 3, 4, 5], start=2):
+        ws.cell(row=r, column=4, value=v)
+    plain = wb.create_sheet("Plain")
+    plain.append(("a", "b"))
+    wb.save(os.path.join(OUT, "birds.xlsx"))
+
+    text = "Name,Town\nZoë,Saint-Étienne\nRenée,Orléans\n"
+    with open(os.path.join(OUT, "towns.csv"), "wb") as f:
+        f.write(text.encode("cp1252"))
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     pictures_pdf()
@@ -288,6 +332,7 @@ def main():
     exif_photo()
     pictures_in_new_formats()
     heic_and_avif()
+    sheets()
     print("wrote", sorted(os.listdir(OUT)))
 
 

@@ -1150,3 +1150,115 @@ test.describe("markdown and JSON", () => {
 		await expect(page.getByTestId("text-code")).toContainText('"found me"');
 	});
 });
+
+test.describe("sheets", () => {
+	/** The values down a column of the grid, top to bottom. */
+	const column = (page: Page, c: number) =>
+		page
+			.locator(`[data-testid="sheet-grid"] [data-c="${c}"]`)
+			.evaluateAll((cells) =>
+				cells
+					.map((el) => ({
+						r: Number(el.getAttribute("data-r")),
+						text: el.textContent ?? "",
+					}))
+					.sort((a, b) => a.r - b.r)
+					.filter((cell, i, all) => i === 0 || cell.r !== all[i - 1].r)
+					.map((cell) => cell.text),
+			);
+	const cell = (page: Page, r: number, c: number) =>
+		page.locator(`[data-testid="sheet-grid"] [data-r="${r}"][data-c="${c}"]`);
+
+	test("rows sort and filter for reading, and the file's gridlines are kept", async ({
+		page,
+	}) => {
+		await boot(page);
+		await openFixture(page, "features/birds.xlsx");
+		await expect(page.getByTestId("sheet-grid")).toBeVisible({
+			timeout: 20_000,
+		});
+		// The file turns its gridlines off.
+		const borders = () =>
+			cell(page, 1, 0).evaluate((el) => getComputedStyle(el).borderRightColor);
+		expect(await borders()).toBe("rgba(0, 0, 0, 0)");
+
+		// Sorting needs a column: until a cell is picked, it says so.
+		await page.getByTestId("file-more").click();
+		await expect(page.getByTestId("sheet-sort-up")).toBeDisabled();
+		await page.keyboard.press("Escape");
+
+		await cell(page, 1, 1).click();
+		await page.getByTestId("file-more").click();
+		await page.getByTestId("sheet-sort-down").click();
+		await expect(page.getByTestId("sheet-arranged")).toContainText(
+			"Sorted by column B",
+		);
+		expect(await column(page, 0)).toEqual([
+			"Bird",
+			"Owl",
+			"Kite",
+			"Wren",
+			"robin",
+			"Finch",
+		]);
+		// A cell keeps its own address.
+		await cell(page, 1, 0).click();
+		await expect(page.getByTestId("cell-detail")).toContainText("A5");
+
+		await cell(page, 1, 2).click();
+		await page.getByTestId("file-more").click();
+		await page.getByTestId("sheet-filter").click();
+		await page.getByTestId("sheet-filter-input").fill("lahore");
+		await page.getByTestId("sheet-filter-input").press("Enter");
+		await expect(page.getByTestId("sheet-arranged")).toContainText(
+			"Showing 4 of 6 rows",
+		);
+		expect(await column(page, 0)).toEqual(["Bird", "Kite", "Wren", "Finch"]);
+
+		// Find looks through the rows as shown.
+		await page.getByTestId("sheet-find").click();
+		await page.getByTestId("find-input").fill("owl");
+		await expect(page.getByTestId("find-count")).toHaveText("No results");
+		await page.keyboard.press("Escape");
+
+		await page.getByTestId("sheet-arranged-clear").click();
+		await expect(page.getByTestId("sheet-arranged")).toHaveCount(0);
+		expect(await column(page, 0)).toEqual([
+			"Bird",
+			"Wren",
+			"robin",
+			"Finch",
+			"Owl",
+			"Kite",
+		]);
+
+		await page.getByTestId("file-more").click();
+		await page.getByTestId("sheet-gridlines").click();
+		expect(await borders()).not.toBe("rgba(0, 0, 0, 0)");
+		// The file's conditional formatting: over 100 in light red, and a
+		// white-to-green scale.
+		await expect(cell(page, 4, 1)).toHaveCSS(
+			"background-color",
+			"rgb(255, 199, 206)",
+		);
+		await expect(cell(page, 5, 3)).toHaveCSS(
+			"background-color",
+			"rgb(99, 190, 123)",
+		);
+	});
+
+	test("a CSV in another encoding can be read in it", async ({ page }) => {
+		await boot(page);
+		await openFixture(page, "features/towns.csv");
+		await expect(page.getByTestId("sheet-grid")).toBeVisible({
+			timeout: 20_000,
+		});
+		await page.getByTestId("file-more").click();
+		await page.getByTestId("sheet-encoding").click();
+		await page
+			.getByRole("button", { name: "WINDOWS-1252", exact: true })
+			.click();
+		await expect(cell(page, 1, 0)).toHaveText("Zoë");
+		await expect(cell(page, 1, 1)).toHaveText("Saint-Étienne");
+	});
+});

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import * as XLSX from "xlsx";
-import { readXlsxStyles } from "../sheetStyles";
+import { readBoxes, readConditional, readXlsxStyles } from "../sheetStyles";
 import { DEFAULT_COL_WIDTH, parseWorkbook } from "../workbookModel";
 
 const bytes = (name: string) =>
@@ -161,6 +161,7 @@ describe("frozen panes, borders and floating objects", () => {
 			styles: [],
 			sheets: new Map(),
 			freeze: new Map(),
+			gridless: new Set(),
 			anchors: new Map([
 				["S", [{ from: point(4, 5), to: point(9, 15), image: 0 }]],
 			]),
@@ -179,5 +180,53 @@ describe("frozen panes, borders and floating objects", () => {
 			endCol: 9,
 			endDx: 10,
 		});
+	});
+});
+
+describe("conditional formatting", () => {
+	it("reads ranges as the file writes them", () => {
+		expect(readBoxes("B2:B6 $D$1 AA10:Z3")).toEqual([
+			{ r0: 1, c0: 1, r1: 5, c1: 1 },
+			{ r0: 0, c0: 3, r1: 0, c1: 3 },
+			{ r0: 2, c0: 25, r1: 9, c1: 26 },
+		]);
+	});
+
+	it("keeps only the rules it can judge without formulas", () => {
+		const xml = `<conditionalFormatting sqref="A1:A9">
+			<cfRule type="cellIs" dxfId="0" priority="3" operator="between"><formula>1</formula><formula>5</formula></cfRule>
+			<cfRule type="cellIs" dxfId="0" priority="1" operator="equal"><formula>"Yes"</formula></cfRule>
+			<cfRule type="cellIs" dxfId="0" priority="2" operator="greaterThan"><formula>$B$1</formula></cfRule>
+			<cfRule type="expression" dxfId="0" priority="4"><formula>MOD(ROW(),2)=0</formula></cfRule>
+			<cfRule type="containsText" dxfId="0" priority="5" operator="containsText" text="late"><formula>NOT(ISERROR(SEARCH("late",A1)))</formula></cfRule>
+		</conditionalFormatting>`;
+		const rules = readConditional(xml, [{ fill: "#ff0000" }], []);
+		expect(rules.map((r) => r.priority)).toEqual([1, 3, 5]);
+		expect(rules[0]).toMatchObject({ kind: "compare", values: ["Yes"] });
+		expect(rules[1]).toMatchObject({ kind: "compare", values: [1, 5] });
+		expect(rules[2]).toMatchObject({ kind: "text", text: "late" });
+	});
+
+	it("colours the cells of a workbook as its rules say", () => {
+		const data = bytes("features/birds.xlsx");
+		const styles = readXlsxStyles(data);
+		expect(styles?.gridless.has("Birds")).toBe(true);
+		expect(styles?.gridless.has("Plain")).toBe(false);
+		const result = parseWorkbook(XLSX, buffer(data), styles);
+		if (!result.ok) throw new Error("not parsed");
+		const sheet = result.sheets[0];
+		expect(sheet.gridlines).toBe(false);
+		expect(result.sheets[1].gridlines).toBeUndefined();
+		const look = (r: number, c: number) => {
+			const cell = sheet.cells.find(([cr, cc]) => cr === r && cc === c)?.[2];
+			return result.styles?.[cell?.style ?? -1] ?? {};
+		};
+		// Over 100: the light red fill and dark red text of the rule.
+		expect(look(4, 1)).toMatchObject({ fill: "#ffc7ce", color: "#9c0006" });
+		expect(look(1, 1).fill).toBeUndefined();
+		// A colour scale from white to green over 1 to 5.
+		expect(look(1, 3).fill).toBe("#ffffff");
+		expect(look(3, 3).fill).toBe("#b1dfbd");
+		expect(look(5, 3).fill).toBe("#63be7b");
 	});
 });
