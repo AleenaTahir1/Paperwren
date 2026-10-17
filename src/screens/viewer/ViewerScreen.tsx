@@ -112,6 +112,7 @@ export default function ViewerScreen({
 	onClose,
 	onLocate,
 	onReplace,
+	onOpen,
 }: {
 	request: OpenRequest;
 	active: boolean;
@@ -119,6 +120,8 @@ export default function ViewerScreen({
 	onLocate: () => void;
 	/** Show another file in place of this one. */
 	onReplace: (request: OpenRequest) => void;
+	/** Show another file over this one. */
+	onOpen: (request: OpenRequest) => void;
 }) {
 	const { entries, record, setPosition, markUnavailable, remove } =
 		useRecents();
@@ -152,15 +155,17 @@ export default function ViewerScreen({
 			return;
 		}
 		const { name, verified } = displayName(request, format);
-		record({
-			id: request.id,
-			name,
-			nameVerified: verified ? undefined : false,
-			format,
-			size,
-			reopen: request.reopen,
-			position: request.position,
-		});
+		// A file inside another one has no place to reopen it from.
+		if (request.reopen.kind !== "memory")
+			record({
+				id: request.id,
+				name,
+				nameVerified: verified ? undefined : false,
+				format,
+				size,
+				reopen: request.reopen,
+				position: request.position,
+			});
 		setLoaded({ data, format, name, size });
 	};
 
@@ -319,6 +324,7 @@ export default function ViewerScreen({
 				},
 				size: loaded.data.byteLength || loaded.size,
 				openOther: onReplace,
+				openOver: onOpen,
 			}}
 		>
 			<ViewerBoundary name={loaded.name} onClose={onClose}>

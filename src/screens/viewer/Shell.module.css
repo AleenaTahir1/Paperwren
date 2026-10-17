@@ -138,6 +138,12 @@
 	color: var(--text-3);
 	white-space: nowrap;
 }
+.sideIcon {
+	display: grid;
+	place-items: center;
+	width: 32px;
+	padding: 0;
+}
 .sideTab:hover {
 	color: var(--text);
 }

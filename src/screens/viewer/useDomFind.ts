@@ -1,3 +1,4 @@
+import { ANY_MATCH, type FindOptions, matchesIn } from "@/lib/find";
 import {
 	type RefObject,
 	useCallback,
@@ -57,22 +58,18 @@ function blockOf(node: Node, root: Node): Node {
 	return root;
 }
 
-/** Lower-cased without changing length, so offsets still point into
- * the original text (a few letters grow when lower-cased). */
-function folded(text: string): string {
-	const lower = text.toLowerCase();
-	return lower.length === text.length ? lower : text;
-}
-
 /**
- * Case-insensitive search over the text under `root`. A document
- * splits its words across formatting runs ("Qua" + "rterly"), so each
- * block's text nodes are searched as one string and a match may start
- * in one node and end in another.
+ * Search over the text under `root` (lib/find.ts says what matches). A
+ * document splits its words across formatting runs ("Qua" + "rterly"),
+ * so each block's text nodes are searched as one string and a match may
+ * start in one node and end in another.
  */
-export function findRanges(root: Node, query: string): Range[] {
-	const needle = folded(query);
-	if (!needle) return [];
+export function findRanges(
+	root: Node,
+	query: string,
+	options: FindOptions = ANY_MATCH,
+): Range[] {
+	if (!query) return [];
 	const ranges: Range[] = [];
 	const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
 	// The text nodes of the block being read, and where each starts in
@@ -90,15 +87,18 @@ export function findRanges(root: Node, query: string): Range[] {
 		return i;
 	};
 	const flush = () => {
-		let at = text.indexOf(needle);
-		while (at !== -1 && ranges.length < MAX_MATCHES) {
+		for (const at of matchesIn(
+			text,
+			query,
+			options,
+			MAX_MATCHES - ranges.length,
+		)) {
 			const from = nodeAt(at, false);
-			const to = nodeAt(at + needle.length, true);
+			const to = nodeAt(at + query.length, true);
 			const r = document.createRange();
 			r.setStart(nodes[from], at - starts[from]);
-			r.setEnd(nodes[to], at + needle.length - starts[to]);
+			r.setEnd(nodes[to], at + query.length - starts[to]);
 			ranges.push(r);
-			at = text.indexOf(needle, at + needle.length);
 		}
 		nodes = [];
 		starts = [];
@@ -119,7 +119,7 @@ export function findRanges(root: Node, query: string): Range[] {
 		}
 		nodes.push(node);
 		starts.push(text.length);
-		text += folded(value);
+		text += value;
 	}
 	flush();
 	return ranges;
@@ -141,6 +141,7 @@ export function useDomFind(
 		current: -1,
 	});
 	const ranges = useRef<Range[]>([]);
+	const [options, setOptions] = useState<FindOptions>(ANY_MATCH);
 
 	const show = useCallback(
 		(index: number) => {
@@ -169,7 +170,7 @@ export function useDomFind(
 		if (!open) return;
 		const t = window.setTimeout(() => {
 			ranges.current = root.current
-				? findRanges(root.current, state.query.trim())
+				? findRanges(root.current, state.query.trim(), options)
 				: [];
 			const total = ranges.current.length;
 			setState((s) => ({ ...s, total, current: total ? 0 : -1 }));
@@ -177,7 +178,7 @@ export function useDomFind(
 			else clearHighlights();
 		}, 150);
 		return () => window.clearTimeout(t);
-	}, [open, state.query, root, show]);
+	}, [open, state.query, options, root, show]);
 
 	const step = useCallback(
 		(dir: 1 | -1) => {
@@ -212,5 +213,8 @@ export function useDomFind(
 		state,
 		setQuery: (query: string) => setState((s) => ({ ...s, query })),
 		step,
+		/** Match case, whole words. */
+		options,
+		setOptions,
 	};
 }

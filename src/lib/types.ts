@@ -6,7 +6,8 @@ export type Reopen =
 	| { kind: "uri"; uri: string } // Android content:// grant
 	| { kind: "managed"; path: string } // copy under app_data/imports
 	| { kind: "path"; path: string } // desktop filesystem path
-	| { kind: "browser"; key: string }; // dev/web preview (IndexedDB)
+	| { kind: "browser"; key: string } // dev/web preview (IndexedDB)
+	| { kind: "memory"; key: string }; // inside another file, this run only
 
 /** A file the user asked to open. */
 export interface OpenRequest {

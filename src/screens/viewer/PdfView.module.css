@@ -129,3 +129,42 @@
 	width: 84px;
 	text-align: center;
 }
+
+/* Comments, attachments and layers: an icon (or a line of small print)
+ * beside the words. */
+button.extra {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	white-space: normal;
+	text-overflow: clip;
+}
+button.extra > svg {
+	flex-shrink: 0;
+	color: var(--text-3);
+}
+.extraText {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+.extraText small {
+	font-size: 12px;
+	color: var(--text-3);
+}
+.comment .extraText span {
+	display: -webkit-box;
+	-webkit-line-clamp: 4;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+button.extra[aria-pressed="false"] {
+	color: var(--text-3);
+}
+.extraBusy {
+	display: flex;
+	justify-content: center;
+	padding: 16px;
+}

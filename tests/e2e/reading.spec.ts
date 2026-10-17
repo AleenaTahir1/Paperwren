@@ -226,3 +226,113 @@ test.describe("PDF pages on a desktop", () => {
 		await expect(page.getByTestId("home")).toBeVisible();
 	});
 });
+
+test.describe("what a PDF carries besides its pages", () => {
+	test("its comments, attachments, layers and details", async ({ page }) => {
+		await boot(page);
+		await openFixture(page, "features/extras.pdf");
+		const counter = page.getByTestId("pdf-page");
+		await expect(counter).toHaveText("1 / 2", { timeout: 20_000 });
+		// The note's icon ships with the app.
+		await expect(
+			page.locator(".annotationLayer img").first(),
+		).toHaveJSProperty("complete", true);
+		expect(
+			await page
+				.locator(".annotationLayer img")
+				.first()
+				.evaluate((img) => (img as HTMLImageElement).naturalWidth),
+		).toBeGreaterThan(0);
+
+		await page.getByTestId("file-more").click();
+		await page.getByTestId("pdf-comments").click();
+		const comments = page.getByTestId("pdf-comment");
+		await expect(comments).toHaveCount(3);
+		await expect(comments.first()).toContainText("Ayesha");
+		await expect(comments.first()).toContainText("Check this figure");
+		await expect(comments.nth(1)).toContainText("Highlight");
+		await comments.nth(2).click();
+		await expect(counter).toHaveText("2 / 2");
+
+		await page.getByTestId("file-more").click();
+		await page.getByTestId("pdf-layers").click();
+		const layer = page.getByTestId("pdf-layer");
+		await expect(layer).toHaveText("Watermark");
+		await expect(layer).toHaveAttribute("aria-pressed", "true");
+		await layer.click();
+		await expect(layer).toHaveAttribute("aria-pressed", "false");
+		await page.keyboard.press("Escape");
+
+		await page.getByTestId("file-more").click();
+		await page.getByTestId("file-details-open").click();
+		await expect(page.getByTestId("file-details")).toContainText("Page size");
+		await expect(page.getByTestId("file-details")).toContainText("A4");
+		await expect(page.getByTestId("file-details")).toContainText(
+			"PDF version",
+		);
+		await page.getByRole("button", { name: "Done" }).click();
+
+		// An attachment opens over the PDF, and is not kept in recents.
+		await page.getByTestId("file-more").click();
+		await page.getByTestId("pdf-attachments").click();
+		await page.getByTestId("pdf-attachment").click();
+		await expect(page.getByTestId("viewer")).toContainText(
+			"the figures are final",
+		);
+		await page.getByTestId("viewer-back").click();
+		await expect(counter).toHaveText(/\/ 2/, { timeout: 20_000 });
+		await page.getByTestId("viewer-back").click();
+		await expect(page.getByTestId("recent")).toHaveCount(1);
+		await expect(page.getByTestId("recent")).toContainText("extras.pdf");
+	});
+
+	test("a PDF that asks not to be copied says so", async ({ page }) => {
+		await boot(page);
+		await openFixture(page, "features/nocopy.pdf");
+		await expect(page.getByText("This PDF restricts copying")).toBeVisible({
+			timeout: 20_000,
+		});
+		await page.getByTestId("file-more").click();
+		await page.getByTestId("file-details-open").click();
+		await expect(page.getByTestId("file-details")).toContainText(
+			"The author asks that its text not be copied",
+		);
+	});
+});
+
+test.describe("find, as a reader means it", () => {
+	test("match case and whole words, on a phone, in each kind of file", async ({
+		page,
+	}) => {
+		await boot(page);
+		await openFixture(page, "features/pictures.pdf");
+		await expect(page.getByTestId("pdf-page")).toHaveText("1 / 3", {
+			timeout: 20_000,
+		});
+		await page.getByTestId("pdf-find").click();
+		await page.getByTestId("find-input").fill("chapter");
+		await expect(page.getByTestId("find-count")).toHaveText(/of 4\d/, {
+			timeout: 10_000,
+		});
+		await page.getByTestId("find-case").click();
+		await expect(page.getByTestId("find-count")).toHaveText("No results");
+		await page.getByTestId("viewer-back").click();
+
+		await openFixture(page, "sample.txt");
+		await page.getByTestId("text-find").click();
+		await page.getByTestId("find-input").fill("fix");
+		await expect(page.getByTestId("find-count")).toHaveText("1 of 1");
+		await page.getByTestId("find-words").click();
+		await expect(page.getByTestId("find-count")).toHaveText("No results");
+		await page.getByTestId("find-input").fill("fixture");
+		await expect(page.getByTestId("find-count")).toHaveText("1 of 1");
+		await page.getByTestId("viewer-back").click();
+
+		await openFixture(page, "sample.xlsx");
+		await page.getByTestId("sheet-find").click();
+		await page.getByTestId("find-input").fill("a");
+		await expect(page.getByTestId("find-count")).toHaveText(/of \d/);
+		await page.getByTestId("find-words").click();
+		await expect(page.getByTestId("find-count")).toHaveText("No results");
+	});
+});

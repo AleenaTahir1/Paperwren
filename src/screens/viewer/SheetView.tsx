@@ -1,5 +1,6 @@
 import { hasRtl } from "@/lib/bidi";
 import { isDesktop } from "@/lib/env";
+import { ANY_MATCH, type FindOptions, matches } from "@/lib/find";
 import { locale, t } from "@/lib/i18n";
 import { type Chart, readChart } from "@/lib/pptx/chart";
 
@@ -132,6 +133,7 @@ export default function SheetView({
 	const zoomRef = useRef(zoom);
 	zoomRef.current = zoom;
 	const [findOpen, setFindOpen] = useState(false);
+	const [findOptions, setFindOptions] = useState<FindOptions>(ANY_MATCH);
 	const [find, setFind] = useState<FindState>({
 		query: "",
 		total: 0,
@@ -594,7 +596,7 @@ export default function SheetView({
 	// biome-ignore lint/correctness/useExhaustiveDependencies: a new query or workbook restarts the search; switching sheets must not
 	useEffect(() => {
 		if (!findOpen || !sheets) return;
-		const q = find.query.trim().toLowerCase();
+		const q = find.query.trim();
 		const t = window.setTimeout(() => {
 			const found: Array<Point & { sheet: number }> = [];
 			if (q) {
@@ -602,7 +604,7 @@ export default function SheetView({
 					if (!offered(sh)) return;
 					const here: Point[] = [];
 					for (const [k, cell] of sh.cells)
-						if (cell.value.toLowerCase().includes(q))
+						if (matches(cell.value, q, findOptions))
 							here.push({ r: Math.floor(k / 1024), c: k % 1024 });
 					here.sort((a, b) => a.r - b.r || a.c - b.c);
 					for (const hit of here) found.push({ ...hit, sheet: si });
@@ -623,7 +625,7 @@ export default function SheetView({
 			if (first) go(first);
 		}, 150);
 		return () => window.clearTimeout(t);
-	}, [find.query, findOpen, sheets]);
+	}, [find.query, findOptions, findOpen, sheets]);
 
 	const go = (hit: Point & { sheet: number }) => {
 		if (hit.sheet !== index) {
@@ -1144,6 +1146,8 @@ export default function SheetView({
 						state={find}
 						onQuery={(query) => setFind((f) => ({ ...f, query }))}
 						onStep={stepFind}
+						options={findOptions}
+						onOptions={setFindOptions}
 						onClose={() => {
 							setFindOpen(false);
 							setFind({ query: "", total: 0, current: -1 });

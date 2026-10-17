@@ -27,35 +27,48 @@ const dropFixtures = (): Plugin => ({
 });
 
 /**
- * pdf.js reads two sets of files while it draws: character maps (for
- * CJK text whose font is named but not embedded) and the standard
- * fonts (for files that rely on the base 14). The app is offline, so
- * they ship with it, under /pdfjs, and are served from the package in
- * development.
+ * pdf.js reads three sets of files while it draws: character maps (for
+ * CJK text whose font is named but not embedded), the standard fonts
+ * (for files that rely on the base 14) and the icons of a note left on
+ * a page. The app is offline, so they ship with it, under /pdfjs, and
+ * are served from the package in development.
  */
-const PDF_ASSETS = ["cmaps", "standard_fonts"];
+const PDF_ASSETS: Record<string, string> = {
+	cmaps: "cmaps",
+	standard_fonts: "standard_fonts",
+	images: "web/images",
+};
+/** Of pdf.js's images, only the notes' icons are drawn by the app. */
+const shipped = (dir: string, file: string) =>
+	dir !== "images" || /^annotation-.*\.svg$/.test(file);
 const pdfAssets = (): Plugin => {
 	const source = (dir: string) =>
-		path.resolve(__dirname, "node_modules/pdfjs-dist", dir);
+		path.resolve(__dirname, "node_modules/pdfjs-dist", PDF_ASSETS[dir]);
 	return {
 		name: "paperwren-pdf-assets",
 		configureServer(server) {
 			server.middlewares.use("/pdfjs", (req, res, next) => {
 				const [, dir, file] = (req.url ?? "").split("?")[0].split("/");
+				const name = file ? decodeURIComponent(file) : "";
 				const wanted =
-					PDF_ASSETS.includes(dir) && file && !file.includes("..")
-						? path.join(source(dir), decodeURIComponent(file))
+					dir in PDF_ASSETS && name && !name.includes("..") && shipped(dir, name)
+						? path.join(source(dir), name)
 						: "";
 				if (!wanted || !existsSync(wanted)) return next();
-				res.setHeader("Content-Type", "application/octet-stream");
+				res.setHeader(
+					"Content-Type",
+					name.endsWith(".svg") ? "image/svg+xml" : "application/octet-stream",
+				);
 				res.end(readFileSync(wanted));
 			});
 		},
 		closeBundle() {
 			if (!existsSync(path.resolve(__dirname, "dist"))) return;
-			for (const dir of PDF_ASSETS)
+			for (const dir of Object.keys(PDF_ASSETS))
 				cpSync(source(dir), path.resolve(__dirname, "dist/pdfjs", dir), {
 					recursive: true,
+					filter: (from) =>
+						from === source(dir) || shipped(dir, path.basename(from)),
 				});
 		},
 	};

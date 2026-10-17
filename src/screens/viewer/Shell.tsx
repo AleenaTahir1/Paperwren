@@ -1,5 +1,6 @@
 import { backend } from "@/lib/backend";
 import { isDesktop } from "@/lib/env";
+import type { FindOptions } from "@/lib/find";
 import type { FileFormat } from "@/lib/formats";
 import { msg, t, uiDir } from "@/lib/i18n";
 import { PAGE_COLORS, resolvePageColor } from "@/lib/settings";
@@ -132,6 +133,9 @@ function toEnd(el: HTMLElement, end: boolean) {
 export interface SideTab {
 	id: string;
 	label: string;
+	/** Shown in place of the label when more tabs than two share the
+	 * panel's narrow head. */
+	icon?: ReactNode;
 	content: ReactNode;
 }
 
@@ -144,6 +148,7 @@ function SidePanel({
 	const [id, setId] = useState(tabs[0]?.id);
 	const tab = tabs.find((x) => x.id === id) ?? tabs[0];
 	if (!tab) return null;
+	const icons = tabs.length > 2 && tabs.every((x) => x.icon);
 	return (
 		<aside className={s.side} dir={uiDir()} data-testid="side-panel">
 			<div className={s.sideHead}>
@@ -154,11 +159,13 @@ function SidePanel({
 							role="tab"
 							key={x.id}
 							aria-selected={x.id === tab.id}
-							className={s.sideTab}
+							className={`${s.sideTab} ${icons ? s.sideIcon : ""}`}
 							onClick={() => setId(x.id)}
+							title={icons ? x.label : undefined}
+							aria-label={icons ? x.label : undefined}
 							data-testid={`side-tab-${x.id}`}
 						>
-							{x.label}
+							{icons ? x.icon : x.label}
 						</button>
 					))}
 				</div>
@@ -597,13 +604,15 @@ export function FindBar({
 	onStep,
 	onClose,
 	options,
+	onOptions,
 }: {
 	state: FindState;
 	onQuery: (q: string) => void;
 	onStep: (dir: 1 | -1) => void;
 	onClose: () => void;
-	/** Further switches (match case, whole words). */
-	options?: ReactNode;
+	/** Match case, whole words: offered when they can be changed. */
+	options?: FindOptions;
+	onOptions?: (options: FindOptions) => void;
 }) {
 	const input = useRef<HTMLInputElement>(null);
 	useEffect(() => {
@@ -662,7 +671,36 @@ export function FindBar({
 			<span className={s.findCount} aria-live="polite" data-testid="find-count">
 				{label}
 			</span>
-			{options}
+			{options && onOptions && (
+				<>
+					<button
+						type="button"
+						className={s.findOption}
+						aria-pressed={options.matchCase}
+						title={t("Match case")}
+						aria-label={t("Match case")}
+						onClick={() =>
+							onOptions({ ...options, matchCase: !options.matchCase })
+						}
+						data-testid="find-case"
+					>
+						Aa
+					</button>
+					<button
+						type="button"
+						className={s.findOption}
+						aria-pressed={options.wholeWords}
+						title={t("Whole words")}
+						aria-label={t("Whole words")}
+						onClick={() =>
+							onOptions({ ...options, wholeWords: !options.wholeWords })
+						}
+						data-testid="find-words"
+					>
+						“ab”
+					</button>
+				</>
+			)}
 			<IconButton
 				label={t("Previous match")}
 				shortcut="Shift+F3"

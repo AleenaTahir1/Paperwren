@@ -625,7 +625,8 @@ const OPEN_EVENT = "paperwren-open";
 function nativeTarget(file: FileRef): string {
 	const { reopen } = file;
 	if (reopen.kind === "uri") return reopen.uri;
-	if (reopen.kind === "browser") throw new OpenError("unsupported");
+	if (reopen.kind === "browser" || reopen.kind === "memory")
+		throw new OpenError("unsupported");
 	return reopen.path;
 }
 
@@ -881,7 +882,8 @@ const tauriBackend: Backend = {
 		);
 	},
 	async read(reopen) {
-		if (reopen.kind === "browser") throw new OpenError("not_found");
+		if (reopen.kind === "browser" || reopen.kind === "memory")
+			throw new OpenError("not_found");
 		const target = reopen.kind === "uri" ? reopen.uri : reopen.path;
 		try {
 			const { readFile } = await import("@tauri-apps/plugin-fs");
@@ -909,9 +911,46 @@ const raw = isTauri ? tauriBackend : browserBackend;
 
 /** Writes per key are serialized so a slow write can never land
  * after a newer one. */
+/** Files that live inside another one (a PDF's attachments), held for
+ * this run only. */
+const held = new Map<string, File>();
+
+/** Open a file found inside another document. It is read from memory
+ * and never kept in recents: once the app closes, it is gone. */
+export function requestForBytes(name: string, bytes: Uint8Array): OpenRequest {
+	const key = `${held.size + 1}:${name}`;
+	held.set(key, new File([bytes as BlobPart], name));
+	return request(name, true, bytes.byteLength, { kind: "memory", key });
+}
+
 export const backend: Backend = {
 	...raw,
 	storeSet: createSerializedWriter((key, value) => raw.storeSet(key, value)),
+	read(reopen) {
+		if (reopen.kind !== "memory") return raw.read(reopen);
+		const file = held.get(reopen.key);
+		return file
+			? file.arrayBuffer()
+			: Promise.reject(new OpenError("not_found"));
+	},
+	abilities(file) {
+		if (file.reopen.kind !== "memory") return raw.abilities(file);
+		// It has no place of its own: it can only be shared, or saved
+		// where the browser keeps downloads.
+		const sheet = canWebShare();
+		return {
+			share: sheet || !isTauri,
+			shareIsDownload: !sheet,
+			openWith: false,
+			reveal: false,
+		};
+	},
+	async share(file) {
+		if (file.reopen.kind !== "memory") return raw.share(file);
+		const shared = await asFile(file, backend.read);
+		if (canWebShare()) await webShare(shared);
+		else saveCopy(shared);
+	},
 };
 
 /** Build an open request for a file delivered by Android "Open with". */

@@ -239,6 +239,8 @@ export default function ReflowView(props: ViewerProps) {
 						onQuery={find.setQuery}
 						onStep={find.step}
 						onClose={find.close}
+						options={find.options}
+						onOptions={find.setOptions}
 					/>
 				) : undefined
 			}

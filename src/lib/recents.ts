@@ -14,7 +14,9 @@ export function idForReopen(reopen: Reopen): string {
 			? reopen.uri
 			: reopen.kind === "browser"
 				? `browser:${reopen.key}`
-				: reopen.path;
+				: reopen.kind === "memory"
+					? `memory:${reopen.key}`
+					: reopen.path;
 	let hash = 5381;
 	for (let i = 0; i < key.length; i++) {
 		hash = ((hash << 5) + hash + key.charCodeAt(i)) | 0;

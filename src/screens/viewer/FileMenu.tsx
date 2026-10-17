@@ -37,6 +37,9 @@ export interface ViewerFile {
 	/** Show another file in place of this one (the next picture of a
 	 * folder): Back then leaves the viewer, not a trail of files. */
 	openOther?: (request: OpenRequest) => void;
+	/** Open another file over this one (a PDF's attachment): Back
+	 * returns here. */
+	openOver?: (request: OpenRequest) => void;
 }
 
 export const ViewerFileContext = createContext<ViewerFile | null>(null);
@@ -50,6 +53,8 @@ function whereabouts(file: FileRef): string {
 			return t("A private copy kept by Paperwren");
 		case "uri":
 			return t("Provided by another app");
+		case "memory":
+			return t("Inside another document");
 		default:
 			return t("This browser");
 	}

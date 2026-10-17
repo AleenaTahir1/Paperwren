@@ -327,6 +327,7 @@ function Root() {
 							onReplace={(request) =>
 								replace({ kind: "viewer", request, key: nextKey.current++ })
 							}
+							onOpen={open}
 							onLocate={() => {
 								const entry = entriesRef.current.find(
 									(e) => e.id === screen.request.id,

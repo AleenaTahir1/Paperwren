@@ -1,3 +1,4 @@
+import { requestForBytes } from "@/lib/backend";
 import { isDesktop } from "@/lib/env";
 import { locale, t, tn } from "@/lib/i18n";
 import { PrintCancelled } from "@/lib/print";
@@ -21,9 +22,12 @@ import {
 	BookOpen,
 	BookOpenText,
 	GalleryHorizontal,
+	Layers as LayersIcon,
 	LayoutGrid,
 	ListTree,
 	Maximize,
+	MessageSquare,
+	Paperclip,
 	RotateCcw,
 	RotateCw,
 	Search,
@@ -42,8 +46,29 @@ import type {
 	PDFViewer,
 } from "pdfjs-dist/web/pdf_viewer.mjs";
 import "pdfjs-dist/web/pdf_viewer.css";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	useCallback,
+	useContext,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { PageJump, PasswordDialog } from "./Dialogs";
+import { ViewerFileContext } from "./FileMenu";
+import {
+	type Attachment,
+	AttachmentList,
+	type Comment,
+	CommentList,
+	type Layer,
+	type LayerConfig,
+	LayerList,
+	pageSize,
+	readAttachments,
+	readLayers,
+	useComments,
+} from "./PdfExtras";
 import { PdfThumbs } from "./PdfThumbs";
 import s from "./PdfView.module.css";
 import { Scrubber } from "./Scrubber";
@@ -127,6 +152,9 @@ const ZOOM_LEVELS = [50, 75, 100, 125, 150, 200, 400];
 /** A file longer than this asks which pages to print before any are
  * drawn; a short one just prints. */
 const ASK_PAGES_OVER = 10;
+
+/** The files already said to restrict copying, this run. */
+const toldNoCopy = new Set<string>();
 
 /** pdf.js's RenderingStates.FINISHED. */
 const RENDERED = 3;
@@ -214,6 +242,14 @@ export default function PdfView({
 	const [outlineOpen, setOutlineOpen] = useState(false);
 	const [thumbsOpen, setThumbsOpen] = useState(false);
 	const [details, setDetails] = useState<Array<[string, string]>>([]);
+	const [attachments, setAttachments] = useState<Attachment[]>([]);
+	const [layers, setLayers] = useState<Layer[]>([]);
+	const layerConfig = useRef<LayerConfig | null>(null);
+	/** The phone's sheets of comments, attachments and layers. */
+	const [extra, setExtra] = useState<
+		"comments" | "attachments" | "layers" | null
+	>(null);
+	const file = useContext(ViewerFileContext);
 	const [findOpen, setFindOpen] = useState(false);
 	const [find, setFind] = useState<FindState>({
 		query: "",
@@ -257,6 +293,8 @@ export default function PdfView({
 	// file asks for its password through the same load, so trying a
 	// password never reads the file again.
 	const unlock = useRef<((password: string) => void) | null>(null);
+	const nameRef = useRef(name);
+	nameRef.current = name;
 	useEffect(() => {
 		let alive = true;
 		let task: PDFDocumentLoadingTask | null = null;
@@ -297,12 +335,26 @@ export default function PdfView({
 						.getOutline()
 						.then((o) => setOutline((o as unknown as Outline[]) ?? []))
 						.catch(() => setOutline([]));
+					readAttachments(pdf)
+						.then((found) => alive && setAttachments(found))
+						.catch(() => {});
 					// What the file says about itself, for Details.
-					pdf
-						.getMetadata()
-						.then(({ info }) => {
+					Promise.all([
+						pdf.getMetadata(),
+						pdf.getPage(1).catch(() => null),
+						pdf.getPermissions().catch(() => null),
+					])
+						.then(([{ info }, first, permissions]) => {
 							if (!alive) return;
 							const meta = info as Record<string, unknown>;
+							const [x0, y0, x1, y1] = first?.view ?? [0, 0, 0, 0];
+							const turned = (first?.rotate ?? 0) % 180 !== 0;
+							const [w, h] = [Math.abs(x1 - x0), Math.abs(y1 - y0)];
+							// Its author may ask that its text not be copied: the
+							// reader is told, not stopped.
+							const noCopy =
+								Array.isArray(permissions) &&
+								!permissions.includes(pdfjs.PermissionFlag.COPY);
 							const text = (key: string) =>
 								typeof meta[key] === "string" && (meta[key] as string).trim()
 									? (meta[key] as string).trim()
@@ -313,7 +365,23 @@ export default function PdfView({
 								[t("Author"), text("Author")],
 								[t("Created"), pdfDate(meta.CreationDate)],
 								[t("Made with"), text("Creator") ?? text("Producer")],
+								[
+									t("Page size"),
+									w && h ? pageSize(turned ? h : w, turned ? w : h) : null,
+								],
+								[t("PDF version"), text("PDFFormatVersion")],
+								[
+									t("Copying"),
+									noCopy
+										? t("The author asks that its text not be copied")
+										: null,
+								],
 							];
+							// Said once a run for each file, not at every opening.
+							if (noCopy && !toldNoCopy.has(nameRef.current)) {
+								toldNoCopy.add(nameRef.current);
+								toast(t("This PDF restricts copying"));
+							}
 							setDetails(
 								rows.filter((row): row is [string, string] => !!row[1]),
 							);
@@ -359,6 +427,8 @@ export default function PdfView({
 				removePageBorders: true,
 				maxCanvasPixels: MAX_CANVAS,
 				annotationMode: ANNOTATIONS_SHOWN,
+				// The icon of a note left on a page.
+				imageResourcesPath: pdfAsset("images"),
 			});
 			linkService.setViewer(v);
 			pdfViewer.current = v;
@@ -387,6 +457,14 @@ export default function PdfView({
 			linkService.setHistory(history as unknown as PDFHistory);
 
 			eventBus.on("pagesinit", () => {
+				// Layers the file lets a reader show or hide.
+				v.optionalContentConfigPromise
+					?.then((config) => {
+						if (cancelled) return;
+						layerConfig.current = config as unknown as LayerConfig;
+						setLayers(readLayers(layerConfig.current));
+					})
+					.catch(() => {});
 				const saved = positionRef.current;
 				v.scrollMode = scrollMode(acrossRef.current, spreadRef.current);
 				if (spreadRef.current)
@@ -959,6 +1037,41 @@ export default function PdfView({
 					>
 						{t("Contents")}
 					</SheetItem>
+					<SheetItem
+						icon={<MessageSquare size={20} />}
+						onClick={() => {
+							close();
+							setExtra("comments");
+						}}
+						testId="pdf-comments"
+					>
+						{t("Comments")}
+					</SheetItem>
+					{attachments.length > 0 && (
+						<SheetItem
+							icon={<Paperclip size={20} />}
+							hint={String(attachments.length)}
+							onClick={() => {
+								close();
+								setExtra("attachments");
+							}}
+							testId="pdf-attachments"
+						>
+							{t("Attachments")}
+						</SheetItem>
+					)}
+					{layers.length > 0 && (
+						<SheetItem
+							icon={<LayersIcon size={20} />}
+							onClick={() => {
+								close();
+								setExtra("layers");
+							}}
+							testId="pdf-layers"
+						>
+							{t("Layers")}
+						</SheetItem>
+					)}
 				</>
 			)}
 		</>
@@ -1032,7 +1145,41 @@ export default function PdfView({
 		return from >= 1 && to >= from && to <= pages ? { from, to } : null;
 	};
 
+	// --- comments, attachments and layers ---
+	const showComment = (item: Comment) => {
+		const v = pdfViewer.current;
+		if (!v) return;
+		const [x0, , , y1] = item.rect;
+		v.scrollPageIntoView({
+			pageNumber: item.page,
+			destArray:
+				item.rect.length === 4
+					? [null, { name: "XYZ" }, x0, y1 + 24, null]
+					: undefined,
+			allowNegativeOffset: true,
+		});
+		setExtra(null);
+	};
+	const openAttachment = (item: Attachment) => {
+		setExtra(null);
+		file?.openOver?.(requestForBytes(item.name, item.bytes));
+	};
+	const toggleLayer = (layer: Layer) => {
+		const v = pdfViewer.current;
+		const config = layerConfig.current;
+		if (!v || !config) return;
+		config.setVisibility(layer.id, !layer.visible);
+		// Handing the config back makes pdf.js draw the pages again.
+		v.optionalContentConfigPromise = Promise.resolve(
+			config as unknown as NonNullable<
+				Awaited<PDFViewer["optionalContentConfigPromise"]>
+			>,
+		);
+		setLayers(readLayers(config));
+	};
+
 	// --- the panel beside the document (desktop) ---
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the handlers only read refs and the viewer
 	const side = useMemo<SideTab[]>(() => {
 		if (!doc || status !== "ready") return [];
 		const pick = (dest: unknown) =>
@@ -1041,6 +1188,7 @@ export default function PdfView({
 			{
 				id: "pages",
 				label: t("Pages"),
+				icon: <LayoutGrid size={16} />,
 				content: (
 					<PdfThumbs
 						doc={doc}
@@ -1057,6 +1205,7 @@ export default function PdfView({
 			{
 				id: "contents",
 				label: t("Contents"),
+				icon: <ListTree size={16} />,
 				content: outline?.length ? (
 					<OutlineList items={outline} depth={0} onPick={pick} compact />
 				) : (
@@ -1065,8 +1214,42 @@ export default function PdfView({
 					</p>
 				),
 			},
+			{
+				id: "comments",
+				label: t("Comments"),
+				icon: <MessageSquare size={16} />,
+				content: <Comments doc={doc} onPick={showComment} compact />,
+			},
+			...(attachments.length
+				? [
+						{
+							id: "attachments",
+							label: t("Attachments"),
+							icon: <Paperclip size={16} />,
+							content: (
+								<AttachmentList
+									items={attachments}
+									onOpen={openAttachment}
+									compact
+								/>
+							),
+						},
+					]
+				: []),
+			...(layers.length
+				? [
+						{
+							id: "layers",
+							label: t("Layers"),
+							icon: <LayersIcon size={16} />,
+							content: (
+								<LayerList items={layers} onToggle={toggleLayer} compact />
+							),
+						},
+					]
+				: []),
 		];
-	}, [doc, status, page, rotation, outline]);
+	}, [doc, status, page, rotation, outline, attachments, layers]);
 
 	const presets: ZoomPreset[] = [
 		{
@@ -1158,34 +1341,11 @@ export default function PdfView({
 						}
 						onStep={(dir) => runFind(find.query, true, dir === -1)}
 						onClose={closeFind}
-						options={
-							isDesktop ? (
-								<>
-									<button
-										type="button"
-										className={shellStyles.findOption}
-										aria-pressed={matchCase}
-										title={t("Match case")}
-										aria-label={t("Match case")}
-										onClick={() => setMatchCase((v) => !v)}
-										data-testid="find-case"
-									>
-										Aa
-									</button>
-									<button
-										type="button"
-										className={shellStyles.findOption}
-										aria-pressed={wholeWords}
-										title={t("Whole words")}
-										aria-label={t("Whole words")}
-										onClick={() => setWholeWords((v) => !v)}
-										data-testid="find-words"
-									>
-										“ab”
-									</button>
-								</>
-							) : undefined
-						}
+						options={{ matchCase, wholeWords }}
+						onOptions={(o) => {
+							setMatchCase(o.matchCase);
+							setWholeWords(o.wholeWords);
+						}}
 					/>
 				) : undefined
 			}
@@ -1350,7 +1510,47 @@ export default function PdfView({
 					}}
 				/>
 			</Sheet>
+
+			<Sheet
+				open={extra !== null}
+				title={
+					extra === "comments"
+						? t("Comments")
+						: extra === "attachments"
+							? t("Attachments")
+							: t("Layers")
+				}
+				onClose={() => setExtra(null)}
+				wide
+				testId="pdf-extra"
+			>
+				{extra === "comments" && doc && (
+					<Comments doc={doc} onPick={showComment} />
+				)}
+				{extra === "attachments" && (
+					<AttachmentList items={attachments} onOpen={openAttachment} />
+				)}
+				{extra === "layers" && (
+					<LayerList items={layers} onToggle={toggleLayer} />
+				)}
+			</Sheet>
 		</Shell>
+	);
+}
+
+/** The comments of a document, read once this list is first shown. */
+function Comments({
+	doc,
+	onPick,
+	compact,
+}: {
+	doc: PDFDocumentProxy;
+	onPick: (item: Comment) => void;
+	compact?: boolean;
+}) {
+	const { items, done } = useComments(doc, true);
+	return (
+		<CommentList items={items} done={done} onPick={onPick} compact={compact} />
 	);
 }
 

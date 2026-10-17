@@ -920,6 +920,8 @@ export default function SlidesView({
 						onQuery={find.setQuery}
 						onStep={find.step}
 						onClose={find.close}
+						options={find.options}
+						onOptions={find.setOptions}
 					/>
 				) : undefined
 			}
