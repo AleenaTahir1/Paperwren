@@ -390,6 +390,19 @@ export const ur: Table = {
 	"Previous picture": "پچھلی تصویر",
 	"Next picture": "اگلی تصویر",
 	"Show source": "ماخذ دکھائیں",
+	"Show as a tree": "درخت کی شکل میں دکھائیں",
+	"Fold everything": "سب سمیٹیں",
+	"Unfold everything": "سب کھولیں",
+	"This file is too big to show as a tree":
+		"یہ فائل درخت کی شکل میں دکھانے کے لیے بہت بڑی ہے",
+	"{n} keys": {
+		one: "{n} کلید",
+		other: "{n} کلیدیں",
+	},
+	"{n} items": {
+		one: "{n} چیز",
+		other: "{n} چیزیں",
+	},
 	"Wrap lines": "سطریں لپیٹیں",
 	"Line numbers": "سطر نمبر",
 	"This file has too many lines to number":

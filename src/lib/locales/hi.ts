@@ -385,6 +385,19 @@ export const hi: Table = {
 	"Previous picture": "पिछला चित्र",
 	"Next picture": "अगला चित्र",
 	"Show source": "स्रोत दिखाएँ",
+	"Show as a tree": "ट्री के रूप में दिखाएँ",
+	"Fold everything": "सब समेटें",
+	"Unfold everything": "सब खोलें",
+	"This file is too big to show as a tree":
+		"यह फ़ाइल ट्री के रूप में दिखाने के लिए बहुत बड़ी है",
+	"{n} keys": {
+		one: "{n} कुंजी",
+		other: "{n} कुंजियाँ",
+	},
+	"{n} items": {
+		one: "{n} आइटम",
+		other: "{n} आइटम",
+	},
 	"Wrap lines": "पंक्तियाँ रैप करें",
 	"Line numbers": "पंक्ति संख्याएँ",
 	"This file has too many lines to number":

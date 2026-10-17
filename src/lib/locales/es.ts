@@ -398,6 +398,19 @@ export const es: Table = {
 	"Previous picture": "Imagen anterior",
 	"Next picture": "Imagen siguiente",
 	"Show source": "Mostrar el código fuente",
+	"Show as a tree": "Mostrar como árbol",
+	"Fold everything": "Plegar todo",
+	"Unfold everything": "Desplegar todo",
+	"This file is too big to show as a tree":
+		"Este archivo es demasiado grande para mostrarlo como árbol",
+	"{n} keys": {
+		one: "{n} clave",
+		other: "{n} claves",
+	},
+	"{n} items": {
+		one: "{n} elemento",
+		other: "{n} elementos",
+	},
 	"Wrap lines": "Ajustar líneas",
 	"Line numbers": "Números de línea",
 	"This file has too many lines to number":

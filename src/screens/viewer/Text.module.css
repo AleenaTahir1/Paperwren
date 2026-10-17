@@ -258,3 +258,51 @@
 .wrap :global(.hljs-strong) {
 	font-weight: 700;
 }
+
+/* A JSON file as a tree (JsonTree.tsx). */
+.tree {
+	white-space: pre-wrap;
+}
+.children {
+	padding-inline-start: 1.25em;
+	border-inline-start: 1px solid var(--line);
+	margin-inline-start: 0.3em;
+}
+.leaf {
+	padding-inline-start: 1.1em;
+}
+.branch > summary {
+	cursor: pointer;
+	list-style: none;
+	border-radius: var(--r-s);
+}
+.branch > summary::-webkit-details-marker {
+	display: none;
+}
+.branch > summary::before {
+	content: "▸";
+	display: inline-block;
+	width: 1.1em;
+	color: var(--text-3);
+	transition: transform 120ms ease;
+}
+.branch[open] > summary::before {
+	transform: rotate(90deg);
+}
+:global(html[dir="rtl"]) .branch:not([open]) > summary::before {
+	transform: scaleX(-1);
+}
+.branch > summary:hover {
+	background: var(--surface-2);
+}
+.branch > summary:focus-visible {
+	outline: 2px solid var(--accent);
+}
+.branch[open] > summary .folded {
+	display: none;
+}
+.count {
+	color: var(--text-3);
+	font-family: var(--sans, inherit);
+	font-size: 0.85em;
+}

@@ -8,24 +8,39 @@ import {
 } from "@/lib/highlight";
 import { t } from "@/lib/i18n";
 import { prettyJson } from "@/lib/json";
+import { jsonTree } from "@/lib/jsonTree";
+import { drawMaths, markdownMath } from "@/lib/markdownMath";
 import { sheet } from "@/lib/print";
 import { decodeText } from "@/lib/text";
 import { prettyXml } from "@/lib/xml";
 import { useSettings } from "@/state/settings";
 import { Button, IconButton, Sheet, SheetItem } from "@/ui";
 import DOMPurify from "dompurify";
-import { Code, Languages, ListOrdered, Search, WrapText } from "lucide-react";
-import { marked } from "marked";
+import {
+	ChevronsDownUp,
+	ChevronsUpDown,
+	Code,
+	Languages,
+	ListOrdered,
+	ListTree,
+	Network,
+	Search,
+	WrapText,
+} from "lucide-react";
+import { Marked } from "marked";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { JsonTree, foldAll } from "./JsonTree";
 import {
 	FindBar,
 	Shell,
+	type SideTab,
 	ZoomControl,
 	percentPresets,
 	shellStyles,
 	usePageColor,
 } from "./Shell";
 import s from "./Text.module.css";
+import { type Heading, HeadingList, readHeadings } from "./headings";
 import {
 	useScrollBookmarks,
 	useScrollMemory,
@@ -45,6 +60,9 @@ const PRETTY_MAX = 2_000_000;
  * page would be too heavy to scroll. */
 const NUMBERED_MAX = 20_000;
 const TEXT_SIZES = [80, 100, 125, 150, 200];
+
+/** Markdown as GitHub reads it, with maths in TeX. */
+const markdown = new Marked(markdownMath);
 
 export default function TextView({
 	data,
@@ -79,28 +97,44 @@ export default function TextView({
 	// Markdown can be read as it was written, too.
 	const [source, setSource] = useState(false);
 	const [numbered, setNumbered] = useState(false);
+	// JSON reads as a tree to fold, as browsers show it; or as text.
+	const [asTree, setAsTree] = useState(true);
+	const tree = useMemo(
+		() =>
+			extensionOf(name) === "json" && text.length <= PRETTY_MAX
+				? jsonTree(text)
+				: null,
+		[name, text],
+	);
+	const treeShown = asTree && tree !== null && tree !== "big" ? tree : null;
+	const [outlineOpen, setOutlineOpen] = useState(false);
+	const [headings, setHeadings] = useState<Heading[]>([]);
 	const find = useDomFind(content, scroller);
 	const tapTurn = useTapToTurn(scroller);
 	// Find looks through what is on the page: put all of it there first.
 	const startFind = (query?: string) => {
 		setAll(true);
+		foldAll(content.current, true);
 		find.start(query);
 	};
 
 	const html = useMemo(() => {
 		if (format !== "md" || source) return null;
 		// File content is untrusted: sanitize before it reaches the DOM.
-		return DOMPurify.sanitize(marked.parse(text, { async: false }) as string, {
-			FORBID_TAGS: ["style", "script", "iframe", "form", "object", "embed"],
-			FORBID_ATTR: ["style"],
-		});
+		return DOMPurify.sanitize(
+			markdown.parse(text, { async: false }) as string,
+			{
+				FORBID_TAGS: ["style", "script", "iframe", "form", "object", "embed"],
+				FORBID_ATTR: ["style"],
+			},
+		);
 	}, [format, text, source]);
 
 	const shown = all ? text : text.slice(0, CHUNK);
 	// Source code, with its syntax coloured.
 	const language = useMemo(
-		() => (format === "md" ? null : languageOf(name)),
-		[format, name],
+		() => (format === "md" || treeShown ? null : languageOf(name)),
+		[format, name, treeShown],
 	);
 	const [code, setCode] = useState<string | null>(null);
 	useEffect(() => {
@@ -116,17 +150,22 @@ export default function TextView({
 	}, [language, html, shown]);
 	const lines = useMemo(
 		() =>
-			numbered && html === null
+			numbered && html === null && !treeShown
 				? code !== null
 					? splitLines(code)
 					: shown.split(/\r?\n/)
 				: null,
-		[numbered, html, shown, code],
+		[numbered, html, shown, code, treeShown],
 	);
 	// A Markdown file's code blocks, coloured once they are on the page.
 	const article = useRef<HTMLElement>(null);
+	// Its headings, to jump to, and its maths, drawn once KaTeX is in.
 	useEffect(() => {
-		if (html !== null && article.current) highlightBlocks(article.current);
+		const root = article.current;
+		setHeadings(html !== null && root ? readHeadings(root) : []);
+		if (html === null || !root) return;
+		highlightBlocks(root);
+		drawMaths(root).catch(() => {});
 	}, [html]);
 	const canNumber = useMemo(() => {
 		let count = 1;
@@ -151,6 +190,37 @@ export default function TextView({
 	const marks = useScrollBookmarks(scroller, content);
 	const speech = useMemo(() => domSpeech(scroller, content), []);
 
+	const goToHeading = (heading: Heading) => {
+		const el = scroller.current;
+		if (!el || !heading.el.isConnected) return;
+		el.scrollTop +=
+			heading.el.getBoundingClientRect().top -
+			el.getBoundingClientRect().top -
+			12;
+	};
+	const pick = useRef(goToHeading);
+	pick.current = goToHeading;
+	const side = useMemo<SideTab[]>(
+		() =>
+			html !== null
+				? [
+						{
+							id: "contents",
+							label: t("Contents"),
+							icon: <ListTree size={16} />,
+							content: (
+								<HeadingList
+									headings={headings}
+									onPick={(h) => pick.current(h)}
+									compact
+								/>
+							),
+						},
+					]
+				: [],
+		[html, headings],
+	);
+
 	const wrap = settings.wrapText;
 	// Text is drawn in the app's own colours; a page colour of its own
 	// lends it those of the theme that has it.
@@ -164,12 +234,68 @@ export default function TextView({
 			hud={hud}
 			progressOf={scroller}
 			paper
+			side={side}
 			bookmarks={marks}
 			speech={speech}
 			chromeHidden={chromeHidden && !find.open}
 			onFind={startFind}
 			menu={(close) => (
 				<>
+					{html !== null && !isDesktop && headings.length > 0 && (
+						<SheetItem
+							icon={<ListTree size={20} />}
+							onClick={() => {
+								close();
+								setOutlineOpen(true);
+							}}
+							testId="doc-contents"
+						>
+							{t("Contents")}
+						</SheetItem>
+					)}
+					{tree !== null && (
+						<SheetItem
+							icon={<Network size={20} />}
+							checked={treeShown !== null}
+							disabled={tree === "big"}
+							hint={
+								tree === "big"
+									? t("This file is too big to show as a tree")
+									: undefined
+							}
+							onClick={() => {
+								close();
+								setAsTree((v) => !v);
+							}}
+							testId="text-tree"
+						>
+							{t("Show as a tree")}
+						</SheetItem>
+					)}
+					{treeShown && (
+						<>
+							<SheetItem
+								icon={<ChevronsDownUp size={20} />}
+								onClick={() => {
+									close();
+									foldAll(content.current, false);
+								}}
+								testId="tree-fold"
+							>
+								{t("Fold everything")}
+							</SheetItem>
+							<SheetItem
+								icon={<ChevronsUpDown size={20} />}
+								onClick={() => {
+									close();
+									foldAll(content.current, true);
+								}}
+								testId="tree-unfold"
+							>
+								{t("Unfold everything")}
+							</SheetItem>
+						</>
+					)}
 					<SheetItem
 						icon={<Languages size={20} />}
 						onClick={() => {
@@ -193,7 +319,7 @@ export default function TextView({
 							{t("Show source")}
 						</SheetItem>
 					)}
-					{html === null && (
+					{html === null && !treeShown && (
 						<>
 							<SheetItem
 								icon={<WrapText size={20} />}
@@ -289,6 +415,8 @@ export default function TextView({
 								// biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized with DOMPurify above
 								dangerouslySetInnerHTML={{ __html: html }}
 							/>
+						) : treeShown ? (
+							<JsonTree root={treeShown} />
 						) : lines ? (
 							<pre
 								className={`${s.plain} ${s.numbered} ${wrap ? "" : s.nowrap}`}
@@ -322,7 +450,7 @@ export default function TextView({
 						)}
 					</div>
 				</div>
-				{!all && (
+				{!all && !treeShown && (
 					<div className={s.more}>
 						<Button variant="secondary" onClick={() => setAll(true)}>
 							{t("Show the rest ({n}k more characters)", {
@@ -332,6 +460,20 @@ export default function TextView({
 					</div>
 				)}
 			</div>
+			<Sheet
+				open={outlineOpen}
+				title={t("Contents")}
+				onClose={() => setOutlineOpen(false)}
+				wide
+			>
+				<HeadingList
+					headings={headings}
+					onPick={(h) => {
+						setOutlineOpen(false);
+						goToHeading(h);
+					}}
+				/>
+			</Sheet>
 			<Sheet
 				open={encodingOpen}
 				title={t("Text encoding")}

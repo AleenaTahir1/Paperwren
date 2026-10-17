@@ -74,8 +74,25 @@ const pdfAssets = (): Plugin => {
 	};
 };
 
+/**
+ * KaTeX names each of its fonts three times over (woff2, woff, ttf) and
+ * Vite would ship all three. The app's webviews all read woff2, so the
+ * other two are left out of its stylesheet.
+ */
+const mathFonts = (): Plugin => ({
+	name: "paperwren-math-fonts",
+	enforce: "pre",
+	transform(code, id) {
+		if (!/katex[\\/]dist[\\/]katex(\.min)?\.css/.test(id)) return;
+		return code.replace(
+			/,\s*url\([^)]*\.(?:woff|ttf)\)\s*format\("(?:woff|truetype)"\)/g,
+			"",
+		);
+	},
+});
+
 export default defineConfig({
-	plugins: [react(), dropFixtures(), pdfAssets()],
+	plugins: [react(), dropFixtures(), pdfAssets(), mathFonts()],
 	define: {
 		"import.meta.env.VITE_APP_VERSION": JSON.stringify(pkg.version),
 	},

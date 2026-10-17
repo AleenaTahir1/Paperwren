@@ -401,6 +401,19 @@ export const fr: Table = {
 	"Previous picture": "Image précédente",
 	"Next picture": "Image suivante",
 	"Show source": "Afficher la source",
+	"Show as a tree": "Afficher en arbre",
+	"Fold everything": "Tout replier",
+	"Unfold everything": "Tout déplier",
+	"This file is too big to show as a tree":
+		"Ce fichier est trop volumineux pour être affiché en arbre",
+	"{n} keys": {
+		one: "{n} clé",
+		other: "{n} clés",
+	},
+	"{n} items": {
+		one: "{n} élément",
+		other: "{n} éléments",
+	},
 	"Wrap lines": "Retour à la ligne",
 	"Line numbers": "Numéros de ligne",
 	"This file has too many lines to number":

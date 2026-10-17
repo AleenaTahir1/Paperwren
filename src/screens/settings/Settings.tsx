@@ -63,6 +63,7 @@ const LICENSES: Array<[string, string]> = [
 	["DOMPurify", "Apache-2.0 / MPL-2.0"],
 	["highlight.js", "BSD-3-Clause"],
 	["UTIF.js", "MIT"],
+	["KaTeX", "MIT"],
 	["pako", "MIT / Zlib"],
 	["React", "MIT"],
 	["Lucide icons", "ISC"],

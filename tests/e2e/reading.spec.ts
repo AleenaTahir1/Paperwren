@@ -1080,3 +1080,73 @@ test.describe("office details", () => {
 		await expect(details).toContainText("python-docx");
 	});
 });
+
+test.describe("markdown and JSON", () => {
+	test("Markdown has its contents and its maths", async ({ page }) => {
+		await boot(page);
+		await openFixture(page, "features/notes.md");
+		// KaTeX draws the maths: a line of it, and a block.
+		await expect(page.locator("article .katex").first()).toBeVisible({
+			timeout: 20_000,
+		});
+		await expect(page.locator("article .katex-display")).toHaveCount(1);
+		await expect(page.locator("article .katex")).toHaveCount(2);
+		// Prices are prose.
+		await expect(page.locator("article")).toContainText("costs $5 or $10");
+		await expect(page.locator("article .katex-error")).toHaveCount(0);
+
+		await page.getByTestId("file-more").click();
+		await page.getByTestId("doc-contents").click();
+		await expect(page.getByTestId("heading")).toHaveText([
+			"Notes",
+			"Maths",
+			"Data",
+			"A small heading",
+		]);
+		await page.getByTestId("heading").nth(3).click();
+		await expect(page.locator("article h3")).toBeInViewport();
+	});
+
+	test("Markdown contents sit in the side panel on a desktop", async ({
+		page,
+	}) => {
+		await page.setViewportSize({ width: 1280, height: 800 });
+		await boot(page, {}, "?desktop");
+		await openFixture(page, "features/notes.md");
+		await page.getByTestId("side-toggle").click();
+		await expect(page.getByTestId("heading")).toHaveCount(4);
+		await page.getByTestId("heading").nth(1).click();
+		await expect(page.locator("article h2").first()).toBeInViewport();
+	});
+
+	test("JSON folds as a tree, and can be text again", async ({ page }) => {
+		await boot(page);
+		await openFixture(page, "features/data.json");
+		const tree = page.getByTestId("json-tree");
+		await expect(tree).toBeVisible();
+		await expect(tree).toContainText("9007199254740993");
+		await expect(tree).toContainText('"tags": [');
+		// Deep branches start folded, saying what they hold.
+		await expect(tree.getByText("found me")).toBeHidden();
+		await expect(tree).toContainText("1 key");
+		await tree.locator("summary", { hasText: '"deep"' }).click();
+		await tree.locator("summary", { hasText: '"deeper"' }).click();
+		await expect(tree.getByText("found me")).toBeVisible();
+
+		await page.getByTestId("file-more").click();
+		await page.getByTestId("tree-fold").click();
+		await expect(tree.locator("details[open]")).toHaveCount(0);
+
+		// Find unfolds what it looks through.
+		await page.getByTestId("text-find").click();
+		await page.getByTestId("find-input").fill("found");
+		await expect(page.getByTestId("find-count")).toHaveText("1 of 1");
+		await expect(tree.getByText("found me")).toBeVisible();
+		await page.keyboard.press("Escape");
+
+		await page.getByTestId("file-more").click();
+		await page.getByTestId("text-tree").click();
+		await expect(tree).toHaveCount(0);
+		await expect(page.getByTestId("text-code")).toContainText('"found me"');
+	});
+});
