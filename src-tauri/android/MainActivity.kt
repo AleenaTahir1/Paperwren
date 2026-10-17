@@ -124,6 +124,50 @@ class MainActivity : TauriActivity() {
       }
     }
 
+  /** Copies the web layer saves (a filled-in form, pages put
+   * together): their bytes arrive a piece at a time into a file in the
+   * cache, then the system's "save as" screen says where they go. No
+   * permission is needed: the reader picks the place. */
+  private val saving = HashMap<String, File>()
+  private var saveToken: String? = null
+  private var saveFile: File? = null
+  private val savePicker =
+    registerForActivityResult(object : androidx.activity.result.contract.ActivityResultContract<Pair<String, String>, Uri?>() {
+      override fun createIntent(context: Context, input: Pair<String, String>): Intent =
+        Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+          addCategory(Intent.CATEGORY_OPENABLE)
+          type = input.second
+          putExtra(Intent.EXTRA_TITLE, input.first)
+        }
+
+      override fun parseResult(resultCode: Int, intent: Intent?): Uri? =
+        if (resultCode == RESULT_OK) intent?.data else null
+    }) { uri ->
+      val token = saveToken
+      val file = saveFile
+      saveToken = null
+      saveFile = null
+      if (token == null || file == null) return@registerForActivityResult
+      if (uri == null) {
+        file.delete()
+        callWeb("__paperwrenSaved", JSONObject.quote(token) + ",\"cancel\"")
+        return@registerForActivityResult
+      }
+      scanExecutor.execute {
+        val result = try {
+          contentResolver.openOutputStream(uri, "wt")?.use { out ->
+            file.inputStream().use { it.copyTo(out) }
+          } ?: throw IllegalStateException("no stream")
+          JSONObject.quote(queryDisplayName(uri))
+        } catch (e: Exception) {
+          "null"
+        } finally {
+          file.delete()
+        }
+        callWeb("__paperwrenSaved", JSONObject.quote(token) + "," + result)
+      }
+    }
+
   /** A slide show has the screen: the system bars are hidden. */
   private var barsHidden = false
 
@@ -868,6 +912,57 @@ class MainActivity : TauriActivity() {
         bars.isAppearanceLightStatusBars = !dark
         bars.isAppearanceLightNavigationBars = !dark
       }
+    }
+
+    /** Start a copy to save; its bytes follow through saveChunk. */
+    @JavascriptInterface
+    fun saveBegin(token: String): Boolean {
+      if (!fromApp() || token.isEmpty() || token.length > 64) return false
+      return try {
+        val dir = File(cacheDir, "saving").apply { mkdirs() }
+        synchronized(saving) {
+          saving.remove(token)?.delete()
+          saving[token] = File.createTempFile("copy", ".bin", dir)
+        }
+        true
+      } catch (e: Exception) {
+        false
+      }
+    }
+
+    /** A piece of the copy, as base64. */
+    @JavascriptInterface
+    fun saveChunk(token: String, base64: String): Boolean {
+      if (!fromApp()) return false
+      val file = synchronized(saving) { saving[token] } ?: return false
+      return try {
+        FileOutputStream(file, true).use { it.write(Base64.decode(base64, Base64.DEFAULT)) }
+        true
+      } catch (e: Exception) {
+        false
+      }
+    }
+
+    /** Ask where the copy goes, offering `name`. Answers through
+     * window.__paperwrenSaved(token, savedName | "cancel" | null). */
+    @JavascriptInterface
+    fun saveFinish(token: String, name: String, mime: String): Boolean {
+      if (!fromApp()) return false
+      val file = synchronized(saving) { saving.remove(token) } ?: return false
+      main.post {
+        try {
+          saveFile?.delete()
+          saveToken = token
+          saveFile = file
+          savePicker.launch(Pair(name, mime.ifEmpty { "application/octet-stream" }))
+        } catch (e: Exception) {
+          saveToken = null
+          saveFile = null
+          file.delete()
+          callWeb("__paperwrenSaved", JSONObject.quote(token) + ",null")
+        }
+      }
+      return true
     }
 
     /** Ask the user for a folder. Answers through

@@ -43,6 +43,8 @@ export interface FileAbilities {
 	openWith: boolean;
 	/** Show it in the system file manager. */
 	reveal: boolean;
+	/** Give it a new name. */
+	rename: boolean;
 }
 
 /** A folder the user chose to browse from Home. */
@@ -65,6 +67,13 @@ export interface FolderFile {
 	/** Sub-folder inside the browsed folder ("" for its top level). */
 	folder: string;
 	request: OpenRequest;
+}
+
+/** A file the reader saved: its name, and where to open it again
+ * when the platform says. */
+export interface SavedFile {
+	name: string;
+	reopen?: Reopen;
 }
 
 /** Bounds for a folder scan, matched on the native side. */
@@ -104,6 +113,18 @@ interface Backend {
 	share(file: FileRef): Promise<void>;
 	openWith(file: FileRef): Promise<void>;
 	reveal(file: FileRef): Promise<void>;
+	/** Save bytes the app made (a filled-in form, pages put together)
+	 * as a new file, where the reader says. Null when they cancel. */
+	saveFile(
+		name: string,
+		bytes: Uint8Array,
+		mime: string,
+	): Promise<SavedFile | null>;
+	/** Give the file a new name. On a desktop the file itself is
+	 * renamed in its folder; elsewhere the app holds a copy, and the
+	 * name is the one it is known by here (and is shared or saved by).
+	 * Resolves to where the file is now. */
+	rename(file: FileRef, name: string): Promise<Reopen>;
 	/** Ask the host to print the page as it is laid out for print.
 	 * False when the host has no printing of its own (use window.print). */
 	printPage(jobName: string): Promise<boolean>;
@@ -167,8 +188,15 @@ declare global {
 			volumeKeys?(on: boolean): void;
 			listFolder(treeUri: string, extensions: string, token: string): boolean;
 			releaseFolder(treeUri: string): void;
+			/** Saving a copy: begin, the bytes in base64 pieces, then the
+			 * system's save screen; the answer comes back through
+			 * window.__paperwrenSaved(token, name | "cancel" | null). */
+			saveBegin?(token: string): boolean;
+			saveChunk?(token: string, base64: string): boolean;
+			saveFinish?(token: string, name: string, mime: string): boolean;
 		};
 		/** MainActivity's answers to pickFolder / listFolder. */
+		__paperwrenSaved?: (token: string, result: string | null) => void;
 		__paperwrenFolder?: (
 			token: string,
 			folder: { uri: string; name: string } | null,
@@ -272,6 +300,16 @@ function canWebShare(): boolean {
 	} catch {
 		return false;
 	}
+}
+
+/** Bytes per piece handed to the Android bridge when saving. */
+const SAVE_PIECE = 384 * 1024;
+
+function base64Of(bytes: Uint8Array): string {
+	let text = "";
+	for (let at = 0; at < bytes.length; at += 0x8000)
+		text += String.fromCharCode(...bytes.subarray(at, at + 0x8000));
+	return btoa(text);
 }
 
 function saveCopy(file: File) {
@@ -391,6 +429,7 @@ const browserBackend: Backend = {
 			shareIsDownload: !sheet,
 			openWith: false,
 			reveal: false,
+			rename: true,
 		};
 	},
 	async share(file) {
@@ -403,6 +442,13 @@ const browserBackend: Backend = {
 	},
 	async reveal() {
 		throw new OpenError("unsupported");
+	},
+	async saveFile(name, bytes, mime) {
+		saveCopy(new File([bytes as BlobPart], name, { type: mime }));
+		return { name };
+	},
+	async rename(file) {
+		return file.reopen;
 	},
 	async printPage() {
 		return false;
@@ -450,10 +496,11 @@ const browserBackend: Backend = {
 
 async function invoke<T>(
 	cmd: string,
-	args?: Record<string, unknown>,
+	args?: Record<string, unknown> | Uint8Array,
+	options?: { headers: Record<string, string> },
 ): Promise<T> {
 	const { invoke } = await import("@tauri-apps/api/core");
-	return invoke<T>(cmd, args);
+	return invoke<T>(cmd, args, options);
 }
 
 function androidName(uri: string): {
@@ -538,7 +585,7 @@ function importPicked(uri: string): Promise<ManagedCopy | null> {
 const androidWaiters = new Map<string, (value: unknown) => void>();
 let androidToken = 0;
 function androidCall<T>(
-	callback: "__paperwrenFolder" | "__paperwrenFolderList",
+	callback: "__paperwrenFolder" | "__paperwrenFolderList" | "__paperwrenSaved",
 	start: (token: string) => boolean,
 ): Promise<T | null> {
 	window[callback] ??= (token: string, value: unknown) => {
@@ -853,6 +900,7 @@ const tauriBackend: Backend = {
 				shareIsDownload: false,
 				openWith: extras,
 				reveal: false,
+				rename: true,
 			};
 		}
 		return {
@@ -864,6 +912,7 @@ const tauriBackend: Backend = {
 				file.reopen.kind === "path" &&
 				!SCRIPT_EXTENSIONS.includes(extensionOf(file.name)),
 			reveal: file.reopen.kind === "path",
+			rename: true,
 		};
 	},
 	async share(file) {
@@ -898,6 +947,45 @@ const tauriBackend: Backend = {
 	},
 	async reveal(file) {
 		await invoke("reveal_in_folder", { path: nativeTarget(file) });
+	},
+	async saveFile(name, bytes, mime) {
+		const bridge = window.__paperwrenAndroidExtras;
+		if (window.__paperwrenAndroid) {
+			if (!bridge?.saveBegin || !bridge.saveChunk || !bridge.saveFinish)
+				throw new OpenError("unsupported");
+			const { saveBegin, saveChunk, saveFinish } = bridge;
+			const answer = await androidCall<string>("__paperwrenSaved", (token) => {
+				if (!saveBegin.call(bridge, token)) return false;
+				for (let at = 0; at < bytes.length; at += SAVE_PIECE)
+					if (
+						!saveChunk.call(
+							bridge,
+							token,
+							base64Of(bytes.subarray(at, at + SAVE_PIECE)),
+						)
+					)
+						return false;
+				return saveFinish.call(bridge, token, name, mime);
+			});
+			if (answer === "cancel") return null;
+			if (answer === null) throw new OpenError("unreadable");
+			return { name: answer || name };
+		}
+		const path = await invoke<string | null>("save_as", bytes, {
+			headers: { "x-name": encodeURIComponent(name) },
+		});
+		if (!path) return null;
+		const cut = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
+		return { name: path.slice(cut + 1), reopen: { kind: "path", path } };
+	},
+	async rename(file, name) {
+		// A phone holds a private copy: the name is the one it goes by here.
+		if (file.reopen.kind !== "path") return file.reopen;
+		const path = await invoke<string>("rename_file", {
+			path: file.reopen.path,
+			name,
+		});
+		return { kind: "path", path };
 	},
 	async printPage(jobName) {
 		return window.__paperwrenAndroidExtras?.printPage(jobName) ?? false;
@@ -987,7 +1075,12 @@ export const backend: Backend = {
 			shareIsDownload: !sheet,
 			openWith: false,
 			reveal: false,
+			rename: false,
 		};
+	},
+	async rename(file, name) {
+		if (file.reopen.kind === "memory") throw new OpenError("unsupported");
+		return raw.rename(file, name);
 	},
 	async share(file) {
 		if (file.reopen.kind !== "memory") return raw.share(file);

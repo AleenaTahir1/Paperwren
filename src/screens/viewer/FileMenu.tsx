@@ -5,7 +5,7 @@ import { inFullscreen, toggleFullscreen } from "@/lib/fullscreen";
 import { t } from "@/lib/i18n";
 import { FULLSCREEN_KEYS } from "@/lib/keys";
 import { printDocument } from "@/lib/print";
-import type { OpenRequest } from "@/lib/types";
+import type { OpenRequest, Reopen } from "@/lib/types";
 import { Button, Dialog, IconButton, Sheet, SheetItem, toast } from "@/ui";
 import {
 	AppWindow,
@@ -15,6 +15,7 @@ import {
 	Maximize,
 	Minimize,
 	MoreVertical,
+	PencilLine,
 	Printer,
 	Share2,
 } from "lucide-react";
@@ -27,11 +28,16 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { RenameDialog } from "./RenameDialog";
 import s from "./Shell.module.css";
 
 /** The file a viewer is showing, for the actions that leave the app. */
 export interface ViewerFile {
 	file: FileRef;
+	/** Its id in recents. */
+	id: string;
+	/** The file was renamed: show it under its new name. */
+	onRenamed?: (name: string, reopen: Reopen, id: string) => void;
 	/** Bytes, as read. */
 	size: number;
 	/** Show another file in place of this one (the next picture of a
@@ -185,6 +191,7 @@ export function FileMenu({
 	const context = useContext(ViewerFileContext);
 	const [open, setOpen] = useState(false);
 	const [details, setDetails] = useState(false);
+	const [renaming, setRenaming] = useState(false);
 	const close = useCallback(() => setOpen(false), []);
 
 	const print = useCallback(() => {
@@ -242,6 +249,18 @@ export function FileMenu({
 					</SheetItem>
 				)}
 				<HandOffItems file={file} onDone={close} testPrefix="file" />
+				{backend.abilities(file).rename && context.onRenamed && (
+					<SheetItem
+						icon={<PencilLine size={20} />}
+						onClick={() => {
+							setOpen(false);
+							setRenaming(true);
+						}}
+						testId="file-rename"
+					>
+						{t("Rename")}
+					</SheetItem>
+				)}
 				{onPrint && (
 					<SheetItem
 						icon={<Printer size={20} />}
@@ -269,6 +288,14 @@ export function FileMenu({
 					size={size}
 					extra={more}
 					onClose={() => setDetails(false)}
+				/>
+			)}
+			{renaming && (
+				<RenameDialog
+					file={file}
+					id={context.id}
+					onClose={() => setRenaming(false)}
+					onRenamed={context.onRenamed}
 				/>
 			)}
 		</>

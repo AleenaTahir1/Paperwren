@@ -625,3 +625,20 @@
 	width: 100%;
 	accent-color: var(--accent);
 }
+
+/* Rename: the name to type, and its extension kept beside it. */
+.renameField {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+.renameExt {
+	flex-shrink: 0;
+	color: var(--text-2);
+	font-weight: 650;
+}
+.renameError {
+	margin: 8px 0 0;
+	font-size: 13px;
+	color: var(--danger, #b0312c);
+}

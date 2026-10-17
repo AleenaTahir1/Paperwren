@@ -342,6 +342,22 @@ export default function ViewerScreen({
 					format: loaded.format,
 					reopen: request.reopen,
 				},
+				id: request.id,
+				// Shown again under its new name, from where it now is.
+				onRenamed:
+					request.reopen.kind === "memory"
+						? undefined
+						: (name, reopen, id) =>
+								onReplace({
+									...request,
+									id,
+									name,
+									nameVerified: true,
+									reopen,
+									position:
+										entries.find((e) => e.id === request.id)?.position ??
+										initialPosition,
+								}),
 				size: loaded.data.byteLength || loaded.size,
 				openOther: onReplace,
 				openOver: onOpen,

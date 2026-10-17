@@ -13,6 +13,8 @@ pub enum ErrorKind {
     Io,
     Corrupt,
     Path,
+    /// Another file already has the name asked for.
+    Exists,
 }
 
 #[derive(Debug, Serialize)]

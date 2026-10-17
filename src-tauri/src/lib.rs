@@ -9,10 +9,14 @@
 //! The desktop hand-off commands (`open.rs`) are the one exception:
 //! they take the absolute path of the user's document, and accept it
 //! only if it is an existing file of a document type the app opens.
+//! The two desktop writes (`save.rs`) are asked for by the reader: a
+//! copy saved where the system's save dialog says, and a rename of the
+//! document on show within its folder.
 
 mod error;
 mod imports;
 mod open;
+mod save;
 mod store;
 
 use std::path::PathBuf;
@@ -180,6 +184,81 @@ async fn reveal_in_folder(path: String) -> AppResult<()> {
     }
 }
 
+/// Rename the document on show, in its folder; returns its new path.
+#[tauri::command]
+async fn rename_file(path: String, name: String) -> AppResult<String> {
+    blocking(move || {
+        let to = save::rename(&path, &name)?;
+        to.to_str()
+            .map(str::to_owned)
+            .ok_or_else(|| AppError::new(error::ErrorKind::Path, "path is not text"))
+    })
+    .await
+}
+
+/// `%XX`-encoded text (the name travels in a header), decoded.
+fn percent_decoded(text: &str) -> Option<String> {
+    let bytes = text.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' {
+            let hex = std::str::from_utf8(bytes.get(i + 1..i + 3)?).ok()?;
+            out.push(u8::from_str_radix(hex, 16).ok()?);
+            i += 3;
+        } else {
+            out.push(bytes[i]);
+            i += 1;
+        }
+    }
+    String::from_utf8(out).ok()
+}
+
+/// Save bytes the app made (the body) as a new file where the reader
+/// says, in the system's save dialog, suggesting the name in the
+/// `x-name` header. Returns the path, or None when the reader cancels.
+#[tauri::command]
+async fn save_as(
+    app: tauri::AppHandle,
+    request: tauri::ipc::Request<'_>,
+) -> AppResult<Option<String>> {
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
+        return Err(AppError::new(error::ErrorKind::Io, "expected the file's bytes"));
+    };
+    let bytes = bytes.clone();
+    let name = request
+        .headers()
+        .get("x-name")
+        .and_then(|v| v.to_str().ok())
+        .and_then(percent_decoded)
+        .and_then(|n| save::valid_name(&n).ok())
+        .unwrap_or_else(|| "Untitled".to_owned());
+    #[cfg(desktop)]
+    {
+        use tauri_plugin_dialog::DialogExt;
+        let mut dialog = app.dialog().file().set_file_name(&name);
+        if let Some(ext) = save::extension_of(&name) {
+            dialog = dialog.add_filter(ext.to_uppercase(), &[ext.as_str()]);
+        }
+        blocking(move || {
+            let Some(picked) = dialog.blocking_save_file() else {
+                return Ok(None);
+            };
+            let path = picked
+                .into_path()
+                .map_err(|e| AppError::new(error::ErrorKind::Path, e.to_string()))?;
+            std::fs::write(&path, &bytes)?;
+            Ok(path.to_str().map(str::to_owned))
+        })
+        .await
+    }
+    #[cfg(not(desktop))]
+    {
+        let _ = (app, bytes, name);
+        Err(AppError::new(error::ErrorKind::Path, "not available here"))
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -195,7 +274,9 @@ pub fn run() {
             imports_prune,
             launch_files,
             open_external,
-            reveal_in_folder
+            reveal_in_folder,
+            rename_file,
+            save_as
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application")
@@ -205,4 +286,20 @@ pub fn run() {
                 opened(_app, urls);
             }
         });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::percent_decoded;
+
+    #[test]
+    fn names_in_headers_are_decoded() {
+        assert_eq!(
+            percent_decoded("R%C3%A9sum%C3%A9%20(signed).pdf").as_deref(),
+            Some("Résumé (signed).pdf")
+        );
+        assert_eq!(percent_decoded("plain.pdf").as_deref(), Some("plain.pdf"));
+        assert_eq!(percent_decoded("bad%2"), None);
+        assert_eq!(percent_decoded("%FF%FE"), None);
+    }
 }

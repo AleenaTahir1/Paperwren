@@ -2,13 +2,19 @@ import { backend, managedRelPath } from "@/lib/backend";
 import { isDesktop, isTauri } from "@/lib/env";
 import { isOpaqueName } from "@/lib/formats";
 import {
+	idForReopen,
 	migrateLegacyRecents,
 	normalizeRecents,
 	recordOpen as recordOpenPure,
 	sortRecents,
 	updateEntry,
 } from "@/lib/recents";
-import { type Position, type RecentEntry, STORAGE_KEYS } from "@/lib/types";
+import {
+	type Position,
+	type RecentEntry,
+	type Reopen,
+	STORAGE_KEYS,
+} from "@/lib/types";
 import {
 	type ReactNode,
 	createContext,
@@ -19,6 +25,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { moveBookmarks } from "./bookmarks";
 import { useSettings } from "./settings";
 
 interface RecentsApi {
@@ -34,6 +41,9 @@ interface RecentsApi {
 	clear: () => RecentEntry[];
 	/** Puts back whatever of `entries` is no longer in the list. */
 	restore: (entries: RecentEntry[]) => void;
+	/** A file was given a new name (and, on a desktop, a new path): its
+	 * entry and bookmarks follow it. Returns the id it has now. */
+	rename: (id: string, name: string, reopen: Reopen) => string;
 }
 
 /** How long a removed entry's managed copy outlives it, so the
@@ -266,6 +276,26 @@ export function RecentsProvider({ children }: { children: ReactNode }) {
 		[commit],
 	);
 
+	const rename = useCallback<RecentsApi["rename"]>(
+		(id, name, reopen) => {
+			// An id comes from where the file is: a renamed desktop file has
+			// a new one; a copy the app holds keeps its own.
+			const now = idForReopen(reopen);
+			commit((prev) =>
+				prev
+					.filter((e) => e.id !== now || now === id)
+					.map((e) =>
+						e.id === id
+							? { ...e, id: now, name, nameVerified: undefined, reopen }
+							: e,
+					),
+			);
+			moveBookmarks(id, now);
+			return now;
+		},
+		[commit],
+	);
+
 	const api = useMemo(
 		() => ({
 			entries,
@@ -277,6 +307,7 @@ export function RecentsProvider({ children }: { children: ReactNode }) {
 			remove,
 			clear,
 			restore,
+			rename,
 		}),
 		[
 			entries,
@@ -288,6 +319,7 @@ export function RecentsProvider({ children }: { children: ReactNode }) {
 			remove,
 			clear,
 			restore,
+			rename,
 		],
 	);
 	return (

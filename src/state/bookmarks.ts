@@ -47,6 +47,21 @@ async function change(file: string, edit: (list: Bookmark[]) => Bookmark[]) {
 	await backend.storeSet(BOOKMARKS_KEY, next).catch(() => {});
 }
 
+/** A file was renamed and is known by a new id: its bookmarks go with
+ * it. */
+export async function moveBookmarks(from: string, to: string) {
+	if (from === to) return;
+	await load();
+	const base = SHARED ? await read() : book;
+	const list = base[from];
+	if (!list) return;
+	const next = { ...base, [to]: list };
+	delete next[from];
+	book = next;
+	emit();
+	await backend.storeSet(BOOKMARKS_KEY, next).catch(() => {});
+}
+
 /** Forget every bookmark of every file. Returns them, for Undo. */
 export async function clearBookmarks(): Promise<Bookmarks> {
 	await load();

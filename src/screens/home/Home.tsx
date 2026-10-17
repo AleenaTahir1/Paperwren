@@ -5,6 +5,7 @@ import { isolate, locale, msg, t } from "@/lib/i18n";
 import { keys } from "@/lib/keys";
 import type { OpenRequest, RecentEntry } from "@/lib/types";
 import { FileDetails, HandOffItems } from "@/screens/viewer/FileMenu";
+import { RenameDialog } from "@/screens/viewer/RenameDialog";
 import { MAX_FOLDERS, useFolders } from "@/state/folders";
 import { useRecents } from "@/state/recents";
 import {
@@ -24,6 +25,7 @@ import {
 	FolderPlus,
 	Info,
 	MoreVertical,
+	PencilLine,
 	Pin,
 	PinOff,
 	Plus,
@@ -128,6 +130,7 @@ export function Home({
 	const [sortOpen, setSortOpen] = useState(false);
 	const [menuFor, setMenuFor] = useState<RecentEntry | null>(null);
 	const [detailsFor, setDetailsFor] = useState<RecentEntry | null>(null);
+	const [renameFor, setRenameFor] = useState<RecentEntry | null>(null);
 	// Where the list looks: recents, or one of the folders the user chose.
 	const { folders, add: addFolder, remove: removeFolder } = useFolders();
 	const [place, setPlace] = useState<string | null>(null);
@@ -490,6 +493,19 @@ export function Home({
 								testPrefix="menu"
 							/>
 						)}
+						{!menuFor.unavailable &&
+							backend.abilities(refOf(menuFor)).rename && (
+								<SheetItem
+									icon={<PencilLine size={20} />}
+									onClick={() => {
+										setRenameFor(menuFor);
+										setMenuFor(null);
+									}}
+									testId="menu-rename"
+								>
+									{t("Rename")}
+								</SheetItem>
+							)}
 						<SheetItem
 							icon={<Info size={20} />}
 							onClick={() => {
@@ -520,6 +536,13 @@ export function Home({
 					</>
 				)}
 			</Sheet>
+			{renameFor && (
+				<RenameDialog
+					file={refOf(renameFor)}
+					id={renameFor.id}
+					onClose={() => setRenameFor(null)}
+				/>
+			)}
 			{detailsFor && (
 				<FileDetails
 					file={refOf(detailsFor)}

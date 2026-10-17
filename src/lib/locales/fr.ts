@@ -431,6 +431,20 @@ export const fr: Table = {
 	"As written": "Comme écrit",
 	Serif: "Avec empattement",
 	"Sans serif": "Sans empattement",
+	Rename: "Renommer",
+	"New name": "Nouveau nom",
+	"Renamed to {name}": "Renommé en {name}",
+	"Type a name": "Saisissez un nom",
+	"A name can't contain any of \\ / : * ? \" < > |":
+		'Un nom ne peut contenir aucun de ces caractères : \\ / : * ? " < > |',
+	"That name is kept by the system": "Ce nom est réservé par le système",
+	"That name is too long": "Ce nom est trop long",
+	"That name can't be used": "Ce nom ne peut pas être utilisé",
+	"Another file in that folder already has this name":
+		"Un autre fichier de ce dossier porte déjà ce nom",
+	"The file is no longer where it was":
+		"Le fichier n'est plus à son emplacement",
+	"Couldn't rename this file": "Impossible de renommer ce fichier",
 	"This file was changed by another app": "Une autre app a modifié ce fichier",
 	Reload: "Recharger",
 	"Keep showing this version": "Garder cette version",
