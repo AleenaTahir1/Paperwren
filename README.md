@@ -26,13 +26,14 @@
 
 ![PDF, Word, Excel and PowerPoint files open in Paperwren](docs/screenshots/viewers.png)
 
-Paperwren opens PDF, Word, Excel, PowerPoint, OpenDocument, RTF, EPUB, CSV, Markdown and plain-text files, source code, comic books and pictures. It reads them on the device and does nothing else: it never touches the network and the Android app requests zero permissions.
+Paperwren opens PDF, Word, Excel, PowerPoint, OpenDocument, RTF, EPUB, CSV, Markdown and plain-text files, source code, comic books and pictures. It also fills in and signs PDFs, and merges, splits and organizes them, each tool saving a new copy. Everything happens on the device: it never touches the network and the Android app requests zero permissions.
 
 ## Contents
 
 - [Download](#download)
 - [What it opens](#what-it-opens)
 - [Around the document](#around-the-document)
+- [Tools](#tools)
 - [On Windows](#on-windows)
 - [On a Mac](#on-a-mac)
 - [Zoom and keyboard](#zoom-and-keyboard)
@@ -90,6 +91,25 @@ The bytes decide the format, not the file name: content URIs without extensions 
 - **Recents** can be sorted by last opened, name or size; removing one, clearing them or turning them off can be undone for a few seconds. A file reopens at the page and zoom it was left at.
 - **Keep the screen on** while a document is open (off by default; no permission needed).
 - **Languages**: English, 中文, हिन्दी, Español, Français, العربية and اردو, following the phone or chosen in Settings. Arabic and Urdu mirror the app; documents keep their own direction. See "Translations" below.
+
+## Tools
+
+The PDF jobs people otherwise upload to a website for, on the device. Open them from **Tools** on Home, or from a PDF's menu (**Fill & sign**, **More PDF tools**). Each tool saves a new file where you choose, in the system's own save screen; the files you started with are not changed.
+
+| Tool | What it does |
+|---|---|
+| Fill & sign | The form's own fields can be typed into, ticked and chosen. Anywhere on a page you can put a signature or initials, a line of text, the date, a tick or a cross, and move, resize or remove them; a signature field in the form is a "Sign here" box. A signature is drawn with a finger, pen or mouse, typed in a handwriting face, or taken from a photo of one on paper (the paper is made clear), and can be kept on the device for next time. The copy keeps the fields as fields, or makes them part of the page. Marks stay upright on pages the file turns, and text in a script the standard PDF fonts lack is drawn as a picture. A PDF whose author forbids changes says so instead |
+| Merge PDFs | Several PDFs as one, in the order you set |
+| Organize pages | Turn, move or take out pages, picked from thumbnails |
+| Split or extract pages | Pages typed as "1-3, 5" as a new PDF, or every page as its own PDF in a ZIP |
+| Pictures to PDF | Photos or scans (any format the app opens) as pages: A4, Letter, or each picture's own size |
+| PDF to pictures | Pages as JPEG pictures at 150 dpi (several in a ZIP) |
+| Page numbers, watermark | "1" or "Page 1 of 9" at the foot or top of every page; a word such as DRAFT across them |
+| Add or remove a password | A copy that asks for a password to open, or one that no longer does (if you know it) |
+
+Any file can also be **renamed**, from its menu or a recent's: the extension stays as it is. On a desktop the file itself is renamed in its folder, never over another file; on a phone, where the app holds a copy, the new name is the one it goes by in the app and is shared by. This answers [issue #10](https://github.com/Razee4315/Paperwren/issues/10).
+
+The tools are built on [pdf-lib](https://github.com/cantoo-scribe/pdf-lib) (the maintained fork), loaded only when one runs.
 
 ## On Windows
 
@@ -169,6 +189,8 @@ The same app on Windows (an older build; the window now has one bar):
 - No network access and no analytics. The release APK requests zero Android permissions, and the release pipeline fails if one appears.
 - Recents and settings live in app-private storage. On Android, files opened from the picker or shared into the app are kept as private copies (deduplicated by content hash, capped at 250 MB) so recents still reopen after the app is closed; they can be deleted in Settings.
 - Passwords (PDF and Office) are used once, in memory, and never stored.
+- A signature or initials you ask to keep are stored as pictures in app-private storage, and can be forgotten whenever you sign.
+- The app never changes a file it opened. It writes only a copy a tool made, where you pick it in the system's save screen, and a file you rename. On a desktop both are done by the Rust side (`src-tauri/src/save.rs`), which checks the name: the web layer's file access stays read-only.
 
 The full policy is at [razee4315.github.io/Paperwren/privacy](https://razee4315.github.io/Paperwren/privacy).
 
@@ -248,10 +270,13 @@ src/
     parseWorker.ts  SheetJS, legacy Office parsing and decryption, off the main thread
   state/          React providers: settings, recents, navigation/Back
   ui/             small component kit (CSS Modules)
-  screens/        Home, Settings, viewer/ (one lazily loaded chunk per engine)
+  screens/        Home, Settings, viewer/ (one lazily loaded chunk per engine),
+                  tools/ (fill & sign, the PDF tools)
+    pdfTools.ts   the PDF tools on pdf-lib: fill and sign, build, number, mark, lock
 src-tauri/
   src/            Rust core: store.rs (atomic JSON store), imports.rs (managed copies),
-                  open.rs (desktop hand-offs, the files Finder asks for), error.rs
+                  open.rs (desktop hand-offs, the files Finder asks for),
+                  save.rs (saving a copy, renaming), error.rs
   tauri.windows.conf.json   Windows only: no native frame, and the webview's
                   pinch reaches the app (the Android window is in tauri.android.conf.json)
   tauri.macos.conf.json     macOS only: the system's window buttons over the app's bar

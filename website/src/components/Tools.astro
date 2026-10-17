@@ -1,0 +1,80 @@
+---
+const tools = [
+	{ name: "Fill & sign", note: "Type into a PDF form, then sign it: draw, type or use a photo of your signature." },
+	{ name: "Merge PDFs", note: "Put several PDFs together, in the order you choose." },
+	{ name: "Organize pages", note: "Turn, move or take out pages." },
+	{ name: "Split or extract", note: "Some pages as a new PDF, or every page as its own." },
+	{ name: "Pictures to PDF", note: "Photos and scans as the pages of one PDF." },
+	{ name: "PDF to pictures", note: "Each page as a JPEG." },
+	{ name: "Page numbers & watermark", note: "Number every page, or mark it DRAFT." },
+	{ name: "Passwords", note: "Lock a copy with a password, or unlock one you can open." },
+];
+---
+
+<section class="section tools" id="tools" aria-labelledby="tools-title">
+	<div class="wrap">
+		<div class="top">
+			<p class="label" data-perch="text">Tools</p>
+			<h2 class="h1" id="tools-title" data-split data-perch="text">Sign it. <em>Merge it.</em> No website needed.</h2>
+			<p class="lede">
+				The PDF jobs people upload to a website for, done on your device. Each one
+				saves a new file where you choose; the one you started with stays as it was.
+			</p>
+		</div>
+		<ul>
+			{
+				tools.map((tool) => (
+					<li data-reveal data-perch="bottom">
+						<span class="name">{tool.name}</span>
+						<span class="note">{tool.note}</span>
+					</li>
+				))
+			}
+		</ul>
+		<p class="small" data-reveal>
+			A signature you keep for next time stays on your device, like everything else.
+			Files can also be renamed from inside the app.
+		</p>
+	</div>
+</section>
+
+<style>
+	.top {
+		display: grid;
+		gap: 1.2rem;
+		max-width: 60rem;
+		margin-bottom: clamp(2rem, 5vw, 3.5rem);
+	}
+	ul {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 0 2.5rem;
+		border-top: 1px solid var(--ink);
+	}
+	li {
+		display: grid;
+		gap: 0.15rem;
+		padding: 0.9rem 0;
+		border-bottom: 1px solid var(--line);
+	}
+	.name {
+		font: 700 1.05rem/1.4 var(--sans);
+	}
+	.note {
+		color: var(--ink-2);
+		font-size: var(--s-small);
+	}
+	.small {
+		margin-top: 1.5rem;
+		color: var(--ink-2);
+		font-size: var(--s-small);
+	}
+	@media (max-width: 860px) {
+		ul {
+			grid-template-columns: 1fr;
+		}
+	}
+</style>

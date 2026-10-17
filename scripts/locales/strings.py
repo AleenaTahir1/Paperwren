@@ -407,6 +407,17 @@ ROWS = [
     ("Serif", "سیرف", "مذيَّل", "衬线", "सेरिफ़", "Con serifa", "Avec empattement"),
     ("Sans serif", "بغیر سیرف", "غير مذيَّل", "无衬线", "सैन्स सेरिफ़", "Sin serifa", "Sans empattement"),
     # ---- tools ----
+    ("Signatures forgotten", "دستخط بھلا دیے گئے", "نُسيت التواقيع", "已删除签名", "हस्ताक्षर भुला दिए गए", "Firmas olvidadas", "Signatures oubliées"),
+    ("Forget kept signatures", "رکھے گئے دستخط بھول جائیں", "انسَ التواقيع المحفوظة", "删除已保存的签名", "रखे गए हस्ताक्षर भूल जाएँ", "Olvidar las firmas guardadas", "Oublier les signatures gardées"),
+    (
+        "{n} signatures and initials, kept only on this device",
+        {"one": "{n} دستخط یا مخففات، صرف اسی آلے پر", "other": "{n} دستخط اور مخففات، صرف اسی آلے پر"},
+        {"one": "توقيع واحد أو أحرف أولى، على هذا الجهاز فقط", "two": "توقيعان أو أحرف أولى، على هذا الجهاز فقط", "few": "{n} تواقيع وأحرف أولى، على هذا الجهاز فقط", "many": "{n} توقيعًا وأحرفًا أولى، على هذا الجهاز فقط", "other": "{n} توقيع وأحرف أولى، على هذا الجهاز فقط"},
+        "{n} 个签名和缩写，仅保存在此设备上",
+        {"one": "{n} हस्ताक्षर या आद्याक्षर, केवल इसी डिवाइस पर", "other": "{n} हस्ताक्षर और आद्याक्षर, केवल इसी डिवाइस पर"},
+        {"one": "{n} firma o iniciales, solo en este dispositivo", "other": "{n} firmas e iniciales, solo en este dispositivo"},
+        {"one": "{n} signature ou initiales, seulement sur cet appareil", "other": "{n} signatures et initiales, seulement sur cet appareil"},
+    ),
     ("Tools", "اوزار", "الأدوات", "工具", "औज़ार", "Herramientas", "Outils"),
     ("Everything happens on this device. The files you pick stay as they are: each tool saves a new one.", "سب کچھ اسی آلے پر ہوتا ہے۔ آپ کی چنی ہوئی فائلیں جوں کی توں رہتی ہیں: ہر اوزار ایک نئی فائل محفوظ کرتا ہے۔", "كل شيء يحدث على هذا الجهاز. تبقى الملفات التي تختارها كما هي: كل أداة تحفظ ملفًا جديدًا.", "一切都在此设备上完成。你选择的文件保持不变：每个工具都会保存一个新文件。", "सब कुछ इसी डिवाइस पर होता है। आपकी चुनी फ़ाइलें जैसी हैं वैसी रहती हैं: हर औज़ार एक नई फ़ाइल सहेजता है।", "Todo ocurre en este dispositivo. Los archivos que eliges quedan como están: cada herramienta guarda uno nuevo.", "Tout se passe sur cet appareil. Les fichiers choisis restent tels quels : chaque outil en enregistre un nouveau."),
     ("Fill in a form and sign it", "فارم بھریں اور دستخط کریں", "املأ نموذجًا ووقّعه", "填写表单并签名", "फ़ॉर्म भरें और हस्ताक्षर करें", "Rellena un formulario y fírmalo", "Remplissez un formulaire et signez-le"),

@@ -427,6 +427,12 @@ export const es: Table = {
 	"As written": "Como está escrito",
 	Serif: "Con serifa",
 	"Sans serif": "Sin serifa",
+	"Signatures forgotten": "Firmas olvidadas",
+	"Forget kept signatures": "Olvidar las firmas guardadas",
+	"{n} signatures and initials, kept only on this device": {
+		one: "{n} firma o iniciales, solo en este dispositivo",
+		other: "{n} firmas e iniciales, solo en este dispositivo",
+	},
 	Tools: "Herramientas",
 	"Everything happens on this device. The files you pick stay as they are: each tool saves a new one.":
 		"Todo ocurre en este dispositivo. Los archivos que eliges quedan como están: cada herramienta guarda uno nuevo.",

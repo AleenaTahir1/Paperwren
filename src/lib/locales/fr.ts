@@ -431,6 +431,12 @@ export const fr: Table = {
 	"As written": "Comme écrit",
 	Serif: "Avec empattement",
 	"Sans serif": "Sans empattement",
+	"Signatures forgotten": "Signatures oubliées",
+	"Forget kept signatures": "Oublier les signatures gardées",
+	"{n} signatures and initials, kept only on this device": {
+		one: "{n} signature ou initiales, seulement sur cet appareil",
+		other: "{n} signatures et initiales, seulement sur cet appareil",
+	},
 	Tools: "Outils",
 	"Everything happens on this device. The files you pick stay as they are: each tool saves a new one.":
 		"Tout se passe sur cet appareil. Les fichiers choisis restent tels quels : chaque outil en enregistre un nouveau.",

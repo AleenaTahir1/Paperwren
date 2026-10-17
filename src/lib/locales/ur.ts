@@ -420,6 +420,12 @@ export const ur: Table = {
 	"As written": "جیسا لکھا گیا",
 	Serif: "سیرف",
 	"Sans serif": "بغیر سیرف",
+	"Signatures forgotten": "دستخط بھلا دیے گئے",
+	"Forget kept signatures": "رکھے گئے دستخط بھول جائیں",
+	"{n} signatures and initials, kept only on this device": {
+		one: "{n} دستخط یا مخففات، صرف اسی آلے پر",
+		other: "{n} دستخط اور مخففات، صرف اسی آلے پر",
+	},
 	Tools: "اوزار",
 	"Everything happens on this device. The files you pick stay as they are: each tool saves a new one.":
 		"سب کچھ اسی آلے پر ہوتا ہے۔ آپ کی چنی ہوئی فائلیں جوں کی توں رہتی ہیں: ہر اوزار ایک نئی فائل محفوظ کرتا ہے۔",

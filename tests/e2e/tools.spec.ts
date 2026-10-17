@@ -471,3 +471,19 @@ test("fill & sign starts from the tools too", async ({ page }) => {
 			.getText(),
 	).toBe("Lena");
 });
+
+test("kept signatures can be forgotten in Settings", async ({ page }) => {
+	await boot(page, {
+		signatures_v1: [
+			{ id: "s1", src: "data:image/png;base64,iVBORw0KGgo=", w: 10, h: 4 },
+		],
+	});
+	await page.getByTestId("open-settings").click();
+	const forget = page.getByTestId("clear-signatures");
+	await expect(forget).toContainText("1 signature or initials");
+	await forget.click();
+	await expect(forget).toBeDisabled();
+	await expect(page.getByText("Signatures forgotten")).toBeVisible();
+	await page.getByRole("button", { name: "Undo" }).click();
+	await expect(forget).toBeEnabled();
+});

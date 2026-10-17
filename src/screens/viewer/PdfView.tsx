@@ -113,7 +113,7 @@ const MAX_SCALE = 8;
 /** pdf.js's AnnotationMode.ENABLE: links and notes work, and a form's
  * fields are drawn as the file saved them. Its default makes them live
  * fields, and what a reader typed there would be neither saved nor
- * printed: Paperwren shows documents, it does not fill them in. */
+ * printed. A form is filled in with Fill & sign, which saves a copy. */
 const ANNOTATIONS_SHOWN = 1;
 /** pdf.js's SpreadMode: one page across, or two with odd pages first,
  * or two after a first page on its own (a book's cover). */

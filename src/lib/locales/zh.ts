@@ -394,6 +394,10 @@ export const zh: Table = {
 	"As written": "保持原样",
 	Serif: "衬线",
 	"Sans serif": "无衬线",
+	"Signatures forgotten": "已删除签名",
+	"Forget kept signatures": "删除已保存的签名",
+	"{n} signatures and initials, kept only on this device":
+		"{n} 个签名和缩写，仅保存在此设备上",
 	Tools: "工具",
 	"Everything happens on this device. The files you pick stay as they are: each tool saves a new one.":
 		"一切都在此设备上完成。你选择的文件保持不变：每个工具都会保存一个新文件。",

@@ -9,6 +9,7 @@ import {
 } from "@/lib/env";
 import { LANGUAGES, type LanguageSetting, msg, t, tn } from "@/lib/i18n";
 import { FULLSCREEN_KEYS, keys } from "@/lib/keys";
+import { SIGNATURES_KEY, loadSignatures } from "@/lib/signatures";
 import type { PageColor, PdfFlow, PdfZoom, ReadingFont } from "@/lib/types";
 import {
 	clearBookmarks,
@@ -64,6 +65,7 @@ const LICENSES: Array<[string, string]> = [
 	["highlight.js", "BSD-3-Clause"],
 	["UTIF.js", "MIT"],
 	["KaTeX", "MIT"],
+	["pdf-lib (Cantoo fork)", "MIT"],
 	["pako", "MIT / Zlib"],
 	["React", "MIT"],
 	["Lucide icons", "ISC"],
@@ -176,6 +178,10 @@ export function SettingsScreen() {
 	);
 	const [confirmCopies, setConfirmCopies] = useState(false);
 	const bookmarkCount = useBookmarkCount();
+	const [signatureCount, setSignatureCount] = useState(0);
+	useEffect(() => {
+		loadSignatures().then((list) => setSignatureCount(list.length));
+	}, []);
 	const [showLicenses, setShowLicenses] = useState(false);
 
 	useEffect(() => {
@@ -435,6 +441,36 @@ export function SettingsScreen() {
 										bookmarkCount,
 										"{n} bookmark, kept only on this device",
 										"{n} bookmarks, kept only on this device",
+									)}
+								</span>
+							</span>
+						</button>
+						<button
+							type="button"
+							className={s.action}
+							disabled={signatureCount === 0}
+							onClick={async () => {
+								const kept = await loadSignatures();
+								await backend.storeSet(SIGNATURES_KEY, []).catch(() => {});
+								setSignatureCount(0);
+								toast(t("Signatures forgotten"), {
+									label: t("Undo"),
+									run: () =>
+										backend
+											.storeSet(SIGNATURES_KEY, kept)
+											.then(() => setSignatureCount(kept.length))
+											.catch(() => {}),
+								});
+							}}
+							data-testid="clear-signatures"
+						>
+							<span className={s.actionText}>
+								{t("Forget kept signatures")}
+								<span className={s.hint}>
+									{tn(
+										signatureCount,
+										"{n} signature or initials, kept only on this device",
+										"{n} signatures and initials, kept only on this device",
 									)}
 								</span>
 							</span>

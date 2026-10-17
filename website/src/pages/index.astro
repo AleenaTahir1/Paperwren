@@ -7,6 +7,7 @@ import Formats from "../components/Formats.astro";
 import Hero from "../components/Hero.astro";
 import Icon from "../components/Icon.astro";
 import Themes from "../components/Themes.astro";
+import Tools from "../components/Tools.astro";
 import Windows from "../components/Windows.astro";
 import { competitors } from "../data/competitors";
 import { FAQ } from "../data/faq";
@@ -43,6 +44,7 @@ const schema = [
 <Base title="Paperwren" description={SITE.description} schema={schema}>
 	<Hero />
 	<Formats />
+	<Tools />
 	<Themes />
 	<Windows />
 

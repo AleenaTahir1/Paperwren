@@ -9,11 +9,15 @@ export const FAQ = [
 	},
 	{
 		q: "Which files can it open?",
-		a: "PDF (including password-protected files), Word .docx, Excel .xlsx, .xlsm, .xlsb and .xls, PowerPoint .pptx, OpenDocument .odt, .ods and .odp, legacy .doc and .ppt, RTF, CSV, TSV, Markdown, plain text, logs, JSON and XML.",
+		a: "PDF (including password-protected files), Word .docx, Excel .xlsx, .xlsm, .xlsb and .xls, PowerPoint .pptx, OpenDocument .odt, .ods and .odp, legacy .doc and .ppt, RTF, EPUB books, CBZ comics, CSV, TSV, Markdown, plain text, logs, JSON, XML and source code, and pictures (JPEG, PNG, GIF, WebP, SVG, AVIF, HEIC and TIFF).",
 	},
 	{
 		q: "Can I edit documents with it?",
-		a: "No, and that is deliberate. Paperwren is a viewer. Leaving editing out is what keeps it small, fast and free of accounts. If you need to edit, a full office suite is the right tool.",
+		a: "It does not edit Word, Excel or PowerPoint files: for that, a full office suite is the right tool. It can fill in and sign PDF forms, add text or a date, put PDFs together, split them, turn and reorder pages, number them and add or remove a password. Each tool saves a new copy; the file you opened stays as it was.",
+	},
+	{
+		q: "Is my signature stored anywhere?",
+		a: "Only on your device, and only if you ask Paperwren to keep it for next time. It is never uploaded, because Paperwren never connects to the internet. You can forget a kept signature whenever you sign.",
 	},
 	{
 		q: "Where are my files stored?",

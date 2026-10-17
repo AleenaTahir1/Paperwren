@@ -414,6 +414,12 @@ export const hi: Table = {
 	"As written": "जैसा लिखा है",
 	Serif: "सेरिफ़",
 	"Sans serif": "सैन्स सेरिफ़",
+	"Signatures forgotten": "हस्ताक्षर भुला दिए गए",
+	"Forget kept signatures": "रखे गए हस्ताक्षर भूल जाएँ",
+	"{n} signatures and initials, kept only on this device": {
+		one: "{n} हस्ताक्षर या आद्याक्षर, केवल इसी डिवाइस पर",
+		other: "{n} हस्ताक्षर और आद्याक्षर, केवल इसी डिवाइस पर",
+	},
 	Tools: "औज़ार",
 	"Everything happens on this device. The files you pick stay as they are: each tool saves a new one.":
 		"सब कुछ इसी डिवाइस पर होता है। आपकी चुनी फ़ाइलें जैसी हैं वैसी रहती हैं: हर औज़ार एक नई फ़ाइल सहेजता है।",

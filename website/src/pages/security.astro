@@ -12,8 +12,8 @@ const points = [
 		p: "Besides having no internet permission, the app's content security policy only allows connections to itself. There is no analytics, ads, crash or update SDK among its dependencies: just document engines (pdf.js, docx-preview, SheetJS) and small helpers.",
 	},
 	{
-		h: "Read-only file access",
-		p: "The app can read documents but has no permission to write, delete or run anything. On Android, reading is limited to files you picked or shared and the app's own private copies.",
+		h: "Files are read, never changed",
+		p: "The app reads documents and never changes them or runs anything in them. It writes only when you ask: a copy a tool made, saved where you pick in the system's own save screen, or a file you rename. On Windows and macOS those two writes are made by the app's native side, which checks the name; the web layer that shows documents still has read-only access. On Android, reading is limited to files you picked or shared and the app's own private copies, and saving goes through the system's save screen, which needs no permission.",
 	},
 	{
 		h: "Documents are treated as untrusted",
@@ -32,7 +32,7 @@ const points = [
 
 <Doc
 	title="Security"
-	description="How Paperwren is built so its privacy promises hold: zero Android permissions, no network access, read-only file access, sanitised documents and public source code."
+	description="How Paperwren is built so its privacy promises hold: zero Android permissions, no network access, documents never changed, sanitised documents and public source code."
 	label="Security"
 	heading="Promises you can <em>check.</em>"
 	path="/security/"

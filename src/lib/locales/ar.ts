@@ -425,6 +425,15 @@ export const ar: Table = {
 	"As written": "كما كُتب",
 	Serif: "مذيَّل",
 	"Sans serif": "غير مذيَّل",
+	"Signatures forgotten": "نُسيت التواقيع",
+	"Forget kept signatures": "انسَ التواقيع المحفوظة",
+	"{n} signatures and initials, kept only on this device": {
+		one: "توقيع واحد أو أحرف أولى، على هذا الجهاز فقط",
+		two: "توقيعان أو أحرف أولى، على هذا الجهاز فقط",
+		few: "{n} تواقيع وأحرف أولى، على هذا الجهاز فقط",
+		many: "{n} توقيعًا وأحرفًا أولى، على هذا الجهاز فقط",
+		other: "{n} توقيع وأحرف أولى، على هذا الجهاز فقط",
+	},
 	Tools: "الأدوات",
 	"Everything happens on this device. The files you pick stay as they are: each tool saves a new one.":
 		"كل شيء يحدث على هذا الجهاز. تبقى الملفات التي تختارها كما هي: كل أداة تحفظ ملفًا جديدًا.",
