@@ -700,9 +700,6 @@ export default function PdfView({
 		const across = v.spreadMode === SPREAD_NONE ? 1 : 2;
 		setFits(view.width * across <= box.clientWidth + 2);
 	}, []);
-	useEffect(() => {
-		measureFit();
-	}, [scale, measureFit]);
 
 	// Back through the links followed, and forward again.
 	const step = (dir: -1 | 1) => {
@@ -847,10 +844,10 @@ export default function PdfView({
 		ro.observe(el);
 		return () => ro.disconnect();
 	}, [measureFit]);
-	// biome-ignore lint/correctness/useExhaustiveDependencies: measured again on each page
+	// biome-ignore lint/correctness/useExhaustiveDependencies: measured again at each page and zoom
 	useEffect(() => {
 		measureFit();
-	}, [page, measureFit]);
+	}, [page, scale, measureFit]);
 
 	const pdfMenu = (close: () => void) => (
 		<>
