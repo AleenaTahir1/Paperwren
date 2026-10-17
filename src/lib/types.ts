@@ -36,6 +36,8 @@ export type Position =
 			spread?: boolean;
 			/** ...with the first page on its own, as a book's cover. */
 			cover?: boolean;
+			/** The white around what is printed is left out. */
+			crop?: boolean;
 	  }
 	| { kind: "scroll"; ratio: number; zoom?: number }
 	| { kind: "sheet"; sheet: number; top: number; left: number; zoom?: number }

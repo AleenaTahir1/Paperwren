@@ -21,6 +21,7 @@ import {
 	ArrowLeft,
 	BookOpen,
 	BookOpenText,
+	Crop,
 	GalleryHorizontal,
 	Layers as LayersIcon,
 	LayoutGrid,
@@ -83,6 +84,7 @@ import {
 	shellStyles,
 } from "./Shell";
 import { useZoom } from "./hooks";
+import { canCrop, cropPages, whole } from "./pdfCrop";
 import { type Box, findPictures, placePictures } from "./pdfPictures";
 import type { ViewerProps } from "./types";
 
@@ -233,6 +235,13 @@ export default function PdfView({
 			settings.rememberPosition &&
 			position.cover === true,
 	);
+	const [crop, setCrop] = useState(
+		() =>
+			position?.kind === "pdf" &&
+			settings.rememberPosition &&
+			position.crop === true,
+	);
+	const [cropAvailable, setCropAvailable] = useState(false);
 	const across = settings.pdfFlow === "across";
 	// A page that fits the screen snaps into place after a swipe; a
 	// zoomed one is panned freely.
@@ -270,6 +279,18 @@ export default function PdfView({
 	spreadRef.current = spread;
 	const coverRef = useRef(cover);
 	coverRef.current = cover;
+	const cropRef = useRef(crop);
+	cropRef.current = crop;
+	/** Puts the pages' own boxes back (crop margins off). */
+	const cropStop = useRef<(() => void) | null>(null);
+	/** Lays the pages out again (their boxes changed), where they were,
+	 * at a zoom given or the one they had. */
+	const relayout = useRef<(scale?: string) => void>(() => {});
+	const relaidAt = useRef<{
+		page: number;
+		scale: string;
+		rotation: number;
+	} | null>(null);
 	const acrossRef = useRef(across);
 	acrossRef.current = across;
 	/** Where the reader is now, and the places links were followed from
@@ -466,10 +487,16 @@ export default function PdfView({
 					})
 					.catch(() => {});
 				const saved = positionRef.current;
+				const again = relaidAt.current;
+				relaidAt.current = null;
 				v.scrollMode = scrollMode(acrossRef.current, spreadRef.current);
 				if (spreadRef.current)
 					v.spreadMode = coverRef.current ? SPREAD_EVEN : SPREAD_ODD;
-				if (saved?.kind === "pdf" && rememberRef.current) {
+				if (again) {
+					v.pagesRotation = again.rotation;
+					v.currentScaleValue = again.scale;
+					v.currentPageNumber = again.page;
+				} else if (saved?.kind === "pdf" && rememberRef.current) {
 					v.pagesRotation = saved.rotation;
 					const numeric = /^[\d.]+$/.test(saved.scale);
 					v.currentScaleValue = numeric
@@ -567,6 +594,7 @@ export default function PdfView({
 							rotation: loc.rotation,
 							...(spreadRef.current ? { spread: true } : {}),
 							...(spreadRef.current && coverRef.current ? { cover: true } : {}),
+							...(cropRef.current ? { crop: true } : {}),
 						};
 						positionRef.current = pos;
 						onPositionRef.current(pos);
@@ -597,8 +625,33 @@ export default function PdfView({
 					})),
 			);
 
-			v.setDocument(doc);
-			linkService.setDocument(doc);
+			relayout.current = (scale) => {
+				pictures.clear();
+				relaidAt.current = {
+					page: v.currentPageNumber,
+					scale: scale ?? v.currentScaleValue,
+					rotation: v.pagesRotation,
+				};
+				v.setDocument(doc);
+			};
+			const show = () => {
+				v.setDocument(doc);
+				linkService.setDocument(doc);
+			};
+			doc
+				.getPage(1)
+				.then((first) => !cancelled && setCropAvailable(canCrop(first)))
+				.catch(() => {});
+			// A document read with its margins cropped opens that way.
+			if (cropRef.current)
+				cropPages(doc)
+					.then((stop) => {
+						if (cancelled) return stop();
+						cropStop.current = stop;
+						show();
+					})
+					.catch(show);
+			else show();
 			// A document that numbers its own pages ("iv", "A-3") is read by
 			// those numbers.
 			doc
@@ -612,6 +665,8 @@ export default function PdfView({
 			cleanup = () => {
 				window.clearTimeout(saveTimer);
 				v.cleanup();
+				cropStop.current?.();
+				cropStop.current = null;
 			};
 		});
 		return () => {
@@ -745,6 +800,20 @@ export default function PdfView({
 			: SPREAD_NONE;
 		// A pair needs the width one page had: fit it again.
 		v.currentScaleValue = acrossRef.current ? "page-fit" : "page-width";
+	};
+	const toggleCrop = async () => {
+		if (!doc) return;
+		const next = !cropRef.current;
+		cropRef.current = next;
+		setCrop(next);
+		if (next) {
+			cropStop.current = await cropPages(doc);
+		} else {
+			cropStop.current?.();
+			cropStop.current = null;
+		}
+		// The point of cropping is a page that fills the screen.
+		relayout.current(acrossRef.current ? "page-fit" : "page-width");
 	};
 	const toggleCover = () => {
 		const v = pdfViewer.current;
@@ -988,6 +1057,19 @@ export default function PdfView({
 					{t("First page on its own")}
 				</SheetItem>
 			)}
+			{cropAvailable && (
+				<SheetItem
+					icon={<Crop size={20} />}
+					checked={crop}
+					onClick={() => {
+						close();
+						toggleCrop();
+					}}
+					testId="pdf-crop"
+				>
+					{t("Crop margins")}
+				</SheetItem>
+			)}
 			<SheetItem
 				icon={<RotateCw size={20} />}
 				shortcut="Ctrl+]"
@@ -1108,12 +1190,17 @@ export default function PdfView({
 			const pdfPage = await doc.getPage(n);
 			const turn =
 				(pdfPage.rotate + (pdfViewer.current?.pagesRotation ?? 0)) % 360;
-			const base = pdfPage.getViewport({ scale: 1, rotation: turn });
+			// Paper takes the whole page, margins and all.
+			const base = whole(pdfPage, () =>
+				pdfPage.getViewport({ scale: 1, rotation: turn }),
+			);
 			const scale = Math.min(
 				count <= 20 ? 3.3 : 2.2,
 				target / Math.max(base.width, base.height),
 			);
-			const viewport = pdfPage.getViewport({ scale, rotation: turn });
+			const viewport = whole(pdfPage, () =>
+				pdfPage.getViewport({ scale, rotation: turn }),
+			);
 			const canvas = document.createElement("canvas");
 			canvas.width = Math.ceil(viewport.width);
 			canvas.height = Math.ceil(viewport.height);

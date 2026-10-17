@@ -452,4 +452,5 @@ export const fr: Table = {
 		"L'auteur demande que son texte ne soit pas copié",
 	"This PDF restricts copying": "Ce PDF restreint la copie",
 	"Inside another document": "Dans un autre document",
+	"Crop margins": "Rogner les marges",
 };

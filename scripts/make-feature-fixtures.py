@@ -147,11 +147,28 @@ def nocopy_pdf():
         writer.write(f)
 
 
+def margins_pdf():
+    """Wide white margins, and one page that prints further out than the
+    rest: cropping must not cut it."""
+    path = os.path.join(OUT, "margins.pdf")
+    c = canvas.Canvas(path, pagesize=A4)
+    w, h = A4
+    for n in range(1, 5):
+        c.setFont("Helvetica", 11)
+        if n == 3:
+            c.drawString(40, h - 60, "WIDE: this line runs from the left edge to the right edge of the page.")
+        for i in range(30):
+            c.drawString(170, h - 200 - i * 14, f"Page {n}, line {i + 1}: a narrow column of text.")
+        c.showPage()
+    c.save()
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     pictures_pdf()
     extras_pdf()
     nocopy_pdf()
+    margins_pdf()
     print("wrote", sorted(os.listdir(OUT)))
 
 

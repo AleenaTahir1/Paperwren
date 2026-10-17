@@ -422,4 +422,5 @@ export const zh: Table = {
 	"The author asks that its text not be copied": "作者要求不要复制其文字",
 	"This PDF restricts copying": "此 PDF 限制复制",
 	"Inside another document": "在另一个文档中",
+	"Crop margins": "裁剪页边距",
 };

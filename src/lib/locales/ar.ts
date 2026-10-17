@@ -440,4 +440,5 @@ export const ar: Table = {
 	"The author asks that its text not be copied": "يطلب المؤلف عدم نسخ نصه",
 	"This PDF restricts copying": "يقيّد ملف PDF هذا النسخ",
 	"Inside another document": "داخل مستند آخر",
+	"Crop margins": "قص الهوامش",
 };

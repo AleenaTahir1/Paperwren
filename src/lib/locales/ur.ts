@@ -441,4 +441,5 @@ export const ur: Table = {
 		"مصنف نے درخواست کی ہے کہ اس کا متن نقل نہ کیا جائے",
 	"This PDF restricts copying": "یہ PDF نقل کرنے پر پابندی لگاتی ہے",
 	"Inside another document": "کسی دوسری دستاویز کے اندر",
+	"Crop margins": "حاشیے کاٹیں",
 };

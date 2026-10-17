@@ -422,4 +422,5 @@ ROWS = [
     ("The author asks that its text not be copied", "مصنف نے درخواست کی ہے کہ اس کا متن نقل نہ کیا جائے", "يطلب المؤلف عدم نسخ نصه", "作者要求不要复制其文字", "लेखक ने अनुरोध किया है कि इसका टेक्स्ट कॉपी न किया जाए", "El autor pide que no se copie su texto", "L'auteur demande que son texte ne soit pas copié"),
     ("This PDF restricts copying", "یہ PDF نقل کرنے پر پابندی لگاتی ہے", "يقيّد ملف PDF هذا النسخ", "此 PDF 限制复制", "यह PDF कॉपी करने पर रोक लगाती है", "Este PDF restringe la copia", "Ce PDF restreint la copie"),
     ("Inside another document", "کسی دوسری دستاویز کے اندر", "داخل مستند آخر", "在另一个文档中", "किसी दूसरे दस्तावेज़ के अंदर", "Dentro de otro documento", "Dans un autre document"),
+    ("Crop margins", "حاشیے کاٹیں", "قص الهوامش", "裁剪页边距", "हाशिये काटें", "Recortar márgenes", "Rogner les marges"),
 ]

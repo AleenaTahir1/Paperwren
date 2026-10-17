@@ -436,4 +436,5 @@ export const hi: Table = {
 		"लेखक ने अनुरोध किया है कि इसका टेक्स्ट कॉपी न किया जाए",
 	"This PDF restricts copying": "यह PDF कॉपी करने पर रोक लगाती है",
 	"Inside another document": "किसी दूसरे दस्तावेज़ के अंदर",
+	"Crop margins": "हाशिये काटें",
 };

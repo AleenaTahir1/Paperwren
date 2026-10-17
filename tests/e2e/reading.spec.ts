@@ -234,9 +234,10 @@ test.describe("what a PDF carries besides its pages", () => {
 		const counter = page.getByTestId("pdf-page");
 		await expect(counter).toHaveText("1 / 2", { timeout: 20_000 });
 		// The note's icon ships with the app.
-		await expect(
-			page.locator(".annotationLayer img").first(),
-		).toHaveJSProperty("complete", true);
+		await expect(page.locator(".annotationLayer img").first()).toHaveJSProperty(
+			"complete",
+			true,
+		);
 		expect(
 			await page
 				.locator(".annotationLayer img")
@@ -267,9 +268,7 @@ test.describe("what a PDF carries besides its pages", () => {
 		await page.getByTestId("file-details-open").click();
 		await expect(page.getByTestId("file-details")).toContainText("Page size");
 		await expect(page.getByTestId("file-details")).toContainText("A4");
-		await expect(page.getByTestId("file-details")).toContainText(
-			"PDF version",
-		);
+		await expect(page.getByTestId("file-details")).toContainText("PDF version");
 		await page.getByRole("button", { name: "Done" }).click();
 
 		// An attachment opens over the PDF, and is not kept in recents.
@@ -335,4 +334,44 @@ test.describe("find, as a reader means it", () => {
 		await page.getByTestId("find-words").click();
 		await expect(page.getByTestId("find-count")).toHaveText("No results");
 	});
+});
+
+test("crop margins fills the screen with text, cuts nothing and is remembered", async ({
+	page,
+}) => {
+	await boot(page);
+	await openFixture(page, "features/margins.pdf");
+	const counter = page.getByTestId("pdf-page");
+	await expect(counter).toHaveText("1 / 4", { timeout: 20_000 });
+	// The first line of text, as tall as it is drawn.
+	const lineHeight = () =>
+		page
+			.locator(".pdfViewer .page")
+			.first()
+			.locator(".textLayer span", { hasText: "line 1:" })
+			.first()
+			.evaluate((el) => el.getBoundingClientRect().height);
+	await expect.poll(lineHeight).toBeGreaterThan(0);
+	const before = await lineHeight();
+	await page.getByTestId("file-more").click();
+	await page.getByTestId("pdf-crop").click();
+	// The text grows to fill the width the margins took.
+	await expect.poll(lineHeight).toBeGreaterThan(before * 1.5);
+	// The page that prints further out keeps all of it.
+	const widths = await page
+		.locator(".pdfViewer .page")
+		.evaluateAll((pages) =>
+			pages.map((el) => el.getBoundingClientRect().width),
+		);
+	expect(widths[2]).toBeGreaterThan(widths[0] * 1.3);
+	await page.waitForTimeout(600);
+	await page.getByTestId("viewer-back").click();
+	await page.getByTestId("recent").first().getByRole("button").first().click();
+	await expect(counter).toHaveText("1 / 4", { timeout: 20_000 });
+	await expect.poll(lineHeight).toBeGreaterThan(before * 1.5);
+	await page.getByTestId("file-more").click();
+	await expect(page.getByTestId("pdf-crop")).toHaveAttribute(
+		"aria-pressed",
+		"true",
+	);
 });
