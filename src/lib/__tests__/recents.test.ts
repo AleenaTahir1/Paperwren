@@ -116,6 +116,10 @@ describe("cleanPosition", () => {
 		expect(
 			cleanPosition({ kind: "sheet", sheet: 1, top: 40, left: 8, zoom: 1.5 }),
 		).toEqual({ kind: "sheet", sheet: 1, top: 40, left: 8, zoom: 1.5 });
+		expect(cleanPosition({ kind: "pages", page: 4.6 })).toEqual({
+			kind: "pages",
+			page: 4,
+		});
 		expect(cleanPosition({ kind: "pdf" })).toBeUndefined();
 		expect(cleanPosition({ kind: "nope" })).toBeUndefined();
 	});

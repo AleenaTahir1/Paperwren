@@ -475,4 +475,23 @@ ROWS = [
     ("The left edge goes back, the right edge on", "بایاں کنارہ پیچھے، دایاں آگے", "الحافة اليسرى للرجوع واليمنى للتقدم", "左边缘后退，右边缘前进", "बायाँ किनारा पीछे, दायाँ आगे", "El borde izquierdo retrocede, el derecho avanza", "Le bord gauche recule, le bord droit avance"),
     ("Hide the bars while reading", "پڑھتے وقت بار چھپائیں", "إخفاء الأشرطة أثناء القراءة", "阅读时隐藏工具栏", "पढ़ते समय बार छिपाएँ", "Ocultar las barras al leer", "Masquer les barres pendant la lecture"),
     ("They come back when you scroll back or tap", "واپس سکرول کرنے یا تھپتھپانے پر واپس آ جاتے ہیں", "تعود عند التمرير للخلف أو النقر", "向回滚动或点按即可重新显示", "वापस स्क्रॉल करने या टैप करने पर लौट आते हैं", "Vuelven al desplazarte hacia atrás o tocar", "Elles reviennent quand vous remontez ou touchez l'écran"),
+    # ---- pictures ----
+    ("Mirror left to right", "بائیں سے دائیں الٹیں", "قلب من اليسار إلى اليمين", "左右翻转", "बाएँ से दाएँ पलटें", "Reflejar de izquierda a derecha", "Retourner de gauche à droite"),
+    ("Mirror top to bottom", "اوپر سے نیچے الٹیں", "قلب من الأعلى إلى الأسفل", "上下翻转", "ऊपर से नीचे पलटें", "Reflejar de arriba abajo", "Retourner de haut en bas"),
+    ("Size in pixels", "پکسل میں سائز", "الحجم بالبكسل", "像素尺寸", "पिक्सेल में आकार", "Tamaño en píxeles", "Taille en pixels"),
+    ("Camera", "کیمرا", "الكاميرا", "相机", "कैमरा", "Cámara", "Appareil photo"),
+    ("Lens", "لینز", "العدسة", "镜头", "लेंस", "Objetivo", "Objectif"),
+    ("Taken", "کھینچی گئی", "التُقطت", "拍摄时间", "ली गई", "Tomada", "Prise le"),
+    ("Exposure", "ایکسپوژر", "التعريض", "曝光", "एक्सपोज़र", "Exposición", "Exposition"),
+    ("Place", "جگہ", "المكان", "地点", "स्थान", "Lugar", "Lieu"),
+    ("This device can't draw HEIC pictures. Open it in another app from the menu.", "یہ آلہ HEIC تصاویر نہیں دکھا سکتا۔ مینو سے اسے کسی دوسری ایپ میں کھولیں۔", "لا يستطيع هذا الجهاز عرض صور HEIC. افتحها في تطبيق آخر من القائمة.", "此设备无法显示 HEIC 图片。请从菜单中用其他应用打开。", "यह डिवाइस HEIC चित्र नहीं दिखा सकता। मेनू से इसे किसी दूसरे ऐप में खोलें।", "Este dispositivo no puede mostrar imágenes HEIC. Ábrela en otra aplicación desde el menú.", "Cet appareil ne peut pas afficher les images HEIC. Ouvrez-la dans une autre application depuis le menu."),
+    (
+        "{n} pictures",
+        {"one": "{n} تصویر", "other": "{n} تصاویر"},
+        {"zero": "لا صور", "one": "صورة واحدة", "two": "صورتان", "few": "{n} صور", "many": "{n} صورة", "other": "{n} صورة"},
+        "{n} 张图片",
+        {"one": "{n} चित्र", "other": "{n} चित्र"},
+        {"one": "{n} imagen", "other": "{n} imágenes"},
+        {"one": "{n} image", "other": "{n} images"},
+    ),
 ]

@@ -41,7 +41,9 @@ export type Position =
 	  }
 	| { kind: "scroll"; ratio: number; zoom?: number }
 	| { kind: "sheet"; sheet: number; top: number; left: number; zoom?: number }
-	| { kind: "slides"; slide: number };
+	| { kind: "slides"; slide: number }
+	/** The picture on show of several (a comic book, a TIFF's pages). */
+	| { kind: "pages"; page: number };
 
 export interface RecentEntry {
 	id: string;

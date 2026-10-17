@@ -153,7 +153,7 @@ fn opened(app: &tauri::AppHandle, urls: &[tauri::Url]) {
 /// Open a document in the system's default app for its type.
 #[tauri::command]
 async fn open_external(path: String) -> AppResult<()> {
-    let target = open::validated(&path)?;
+    let target = open::validated_for_hand_off(&path)?;
     #[cfg(desktop)]
     {
         blocking(move || Ok(open::open_with_default(&target)?)).await

@@ -34,6 +34,8 @@ export function orderOf(position: Position): number {
 			return position.page * 1e6 - Math.min(1e6 - 1, Math.max(0, position.top));
 		case "slides":
 			return position.slide;
+		case "pages":
+			return position.page;
 		case "sheet":
 			return position.sheet * 1e12 + position.top * 1e4 + position.left;
 		case "scroll":
@@ -51,6 +53,8 @@ export function samePlace(a: Position, b: Position): boolean {
 			);
 		case "slides":
 			return b.kind === "slides" && a.slide === b.slide;
+		case "pages":
+			return b.kind === "pages" && a.page === b.page;
 		case "sheet":
 			return (
 				b.kind === "sheet" &&

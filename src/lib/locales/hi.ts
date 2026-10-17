@@ -485,4 +485,18 @@ export const hi: Table = {
 	"Hide the bars while reading": "पढ़ते समय बार छिपाएँ",
 	"They come back when you scroll back or tap":
 		"वापस स्क्रॉल करने या टैप करने पर लौट आते हैं",
+	"Mirror left to right": "बाएँ से दाएँ पलटें",
+	"Mirror top to bottom": "ऊपर से नीचे पलटें",
+	"Size in pixels": "पिक्सेल में आकार",
+	Camera: "कैमरा",
+	Lens: "लेंस",
+	Taken: "ली गई",
+	Exposure: "एक्सपोज़र",
+	Place: "स्थान",
+	"This device can't draw HEIC pictures. Open it in another app from the menu.":
+		"यह डिवाइस HEIC चित्र नहीं दिखा सकता। मेनू से इसे किसी दूसरे ऐप में खोलें।",
+	"{n} pictures": {
+		one: "{n} चित्र",
+		other: "{n} चित्र",
+	},
 };

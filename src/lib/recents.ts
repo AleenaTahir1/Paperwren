@@ -82,6 +82,11 @@ export function cleanPosition(value: unknown): Position | undefined {
 				kind: "slides",
 				slide: Math.max(0, Math.floor(finite(p.slide))),
 			};
+		case "pages":
+			return {
+				kind: "pages",
+				page: Math.max(0, Math.floor(finite(p.page))),
+			};
 		default:
 			return undefined;
 	}

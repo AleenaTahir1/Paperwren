@@ -8,6 +8,7 @@ import {
 } from "@/lib/backend";
 import { formatFromName, kindOf } from "@/lib/formats";
 import { isolate, locale, t } from "@/lib/i18n";
+import { rememberPictures } from "@/lib/siblings";
 import type { OpenRequest } from "@/lib/types";
 import { FileDetails, HandOffItems } from "@/screens/viewer/FileMenu";
 import { Button, FileBadge, IconButton, Sheet, SheetItem, Spinner } from "@/ui";
@@ -168,7 +169,11 @@ export function FolderList({
 							<button
 								type="button"
 								className={s.rowMain}
-								onClick={() => onOpen(f.request)}
+								onClick={() => {
+									// A picture can then step through the folder's others.
+									rememberPictures(files.map((file) => file.request));
+									onOpen(f.request);
+								}}
 							>
 								<FileBadge format={formatFromName(f.name)} size={46} />
 								<span className={s.rowText}>

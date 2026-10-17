@@ -43,3 +43,16 @@
 	top: 50%;
 	max-width: none;
 }
+/* Several pictures turn like pages: a swipe across is the app's, not
+ * the browser's (which would go back). */
+.paged {
+	touch-action: pan-y;
+}
+.counting {
+	position: absolute;
+	inset: 0;
+	display: grid;
+	place-items: center;
+	color: var(--text-3);
+	pointer-events: none;
+}

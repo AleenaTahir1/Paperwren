@@ -821,3 +821,156 @@ test.describe("reading on a phone", () => {
 		await expect(page.getByTestId("auto-scroll")).toHaveCount(0);
 	});
 });
+
+test.describe("pictures and code", () => {
+	const natural = (page: Page) =>
+		page
+			.getByTestId("image")
+			.evaluate(
+				(img) =>
+					`${(img as HTMLImageElement).naturalWidth}x${(img as HTMLImageElement).naturalHeight}`,
+			);
+
+	test("SVG, AVIF and TIFF are drawn; a drawing's script never runs", async ({
+		page,
+	}) => {
+		await boot(page);
+		await openFixture(page, "features/drawing.svg");
+		await expect.poll(() => natural(page), { timeout: 20_000 }).toBe("240x160");
+		expect(
+			await page.evaluate(
+				() =>
+					(window as unknown as { __svgScriptRan?: boolean }).__svgScriptRan,
+			),
+		).toBeUndefined();
+		await page.getByTestId("viewer-back").click();
+
+		await openFixture(page, "features/photo.avif");
+		await expect.poll(() => natural(page), { timeout: 20_000 }).toBe("160x120");
+		await page.getByTestId("viewer-back").click();
+
+		// A TIFF's two pages, a page at a time.
+		await openFixture(page, "features/scan.tif");
+		await expect(page.getByTestId("picture-page")).toHaveText("1 / 2", {
+			timeout: 20_000,
+		});
+		await expect.poll(() => natural(page)).toBe("200x260");
+		await page.getByTestId("picture-page").click();
+		await page.getByTestId("picture-jump-input").fill("2");
+		await page.getByTestId("picture-jump-go").click();
+		await expect(page.getByTestId("picture-page")).toHaveText("2 / 2");
+	});
+
+	test("a comic book turns its pages in order, and is remembered", async ({
+		page,
+	}) => {
+		await boot(page);
+		await openFixture(page, "features/comic.cbz");
+		const counter = page.getByTestId("picture-page");
+		await expect(counter).toHaveText("1 / 3", { timeout: 20_000 });
+		const scroller = page.getByTestId("image-scroll");
+		const box = await scroller.boundingBox();
+		if (!box) throw new Error("no scroller");
+		const at = { clientX: box.x + box.width * 0.9, clientY: 400 };
+		await scroller.dispatchEvent("touchstart", {
+			touches: [{ identifier: 0, ...at }],
+		});
+		await scroller.dispatchEvent("touchend", {
+			touches: [],
+			changedTouches: [{ identifier: 0, ...at }],
+		});
+		await expect(counter).toHaveText("2 / 3");
+		await page
+			.getByTestId("image")
+			.evaluate((img) => img.getAttribute("data-page"));
+		// "page10" comes after "page2".
+		await counter.click();
+		await page.getByTestId("picture-jump-input").fill("3");
+		await page.getByTestId("picture-jump-go").click();
+		await expect(counter).toHaveText("3 / 3");
+		await page.waitForTimeout(500);
+		await page.getByTestId("viewer-back").click();
+		await expect(page.getByTestId("recent").first()).toContainText("Page 3");
+		await page
+			.getByTestId("recent")
+			.first()
+			.getByRole("button")
+			.first()
+			.click();
+		await expect(counter).toHaveText("3 / 3", { timeout: 20_000 });
+	});
+
+	test("a HEIC photo is drawn by the system where the webview cannot", async ({
+		page,
+	}) => {
+		const jpeg = (await import("node:fs"))
+			.readFileSync("fixtures/features/photo.jpg")
+			.toString("base64");
+		await page.addInitScript((answer) => {
+			const w = window as unknown as {
+				__paperwrenAndroidExtras: Record<string, unknown>;
+				__paperwrenDecoded: (token: string, jpeg: string) => void;
+			};
+			w.__paperwrenAndroidExtras = {
+				decodePicture: (_b64: string, token: string) => {
+					setTimeout(() => w.__paperwrenDecoded(token, answer), 20);
+					return true;
+				},
+			};
+		}, jpeg);
+		await boot(page);
+		await openFixture(page, "features/photo.heic");
+		await expect.poll(() => natural(page), { timeout: 20_000 }).toBe("320x200");
+	});
+
+	test("with nothing to draw it, a HEIC photo says so", async ({ page }) => {
+		await boot(page);
+		await openFixture(page, "features/photo.heic");
+		await expect(page.getByTestId("image-error")).toContainText("HEIC", {
+			timeout: 20_000,
+		});
+	});
+
+	test("a photo's camera details, and a mirror", async ({ page }) => {
+		await boot(page);
+		await openFixture(page, "features/photo.jpg");
+		await expect.poll(() => natural(page), { timeout: 20_000 }).toBe("320x200");
+		await page.getByTestId("file-more").click();
+		await page.getByTestId("image-flip-x").click();
+		await expect(page.getByTestId("image")).toHaveCSS(
+			"transform",
+			"matrix(-1, 0, 0, 1, 0, 0)",
+		);
+		await page.getByTestId("file-more").click();
+		await page.getByTestId("file-details-open").click();
+		const details = page.getByTestId("file-details");
+		await expect(details).toContainText("Canon EOS R6");
+		await expect(details).toContainText("1/125 s · f/2.8 · ISO 400 · 50 mm");
+		await expect(details).toContainText("34.0500° N, 118.2500° W");
+	});
+
+	test("code is coloured, with line numbers and in Markdown", async ({
+		page,
+	}) => {
+		await boot(page);
+		await openFixture(page, "features/wren.py");
+		await expect(page.getByTestId("text-code")).toBeVisible({
+			timeout: 20_000,
+		});
+		await expect(page.locator(".hljs-keyword").first()).toHaveText("import");
+		// What the code says is text, never markup.
+		await expect(page.getByTestId("text-code")).toContainText("<silent>");
+		await page.getByTestId("file-more").click();
+		await page.getByTestId("text-lines").click();
+		await expect(
+			page.getByTestId("text-numbered").locator("> div"),
+		).toHaveCount(15);
+		await expect(page.locator(".hljs-comment")).toHaveCount(1);
+		await page.getByTestId("viewer-back").click();
+		await openFixture(page, "features/notes.md");
+		await expect(page.locator("article .hljs-keyword").first()).toHaveText(
+			"def",
+			{ timeout: 20_000 },
+		);
+	});
+});

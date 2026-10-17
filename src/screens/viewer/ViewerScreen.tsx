@@ -52,6 +52,7 @@ Object.assign(VIEWERS, {
 	md: text,
 	txt: text,
 	image,
+	cbz: image,
 });
 
 /** Content URIs often carry no extension; name the file after what

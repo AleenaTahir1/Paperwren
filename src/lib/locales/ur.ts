@@ -491,4 +491,18 @@ export const ur: Table = {
 	"Hide the bars while reading": "پڑھتے وقت بار چھپائیں",
 	"They come back when you scroll back or tap":
 		"واپس سکرول کرنے یا تھپتھپانے پر واپس آ جاتے ہیں",
+	"Mirror left to right": "بائیں سے دائیں الٹیں",
+	"Mirror top to bottom": "اوپر سے نیچے الٹیں",
+	"Size in pixels": "پکسل میں سائز",
+	Camera: "کیمرا",
+	Lens: "لینز",
+	Taken: "کھینچی گئی",
+	Exposure: "ایکسپوژر",
+	Place: "جگہ",
+	"This device can't draw HEIC pictures. Open it in another app from the menu.":
+		"یہ آلہ HEIC تصاویر نہیں دکھا سکتا۔ مینو سے اسے کسی دوسری ایپ میں کھولیں۔",
+	"{n} pictures": {
+		one: "{n} تصویر",
+		other: "{n} تصاویر",
+	},
 };

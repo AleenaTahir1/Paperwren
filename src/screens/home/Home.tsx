@@ -102,6 +102,8 @@ function meta(e: RecentEntry): string {
 		parts.push(t("Page {n}", { n: e.position.page }));
 	else if (e.position?.kind === "slides" && e.position.slide > 0)
 		parts.push(t("Slide {n}", { n: e.position.slide + 1 }));
+	else if (e.position?.kind === "pages" && e.position.page > 0)
+		parts.push(t("Page {n}", { n: e.position.page + 1 }));
 	if (e.size > 0) parts.push(formatBytes(e.size));
 	parts.push(relativeTime(e.openedAt));
 	return parts.filter(Boolean).map(isolate).join(" · ");

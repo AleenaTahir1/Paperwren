@@ -5,6 +5,8 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.os.CancellationSignal
@@ -18,6 +20,7 @@ import android.print.PrintDocumentInfo
 import android.print.PrintManager
 import android.provider.DocumentsContract
 import android.provider.OpenableColumns
+import android.util.Base64
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.speech.tts.Voice
@@ -73,6 +76,8 @@ import java.util.concurrent.TimeUnit
  * 6. Read aloud, with the system's text-to-speech (a WebView has no
  *    speech of its own), in voices that speak on the phone only, and
  *    the volume keys turning pages while the reader asks for that.
+ * 7. Pictures the WebView cannot draw (HEIC, from an iPhone): the
+ *    system decodes them and hands back a JPEG.
  *
  * This file is copied verbatim over the generated activity by
  * scripts/install-android.mjs. Keep it self-contained.
@@ -800,6 +805,32 @@ class MainActivity : TauriActivity() {
     @JavascriptInterface
     fun stopSpeaking() {
       main.post { if (speechReady) speech?.stop() }
+    }
+
+    /** Draw a picture the WebView cannot (HEIC) and hand it back as a
+     * JPEG through window.__paperwrenDecoded(token, base64 | null). */
+    @JavascriptInterface
+    fun decodePicture(base64: String, token: String): Boolean {
+      if (!fromApp()) return false
+      scanExecutor.execute {
+        val jpeg = try {
+          val bytes = Base64.decode(base64, Base64.DEFAULT)
+          val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+          if (bitmap == null) null else {
+            val out = java.io.ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 92, out)
+            bitmap.recycle()
+            Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
+          }
+        } catch (e: Throwable) {
+          null
+        }
+        callWeb(
+          "__paperwrenDecoded",
+          "${JSONObject.quote(token)}, ${if (jpeg == null) "null" else JSONObject.quote(jpeg)}"
+        )
+      }
+      return true
     }
 
     /** The volume keys turn the pages (true), or change the volume. */

@@ -500,4 +500,18 @@ export const es: Table = {
 	"Hide the bars while reading": "Ocultar las barras al leer",
 	"They come back when you scroll back or tap":
 		"Vuelven al desplazarte hacia atrás o tocar",
+	"Mirror left to right": "Reflejar de izquierda a derecha",
+	"Mirror top to bottom": "Reflejar de arriba abajo",
+	"Size in pixels": "Tamaño en píxeles",
+	Camera: "Cámara",
+	Lens: "Objetivo",
+	Taken: "Tomada",
+	Exposure: "Exposición",
+	Place: "Lugar",
+	"This device can't draw HEIC pictures. Open it in another app from the menu.":
+		"Este dispositivo no puede mostrar imágenes HEIC. Ábrela en otra aplicación desde el menú.",
+	"{n} pictures": {
+		one: "{n} imagen",
+		other: "{n} imágenes",
+	},
 };

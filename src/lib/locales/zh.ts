@@ -467,4 +467,15 @@ export const zh: Table = {
 	"The left edge goes back, the right edge on": "左边缘后退，右边缘前进",
 	"Hide the bars while reading": "阅读时隐藏工具栏",
 	"They come back when you scroll back or tap": "向回滚动或点按即可重新显示",
+	"Mirror left to right": "左右翻转",
+	"Mirror top to bottom": "上下翻转",
+	"Size in pixels": "像素尺寸",
+	Camera: "相机",
+	Lens: "镜头",
+	Taken: "拍摄时间",
+	Exposure: "曝光",
+	Place: "地点",
+	"This device can't draw HEIC pictures. Open it in another app from the menu.":
+		"此设备无法显示 HEIC 图片。请从菜单中用其他应用打开。",
+	"{n} pictures": "{n} 张图片",
 };

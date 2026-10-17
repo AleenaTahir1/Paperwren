@@ -185,6 +185,16 @@
       },
       {
         "ext": [
+          "cbz"
+        ],
+        "name": "Comic book archive",
+        "description": "Comic book archive",
+        "role": "Viewer",
+        "rank": "Alternate",
+        "mimeType": "application/vnd.comicbook+zip"
+      },
+      {
+        "ext": [
           "md",
           "markdown"
         ],

@@ -495,4 +495,22 @@ export const ar: Table = {
 	"Hide the bars while reading": "إخفاء الأشرطة أثناء القراءة",
 	"They come back when you scroll back or tap":
 		"تعود عند التمرير للخلف أو النقر",
+	"Mirror left to right": "قلب من اليسار إلى اليمين",
+	"Mirror top to bottom": "قلب من الأعلى إلى الأسفل",
+	"Size in pixels": "الحجم بالبكسل",
+	Camera: "الكاميرا",
+	Lens: "العدسة",
+	Taken: "التُقطت",
+	Exposure: "التعريض",
+	Place: "المكان",
+	"This device can't draw HEIC pictures. Open it in another app from the menu.":
+		"لا يستطيع هذا الجهاز عرض صور HEIC. افتحها في تطبيق آخر من القائمة.",
+	"{n} pictures": {
+		zero: "لا صور",
+		one: "صورة واحدة",
+		two: "صورتان",
+		few: "{n} صور",
+		many: "{n} صورة",
+		other: "{n} صورة",
+	},
 };

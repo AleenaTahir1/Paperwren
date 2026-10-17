@@ -2,7 +2,7 @@
 an outline, an EPUB, a comic archive and pictures in newer formats.
 
 Usage: python3 scripts/make-feature-fixtures.py
-Needs reportlab and Pillow. Writes fixtures/features/.
+Needs reportlab, pypdf, Pillow and pillow-heif. Writes fixtures/features/.
 """
 import io
 import os
@@ -220,6 +220,63 @@ def epub_book(path, locked=False):
         z.writestr("OEBPS/images/cover.png", cover.getvalue(), compress_type=zipfile.ZIP_STORED)
 
 
+def exif_photo():
+    """A photo with what a camera writes: make, lens, the shot, the place."""
+    from PIL.TiffImagePlugin import IFDRational as R
+
+    exif = Image.Exif()
+    exif[271] = "Canon"
+    exif[272] = "Canon EOS R6"
+    exif[306] = "2024:05:01 14:03:22"
+    shot = exif.get_ifd(0x8769)
+    shot[33434] = R(1, 125)
+    shot[33437] = R(28, 10)
+    shot[34855] = 400
+    shot[36867] = "2024:05:01 14:03:21"
+    shot[37386] = R(50, 1)
+    shot[42036] = "RF 50mm F1.8"
+    gps = exif.get_ifd(0x8825)
+    gps[1] = "N"
+    gps[2] = (R(34, 1), R(3, 1), R(0, 1))
+    gps[3] = "W"
+    gps[4] = (R(118, 1), R(15, 1), R(0, 1))
+    photo(320, 200).save(os.path.join(OUT, "photo.jpg"), exif=exif.tobytes())
+
+
+def pictures_in_new_formats():
+    """A two-page TIFF, an SVG, and a comic book archive."""
+    import zipfile
+
+    pages = [photo(200, 260), Image.new("RGB", (200, 260), (30, 30, 120))]
+    ImageDraw.Draw(pages[1]).text((20, 120), "PAGE TWO", fill=(255, 255, 255))
+    pages[0].save(os.path.join(OUT, "scan.tif"), save_all=True, append_images=pages[1:], compression="tiff_deflate")
+    with open(os.path.join(OUT, "drawing.svg"), "w") as f:
+        f.write("""<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="160" viewBox="0 0 240 160">
+  <rect width="240" height="160" fill="#2b6e66"/>
+  <circle cx="120" cy="80" r="50" fill="#f2c94c"/>
+  <script>window.__svgScriptRan = true</script>
+</svg>""")
+    with zipfile.ZipFile(os.path.join(OUT, "comic.cbz"), "w") as z:
+        for n, colour in [(1, (200, 40, 40)), (2, (40, 160, 60)), (10, (40, 80, 200))]:
+            page = Image.new("RGB", (300, 450), colour)
+            ImageDraw.Draw(page).text((120, 210), f"PAGE {n}", fill=(255, 255, 255))
+            buf = io.BytesIO()
+            page.save(buf, "JPEG", quality=80)
+            z.writestr(f"Wren Comic/page{n}.jpg", buf.getvalue())
+        z.writestr("Wren Comic/ComicInfo.xml", "<ComicInfo><Title>Wren</Title></ComicInfo>")
+        z.writestr("__MACOSX/Wren Comic/._page1.jpg", b"junk")
+
+
+def heic_and_avif():
+    """Phone photos in newer formats (needs pillow-heif; Pillow writes AVIF)."""
+    import pillow_heif
+
+    pillow_heif.register_heif_opener()
+    Image.new("RGB", (160, 120), (200, 60, 60)).save(os.path.join(OUT, "photo.heic"), quality=80)
+    Image.new("RGB", (160, 120), (60, 160, 60)).save(os.path.join(OUT, "photo.avif"))
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     pictures_pdf()
@@ -228,6 +285,9 @@ def main():
     margins_pdf()
     epub_book(os.path.join(OUT, "book.epub"))
     epub_book(os.path.join(OUT, "locked.epub"), locked=True)
+    exif_photo()
+    pictures_in_new_formats()
+    heic_and_avif()
     print("wrote", sorted(os.listdir(OUT)))
 
 

@@ -11,6 +11,8 @@ import { storedFileClear, storedFileGet, storedFilePut } from "./fileStore";
 import {
 	type FileFormat,
 	PICKER_EXTENSIONS,
+	SCRIPT_EXTENSIONS,
+	extensionOf,
 	formatFromName,
 	mimeOf,
 } from "./formats";
@@ -153,6 +155,10 @@ declare global {
 			 * such voice. Added after 1.1.4. */
 			speak?(text: string, lang: string, rate: number, token: string): boolean;
 			stopSpeaking?(): void;
+			/** Draw a picture the webview cannot (HEIC) and hand it back as
+			 * a JPEG through window.__paperwrenDecoded(token, base64 | null).
+			 * Added after 1.1.4. */
+			decodePicture?(base64: string, token: string): boolean;
 			/** Hear the volume keys (they turn pages), or let them change
 			 * the volume again. Added after 1.1.4. */
 			volumeKeys?(on: boolean): void;
@@ -843,8 +849,11 @@ const tauriBackend: Backend = {
 		return {
 			share: canWebShare(),
 			shareIsDownload: false,
-			// Desktop: the OS opens it with whatever app owns the type.
-			openWith: file.reopen.kind === "path",
+			// Desktop: the OS opens it with whatever app owns the type; a
+			// script is not handed on, as that app might run it.
+			openWith:
+				file.reopen.kind === "path" &&
+				!SCRIPT_EXTENSIONS.includes(extensionOf(file.name)),
 			reveal: file.reopen.kind === "path",
 		};
 	},

@@ -23,11 +23,13 @@
     "docx-preview": "^0.4.0",
     "dompurify": "^3.4.14",
     "fflate": "^0.8.3",
+    "highlight.js": "^11.11.1",
     "lucide-react": "^0.545.0",
     "marked": "^18.0.11",
     "pdfjs-dist": "^4.10.38",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "utif2": "^4.1.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

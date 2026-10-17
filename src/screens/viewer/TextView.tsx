@@ -1,5 +1,11 @@
 import { isDesktop } from "@/lib/env";
 import { extensionOf } from "@/lib/formats";
+import {
+	highlight,
+	highlightBlocks,
+	languageOf,
+	splitLines,
+} from "@/lib/highlight";
 import { t } from "@/lib/i18n";
 import { prettyJson } from "@/lib/json";
 import { sheet } from "@/lib/print";
@@ -10,7 +16,7 @@ import { Button, IconButton, Sheet, SheetItem } from "@/ui";
 import DOMPurify from "dompurify";
 import { Code, Languages, ListOrdered, Search, WrapText } from "lucide-react";
 import { marked } from "marked";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
 	FindBar,
 	Shell,
@@ -91,10 +97,37 @@ export default function TextView({
 	}, [format, text, source]);
 
 	const shown = all ? text : text.slice(0, CHUNK);
-	const lines = useMemo(
-		() => (numbered && html === null ? shown.split(/\r?\n/) : null),
-		[numbered, html, shown],
+	// Source code, with its syntax coloured.
+	const language = useMemo(
+		() => (format === "md" ? null : languageOf(name)),
+		[format, name],
 	);
+	const [code, setCode] = useState<string | null>(null);
+	useEffect(() => {
+		let alive = true;
+		setCode(null);
+		if (language && html === null)
+			highlight(shown, language)
+				.then((coloured) => alive && setCode(coloured))
+				.catch(() => {});
+		return () => {
+			alive = false;
+		};
+	}, [language, html, shown]);
+	const lines = useMemo(
+		() =>
+			numbered && html === null
+				? code !== null
+					? splitLines(code)
+					: shown.split(/\r?\n/)
+				: null,
+		[numbered, html, shown, code],
+	);
+	// A Markdown file's code blocks, coloured once they are on the page.
+	const article = useRef<HTMLElement>(null);
+	useEffect(() => {
+		if (html !== null && article.current) highlightBlocks(article.current);
+	}, [html]);
 	const canNumber = useMemo(() => {
 		let count = 1;
 		for (let i = text.indexOf("\n"); i !== -1; i = text.indexOf("\n", i + 1))
@@ -251,6 +284,7 @@ export default function TextView({
 					<div ref={content} style={{ zoom }}>
 						{html !== null ? (
 							<article
+								ref={article}
 								className={s.md}
 								// biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized with DOMPurify above
 								dangerouslySetInnerHTML={{ __html: html }}
@@ -260,9 +294,26 @@ export default function TextView({
 								className={`${s.plain} ${s.numbered} ${wrap ? "" : s.nowrap}`}
 								data-testid="text-numbered"
 							>
-								{lines.map((line, i) => (
-									<div key={i}>{line || "​"}</div>
-								))}
+								{code !== null
+									? lines.map((line, i) => (
+											<div
+												key={i}
+												// biome-ignore lint/security/noDangerouslySetInnerHtml: highlight.js escapes the text it colours
+												dangerouslySetInnerHTML={{ __html: line || "​" }}
+											/>
+										))
+									: lines.map((line, i) => <div key={i}>{line || "​"}</div>)}
+							</pre>
+						) : code !== null ? (
+							<pre
+								className={`${s.plain} ${s.code} ${wrap ? "" : s.nowrap}`}
+								data-testid="text-code"
+							>
+								<code
+									className="hljs"
+									// biome-ignore lint/security/noDangerouslySetInnerHtml: highlight.js escapes the text it colours
+									dangerouslySetInnerHTML={{ __html: code }}
+								/>
 							</pre>
 						) : (
 							<pre className={`${s.plain} ${wrap ? "" : s.nowrap}`}>

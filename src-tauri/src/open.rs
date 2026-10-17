@@ -17,17 +17,38 @@ pub const DOCUMENT_EXTENSIONS: &[&str] = &[
     "pdf", "docx", "docm", "dotx", "doc", "odt", "rtf", "epub", "xlsx", "xlsm", "xlsb", "xltx",
     "xls", "ods", "csv", "tsv", "pptx", "pptm", "ppsx", "ppt", "pps", "odp", "md", "markdown",
     "txt", "text", "log", "json", "xml", "yml", "yaml", "ini", "png", "jpg", "jpeg", "gif", "webp",
-    "bmp",
+    "bmp", "svg", "avif", "heic", "heif", "tif", "tiff", "cbz", "jsx", "ts", "tsx", "go", "rs",
+    "java", "kt", "kts", "swift", "c", "h", "cpp", "cc", "hpp", "cs", "sql", "css", "scss", "less",
+    "html", "htm", "vue", "toml", "gradle", "dart", "diff", "patch", "properties", "conf", "cfg",
+    "env", "csproj", "plist",
 ];
+
+/// Source code a system may run when it is opened with its default app
+/// (a script): Paperwren shows it, but never hands it on to be opened.
+pub const SCRIPT_EXTENSIONS: &[&str] = &[
+    "js", "mjs", "cjs", "py", "rb", "pl", "php", "sh", "bash", "zsh", "ps1", "bat", "lua", "r",
+];
+
+fn extension(path: &Path) -> Option<String> {
+    path.extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_ascii_lowercase())
+}
 
 /// True when the path's extension is a document type we open.
 pub fn is_document(path: &Path) -> bool {
-    path.extension()
-        .and_then(|e| e.to_str())
+    extension(path)
         .map(|e| {
-            let lower = e.to_ascii_lowercase();
-            DOCUMENT_EXTENSIONS.contains(&lower.as_str())
+            DOCUMENT_EXTENSIONS.contains(&e.as_str()) || SCRIPT_EXTENSIONS.contains(&e.as_str())
         })
+        .unwrap_or(false)
+}
+
+/// True when the system's default app may be asked to open the path:
+/// a document, never a script it might run.
+pub fn may_hand_off(path: &Path) -> bool {
+    extension(path)
+        .map(|e| DOCUMENT_EXTENSIONS.contains(&e.as_str()))
         .unwrap_or(false)
 }
 
@@ -44,6 +65,15 @@ pub fn validated(path: &str) -> AppResult<PathBuf> {
         return Err(AppError::new(ErrorKind::NotFound, "no such file"));
     }
     Ok(candidate)
+}
+
+/// An existing document that may be handed to the system's default app.
+pub fn validated_for_hand_off(path: &str) -> AppResult<PathBuf> {
+    let target = validated(path)?;
+    if !may_hand_off(&target) {
+        return Err(AppError::new(ErrorKind::Path, "a script is not handed on"));
+    }
+    Ok(target)
 }
 
 /// The documents named on the command line, in order. A file manager
@@ -129,9 +159,25 @@ mod tests {
     fn recognises_document_types_case_insensitively() {
         assert!(is_document(Path::new("/tmp/Report.PDF")));
         assert!(is_document(Path::new("notes.md")));
+        assert!(is_document(Path::new("book.EPUB")));
+        assert!(is_document(Path::new("scan.tiff")));
         assert!(!is_document(Path::new("setup.exe")));
-        assert!(!is_document(Path::new("script.bat")));
+        assert!(!is_document(Path::new("setup.msi")));
         assert!(!is_document(Path::new("no-extension")));
+    }
+
+    #[test]
+    fn shows_a_script_but_never_hands_it_on() {
+        // Read as text in the app...
+        assert!(is_document(Path::new("script.bat")));
+        assert!(is_document(Path::new("tool.PS1")));
+        assert!(is_document(Path::new("app.py")));
+        // ...but never opened with what might run it.
+        for script in ["script.bat", "tool.PS1", "app.py", "run.sh", "main.js"] {
+            assert!(!may_hand_off(Path::new(script)), "{script}");
+        }
+        assert!(may_hand_off(Path::new("report.pdf")));
+        assert!(may_hand_off(Path::new("main.rs")));
     }
 
     #[test]
