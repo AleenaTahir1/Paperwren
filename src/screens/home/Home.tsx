@@ -33,6 +33,7 @@ import {
 	Settings as SettingsIcon,
 	ShieldCheck,
 	Trash2,
+	Wrench,
 } from "lucide-react";
 import { type CSSProperties, useMemo, useState } from "react";
 import { FolderList } from "./FolderList";
@@ -116,12 +117,14 @@ export function Home({
 	onOpenRecent,
 	onOpenRequest,
 	onSettings,
+	onTools,
 }: {
 	onOpenFile: () => void;
 	onOpenRecent: (entry: RecentEntry) => void;
 	/** Open a file found in a browsed folder. */
 	onOpenRequest: (request: OpenRequest) => void;
 	onSettings: () => void;
+	onTools: () => void;
 }) {
 	const { entries, ready, togglePin, remove, restore } = useRecents();
 	const [query, setQuery] = useState("");
@@ -271,6 +274,13 @@ export function Home({
 						{t("Open file")}
 					</button>
 				)}
+				<IconButton
+					label={t("Tools")}
+					onClick={onTools}
+					data-testid="open-tools"
+				>
+					<Wrench size={22} />
+				</IconButton>
 				<IconButton
 					label={t("Settings")}
 					onClick={onSettings}

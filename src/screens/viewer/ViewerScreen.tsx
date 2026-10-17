@@ -117,6 +117,7 @@ export default function ViewerScreen({
 	onLocate,
 	onReplace,
 	onOpen,
+	onTools,
 }: {
 	request: OpenRequest;
 	active: boolean;
@@ -126,6 +127,8 @@ export default function ViewerScreen({
 	onReplace: (request: OpenRequest) => void;
 	/** Show another file over this one. */
 	onOpen: (request: OpenRequest) => void;
+	/** Open the tools (or one of them) with this file. */
+	onTools?: (tool: string | undefined, file: OpenRequest) => void;
 }) {
 	const { entries, record, setPosition, markUnavailable, remove } =
 		useRecents();
@@ -361,6 +364,10 @@ export default function ViewerScreen({
 				size: loaded.data.byteLength || loaded.size,
 				openOther: onReplace,
 				openOver: onOpen,
+				openTools:
+					onTools && request.reopen.kind !== "memory"
+						? (tool) => onTools(tool, request)
+						: undefined,
 			}}
 		>
 			<ViewerBoundary name={loaded.name} onClose={onClose}>

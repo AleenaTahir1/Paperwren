@@ -369,3 +369,168 @@
 .keptPick:hover {
 	border-color: var(--accent);
 }
+
+/* ---------- The tools screen ---------- */
+.screen {
+	position: fixed;
+	inset: var(--tab-strip, 0px) 0 0;
+	z-index: 20;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	background: var(--page-bg, var(--canvas));
+	animation: pw-screen-side var(--t-med) var(--ease);
+}
+.screenBar {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	min-height: calc(64px + var(--safe-top, 0px));
+	padding: calc(8px + var(--safe-top, 0px)) calc(8px + var(--bar-controls, 0px))
+		4px calc(4px + var(--safe-left, 0px) + var(--bar-lights, 0px));
+}
+.screenTitle {
+	margin: 0;
+	font-size: 22px;
+	font-weight: 800;
+}
+.screenScroll {
+	flex: 1;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+}
+.column {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	max-width: 640px;
+	margin: 0 auto;
+	padding: 4px calc(16px + var(--safe-right, 0px))
+		calc(40px + var(--safe-bottom, 0px)) calc(16px + var(--safe-left, 0px));
+}
+.lead {
+	margin: 0 0 4px;
+	color: var(--text-2);
+	font-size: 14px;
+	line-height: 1.5;
+}
+.toolList {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+	gap: 10px;
+}
+.toolCard {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	padding: 14px;
+	border: 1px solid var(--line);
+	border-radius: var(--r-l, 14px);
+	background: var(--surface);
+	text-align: start;
+}
+.toolCard:hover {
+	border-color: var(--accent);
+}
+.toolIcon {
+	display: grid;
+	place-items: center;
+	flex-shrink: 0;
+	width: 44px;
+	height: 44px;
+	border-radius: 12px;
+	background: var(--accent-soft);
+	color: var(--accent);
+}
+.toolText {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+.toolText strong {
+	font-size: 15px;
+}
+.toolText span {
+	color: var(--text-2);
+	font-size: 13px;
+	line-height: 1.35;
+}
+.files {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+.fileRow {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 6px 6px 14px;
+	border: 1px solid var(--line);
+	border-radius: var(--r-m);
+	background: var(--surface);
+}
+.fileName {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	font-weight: 650;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.fileMeta {
+	flex-shrink: 0;
+	color: var(--text-2);
+	font-size: 13px;
+}
+.label {
+	margin-top: 6px;
+	font-size: 13px;
+	font-weight: 700;
+	color: var(--text-2);
+}
+.go {
+	display: flex;
+	justify-content: flex-end;
+	margin-top: 8px;
+}
+.actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px;
+}
+.grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(136px, 1fr));
+	gap: 10px;
+}
+.cell {
+	position: relative;
+	display: grid;
+	place-items: center;
+	min-height: 180px;
+	padding: 8px;
+	border: 2px solid transparent;
+	border-radius: var(--r-m);
+	background: var(--surface-2);
+}
+.cell[aria-pressed="true"] {
+	border-color: var(--accent);
+	background: var(--accent-soft);
+}
+.cellNumber {
+	position: absolute;
+	right: 8px;
+	bottom: 6px;
+	padding: 0 6px;
+	border-radius: 999px;
+	background: var(--surface);
+	font-size: 12px;
+	font-weight: 700;
+}
+.thumb {
+	display: block;
+	background: #fff;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}

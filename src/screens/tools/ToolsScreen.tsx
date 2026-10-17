@@ -1,0 +1,946 @@
+import { copyName, splitName } from "@/lib/fileName";
+import { msg, t, tn } from "@/lib/i18n";
+import {
+	type NumberSpot,
+	type PagePick,
+	addPageNumbers,
+	addWatermark,
+	buildPdf,
+	imagesToPdf,
+	parsePages,
+	protect,
+	standardText,
+	unlock,
+} from "@/lib/pdfTools";
+import { sniffFormat } from "@/lib/sniff";
+import type { OpenRequest } from "@/lib/types";
+import { useBackClose, useNav } from "@/state/navigation";
+import { Button, IconButton } from "@/ui";
+import { zipSync } from "fflate";
+import {
+	ArrowLeft,
+	Combine,
+	Droplet,
+	FileImage,
+	Hash,
+	Images,
+	LayoutGrid,
+	LockKeyhole,
+	LockKeyholeOpen,
+	PenLine,
+	RotateCcw,
+	RotateCw,
+	Scissors,
+	Trash2,
+} from "lucide-react";
+import type { PDFDocumentProxy } from "pdfjs-dist";
+import { type ReactNode, useState } from "react";
+import { FillSign } from "./FillSign";
+import s from "./Tools.module.css";
+import {
+	FileList,
+	PageThumb,
+	type ToolFile,
+	usePdf,
+	useRun,
+	useToolFiles,
+} from "./kit";
+import { announceSaved } from "./saved";
+
+export type ToolId =
+	| "sign"
+	| "merge"
+	| "organize"
+	| "extract"
+	| "images"
+	| "pictures"
+	| "numbers"
+	| "watermark"
+	| "protect"
+	| "unlock";
+
+const PDF = "application/pdf";
+
+/** The tools, as the list shows them. */
+const TOOLS: Array<{
+	id: ToolId;
+	icon: ReactNode;
+	title: string;
+	hint: string;
+}> = [
+	{
+		id: "sign",
+		icon: <PenLine size={22} />,
+		title: msg("Fill & sign"),
+		hint: msg("Fill in a form and sign it"),
+	},
+	{
+		id: "merge",
+		icon: <Combine size={22} />,
+		title: msg("Merge PDFs"),
+		hint: msg("Put several PDFs together, in the order you choose"),
+	},
+	{
+		id: "organize",
+		icon: <LayoutGrid size={22} />,
+		title: msg("Organize pages"),
+		hint: msg("Turn, move or take out pages"),
+	},
+	{
+		id: "extract",
+		icon: <Scissors size={22} />,
+		title: msg("Split or extract pages"),
+		hint: msg("Some pages as a new PDF, or every page as its own"),
+	},
+	{
+		id: "images",
+		icon: <Images size={22} />,
+		title: msg("Pictures to PDF"),
+		hint: msg("Photos or scans as the pages of one PDF"),
+	},
+	{
+		id: "pictures",
+		icon: <FileImage size={22} />,
+		title: msg("PDF to pictures"),
+		hint: msg("Each page as a JPEG picture"),
+	},
+	{
+		id: "numbers",
+		icon: <Hash size={22} />,
+		title: msg("Page numbers"),
+		hint: msg("Number every page"),
+	},
+	{
+		id: "watermark",
+		icon: <Droplet size={22} />,
+		title: msg("Watermark"),
+		hint: msg("A word such as DRAFT across every page"),
+	},
+	{
+		id: "protect",
+		icon: <LockKeyhole size={22} />,
+		title: msg("Add a password"),
+		hint: msg("A copy that asks for a password to open"),
+	},
+	{
+		id: "unlock",
+		icon: <LockKeyholeOpen size={22} />,
+		title: msg("Remove a password"),
+		hint: msg("A copy that opens without one, if you know it"),
+	},
+];
+
+/**
+ * The tools people otherwise find a website or another app for, on the
+ * device: fill in and sign a form, put PDFs together and apart, turn
+ * pictures into a PDF and back, number pages, mark them, lock and
+ * unlock them. Each one makes a new file the reader saves where they
+ * like; nothing leaves the device and the files picked stay as they are.
+ */
+export function ToolsScreen({
+	start,
+	file,
+	onOpen,
+}: {
+	/** Open straight into one tool... */
+	start?: ToolId;
+	/** ...with this file in it. */
+	file?: OpenRequest;
+	onOpen: (request: OpenRequest) => void;
+}) {
+	const { back } = useNav();
+	const [tool, setTool] = useState<ToolId | null>(start ?? null);
+	// Back from a tool opened from the list returns to the list.
+	useBackClose("tool", !!tool && !start, () => setTool(null));
+	const shown = TOOLS.find((x) => x.id === tool);
+
+	return (
+		<div className={s.screen} data-testid="tools">
+			<header className={s.screenBar} data-tauri-drag-region="deep">
+				<IconButton
+					label={t("Back")}
+					onClick={() => (tool && !start ? setTool(null) : back())}
+					data-testid="tools-back"
+				>
+					<ArrowLeft size={22} className="pw-flip" />
+				</IconButton>
+				<h1 className={s.screenTitle}>{shown ? t(shown.title) : t("Tools")}</h1>
+			</header>
+			<main className={s.screenScroll}>
+				<div className={s.column}>
+					{!tool && (
+						<>
+							<p className={s.lead}>
+								{t(
+									"Everything happens on this device. The files you pick stay as they are: each tool saves a new one.",
+								)}
+							</p>
+							<div className={s.toolList}>
+								{TOOLS.map((x) => (
+									<button
+										key={x.id}
+										type="button"
+										className={s.toolCard}
+										onClick={() => setTool(x.id)}
+										data-testid={`tool-${x.id}`}
+									>
+										<span className={s.toolIcon}>{x.icon}</span>
+										<span className={s.toolText}>
+											<strong>{t(x.title)}</strong>
+											<span>{t(x.hint)}</span>
+										</span>
+									</button>
+								))}
+							</div>
+						</>
+					)}
+					{tool === "sign" && <SignTool file={file} onOpen={onOpen} />}
+					{tool === "merge" && <MergeTool file={file} onOpen={onOpen} />}
+					{tool === "organize" && <OrganizeTool file={file} onOpen={onOpen} />}
+					{tool === "extract" && <ExtractTool file={file} onOpen={onOpen} />}
+					{tool === "images" && <ImagesTool file={file} onOpen={onOpen} />}
+					{tool === "pictures" && <PicturesTool file={file} onOpen={onOpen} />}
+					{tool === "numbers" && <NumbersTool file={file} onOpen={onOpen} />}
+					{tool === "watermark" && (
+						<WatermarkTool file={file} onOpen={onOpen} />
+					)}
+					{tool === "protect" && <ProtectTool file={file} onOpen={onOpen} />}
+					{tool === "unlock" && <UnlockTool file={file} onOpen={onOpen} />}
+				</div>
+			</main>
+		</div>
+	);
+}
+
+interface ToolProps {
+	file?: OpenRequest;
+	onOpen: (request: OpenRequest) => void;
+}
+
+/** The button that runs a tool, at the foot of its panel. */
+function Go({
+	label,
+	disabled,
+	running,
+	onClick,
+}: {
+	label: string;
+	disabled: boolean;
+	running: boolean;
+	onClick: () => void;
+}) {
+	return (
+		<div className={s.go}>
+			<Button
+				onClick={onClick}
+				disabled={disabled || running}
+				data-testid="tool-go"
+			>
+				{running ? t("Working…") : label}
+			</Button>
+		</div>
+	);
+}
+
+function OnePdf({
+	kit,
+}: {
+	kit: ReturnType<typeof useToolFiles>;
+}) {
+	return (
+		<>
+			<FileList kit={kit} several={false} addLabel={t("Choose a PDF")} />
+			{kit.dialog}
+		</>
+	);
+}
+
+function SignTool({ file, onOpen }: ToolProps) {
+	const kit = useToolFiles("pdf", file);
+	const doc = usePdf(kit.files[0]);
+	const [open, setOpen] = useState(false);
+	const picked = kit.files[0];
+	return (
+		<>
+			<OnePdf kit={kit} />
+			<Go
+				label={t("Fill & sign")}
+				disabled={!doc}
+				running={false}
+				onClick={() => setOpen(true)}
+			/>
+			{open && doc && picked && (
+				<FillSign
+					doc={doc}
+					name={picked.name}
+					password={picked.password}
+					canMark
+					onClose={() => setOpen(false)}
+					onSaved={(saved) => announceSaved(saved, onOpen)}
+				/>
+			)}
+		</>
+	);
+}
+
+function MergeTool({ file, onOpen }: ToolProps) {
+	const kit = useToolFiles("pdf", file);
+	const { running, run } = useRun(onOpen);
+	const total = kit.files.reduce((n, f) => n + (f.pages ?? 0), 0);
+	return (
+		<>
+			<FileList kit={kit} several addLabel={t("Add a PDF")} />
+			{kit.dialog}
+			{kit.files.length > 0 && (
+				<p className={s.hint}>
+					{tn(total, "{n} page in all", "{n} pages in all")}
+				</p>
+			)}
+			<Go
+				label={t("Merge")}
+				disabled={kit.files.length < 2}
+				running={running}
+				onClick={() =>
+					run(async () => {
+						const picks: PagePick[] = kit.files.flatMap((f, i) =>
+							Array.from({ length: f.pages ?? 0 }, (_, page) => ({
+								file: i,
+								page,
+							})),
+						);
+						return {
+							name: copyName(kit.files[0].name, t("merged")),
+							bytes: await buildPdf(kit.files, picks),
+							mime: PDF,
+						};
+					})
+				}
+			/>
+		</>
+	);
+}
+
+/** Pages to pick from, drawn small: tap to select. */
+function PageGrid({
+	doc,
+	order,
+	selected,
+	onToggle,
+}: {
+	doc: PDFDocumentProxy;
+	order: Array<{ page: number; turn: number }>;
+	selected: Set<number>;
+	onToggle: (index: number) => void;
+}) {
+	return (
+		<div className={s.grid} data-testid="tool-pages">
+			{order.map((p, i) => (
+				<button
+					key={`${p.page}-${i}`}
+					type="button"
+					className={s.cell}
+					aria-pressed={selected.has(i)}
+					aria-label={t("Page {n}", { n: p.page + 1 })}
+					onClick={() => onToggle(i)}
+					data-testid="tool-page"
+				>
+					<PageThumb doc={doc} page={p.page} turn={p.turn} />
+					<span className={s.cellNumber}>{p.page + 1}</span>
+				</button>
+			))}
+		</div>
+	);
+}
+
+function OrganizeTool({ file, onOpen }: ToolProps) {
+	const kit = useToolFiles("pdf", file);
+	const picked = kit.files[0];
+	const doc = usePdf(picked);
+	const { running, run } = useRun(onOpen);
+	const [order, setOrder] = useState<Array<{
+		page: number;
+		turn: number;
+	}> | null>(null);
+	const [selected, setSelected] = useState<Set<number>>(new Set());
+	const pages =
+		order ??
+		Array.from({ length: picked?.pages ?? 0 }, (_, page) => ({
+			page,
+			turn: 0,
+		}));
+	const change = (next: Array<{ page: number; turn: number }>) =>
+		setOrder(next);
+	const sel = [...selected].sort((a, b) => a - b);
+	const turn = (by: number) =>
+		change(
+			pages.map((p, i) =>
+				selected.has(i) ? { ...p, turn: (p.turn + by + 360) % 360 } : p,
+			),
+		);
+	const shift = (by: -1 | 1) => {
+		if (!sel.length) return;
+		const next = [...pages];
+		const moving = by < 0 ? sel : [...sel].reverse();
+		const edge =
+			by < 0 ? sel[0] === 0 : sel[sel.length - 1] === pages.length - 1;
+		if (edge) return;
+		for (const i of moving) [next[i], next[i + by]] = [next[i + by], next[i]];
+		change(next);
+		setSelected(new Set(sel.map((i) => i + by)));
+	};
+	const changed =
+		!!order &&
+		(order.length !== (picked?.pages ?? 0) ||
+			order.some((p, i) => p.page !== i || p.turn !== 0));
+	return (
+		<>
+			<OnePdf kit={kit} />
+			{doc && picked && (
+				<>
+					<div className={s.actions} role="toolbar" aria-label={t("Pages")}>
+						<Button
+							variant="ghost"
+							onClick={() =>
+								setSelected(
+									selected.size === pages.length
+										? new Set()
+										: new Set(pages.map((_, i) => i)),
+								)
+							}
+						>
+							{selected.size === pages.length
+								? t("Select none")
+								: t("Select all")}
+						</Button>
+						<IconButton
+							label={t("Turn left")}
+							disabled={!selected.size}
+							onClick={() => turn(-90)}
+						>
+							<RotateCcw size={18} />
+						</IconButton>
+						<IconButton
+							label={t("Turn right")}
+							disabled={!selected.size}
+							onClick={() => turn(90)}
+							data-testid="tool-turn-right"
+						>
+							<RotateCw size={18} />
+						</IconButton>
+						<Button
+							variant="ghost"
+							disabled={!selected.size}
+							onClick={() => shift(-1)}
+							data-testid="tool-earlier"
+						>
+							{t("Earlier")}
+						</Button>
+						<Button
+							variant="ghost"
+							disabled={!selected.size}
+							onClick={() => shift(1)}
+						>
+							{t("Later")}
+						</Button>
+						<IconButton
+							label={t("Take out")}
+							disabled={!selected.size || selected.size === pages.length}
+							onClick={() => {
+								change(pages.filter((_, i) => !selected.has(i)));
+								setSelected(new Set());
+							}}
+							data-testid="tool-delete"
+						>
+							<Trash2 size={18} />
+						</IconButton>
+					</div>
+					<p className={s.hint}>
+						{selected.size
+							? tn(selected.size, "{n} page selected", "{n} pages selected")
+							: t("Tap pages to select them")}
+					</p>
+					<PageGrid
+						doc={doc}
+						order={pages}
+						selected={selected}
+						onToggle={(i) =>
+							setSelected((was) => {
+								const next = new Set(was);
+								if (next.has(i)) next.delete(i);
+								else next.add(i);
+								return next;
+							})
+						}
+					/>
+				</>
+			)}
+			<Go
+				label={t("Save a copy")}
+				disabled={!changed}
+				running={running}
+				onClick={() =>
+					run(async () => ({
+						name: copyName(picked.name, t("organized")),
+						bytes: await buildPdf(
+							[picked],
+							pages.map((p) => ({ file: 0, page: p.page, turn: p.turn })),
+						),
+						mime: PDF,
+					}))
+				}
+			/>
+		</>
+	);
+}
+
+function ExtractTool({ file, onOpen }: ToolProps) {
+	const kit = useToolFiles("pdf", file);
+	const picked = kit.files[0];
+	const { running, run } = useRun(onOpen);
+	const [which, setWhich] = useState("");
+	const [each, setEach] = useState(false);
+	const pages = picked?.pages ?? 0;
+	const list = picked
+		? parsePages(which || (each ? `1-${pages}` : ""), pages)
+		: null;
+	return (
+		<>
+			<OnePdf kit={kit} />
+			{picked && (
+				<>
+					<label className={s.label} htmlFor="tool-pages-field">
+						{t("Pages")}
+					</label>
+					<input
+						id="tool-pages-field"
+						className={s.field}
+						value={which}
+						onChange={(e) => setWhich(e.target.value)}
+						placeholder={t("For example 1-3, 5")}
+						inputMode="numeric"
+						dir="ltr"
+						data-testid="tool-pages-field"
+					/>
+					<p className={s.hint}>
+						{which && !list
+							? t("The document has {n} pages", { n: pages })
+							: each
+								? t(
+										"Each page is saved as a PDF of its own, together in a ZIP file.",
+									)
+								: t(
+										"The pages you name are saved, in that order, as a new PDF.",
+									)}
+					</p>
+					<label className={s.keep}>
+						<input
+							type="checkbox"
+							checked={each}
+							onChange={(e) => setEach(e.target.checked)}
+							data-testid="tool-each"
+						/>
+						{t("Every page as its own PDF")}
+					</label>
+				</>
+			)}
+			<Go
+				label={each ? t("Split") : t("Extract")}
+				disabled={!list}
+				running={running}
+				onClick={() =>
+					run(async () => {
+						if (!list) throw new Error("no pages");
+						if (!each)
+							return {
+								name: copyName(picked.name, t("pages")),
+								bytes: await buildPdf(
+									[picked],
+									list.map((page) => ({ file: 0, page })),
+								),
+								mime: PDF,
+							};
+						const [stem] = splitName(picked.name);
+						const parts: Record<string, Uint8Array> = {};
+						for (const page of list)
+							parts[`${stem} - ${t("page {n}", { n: page + 1 })}.pdf`] =
+								await buildPdf([picked], [{ file: 0, page }]);
+						return {
+							name: copyName(picked.name, t("pages"), ".zip"),
+							bytes: zipSync(parts, { level: 0 }),
+							mime: "application/zip",
+						};
+					})
+				}
+			/>
+		</>
+	);
+}
+
+/** A picture's pixels as a JPEG or a PNG, the two a PDF can hold: a
+ * JPEG or PNG is kept as it is; anything else is drawn into a JPEG. */
+async function asPageImage(
+	file: ToolFile,
+): Promise<{ bytes: Uint8Array; type: "jpg" | "png" }> {
+	const b = file.bytes;
+	if (b[0] === 0xff && b[1] === 0xd8) return { bytes: b, type: "jpg" };
+	if (b[0] === 0x89 && b[1] === 0x50) return { bytes: b, type: "png" };
+	const bitmap = await createImageBitmap(new Blob([b as BlobPart]));
+	const canvas = document.createElement("canvas");
+	canvas.width = bitmap.width;
+	canvas.height = bitmap.height;
+	const ctx = canvas.getContext("2d");
+	if (!ctx) throw new Error("no canvas");
+	ctx.fillStyle = "#fff";
+	ctx.fillRect(0, 0, canvas.width, canvas.height);
+	ctx.drawImage(bitmap, 0, 0);
+	const blob = await new Promise<Blob | null>((done) =>
+		canvas.toBlob(done, "image/jpeg", 0.92),
+	);
+	if (!blob) throw new Error("no picture");
+	return { bytes: new Uint8Array(await blob.arrayBuffer()), type: "jpg" };
+}
+
+function ImagesTool({ file, onOpen }: ToolProps) {
+	const kit = useToolFiles("image", file);
+	const { running, run } = useRun(onOpen);
+	const [paper, setPaper] = useState<"fit" | "a4" | "letter">("a4");
+	return (
+		<>
+			<FileList kit={kit} several addLabel={t("Add a picture")} />
+			<Choice
+				label={t("Page size")}
+				value={paper}
+				onChange={setPaper}
+				options={[
+					["a4", "A4"],
+					["letter", "Letter"],
+					["fit", t("Each picture's own size")],
+				]}
+				testId="tool-paper"
+			/>
+			<Go
+				label={t("Make a PDF")}
+				disabled={!kit.files.length}
+				running={running}
+				onClick={() =>
+					run(async () => ({
+						name: copyName(kit.files[0].name, t("pictures"), ".pdf"),
+						bytes: await imagesToPdf(
+							await Promise.all(kit.files.map(asPageImage)),
+							paper,
+						),
+						mime: PDF,
+					}))
+				}
+			/>
+		</>
+	);
+}
+
+function PicturesTool({ file, onOpen }: ToolProps) {
+	const kit = useToolFiles("pdf", file);
+	const picked = kit.files[0];
+	const doc = usePdf(picked);
+	const { running, run } = useRun(onOpen);
+	const [which, setWhich] = useState("");
+	const pages = picked?.pages ?? 0;
+	const list = picked ? parsePages(which || `1-${pages}`, pages) : null;
+	return (
+		<>
+			<OnePdf kit={kit} />
+			{picked && (
+				<>
+					<label className={s.label} htmlFor="tool-pictures-field">
+						{t("Pages")}
+					</label>
+					<input
+						id="tool-pictures-field"
+						className={s.field}
+						value={which}
+						onChange={(e) => setWhich(e.target.value)}
+						placeholder={t("All of them")}
+						inputMode="numeric"
+						dir="ltr"
+						data-testid="tool-pages-field"
+					/>
+					<p className={s.hint}>
+						{list && list.length > 1
+							? t("The pictures are saved together in a ZIP file.")
+							: t("Pages are drawn at 150 dots to the inch.")}
+					</p>
+				</>
+			)}
+			<Go
+				label={t("Make pictures")}
+				disabled={!doc || !list}
+				running={running}
+				onClick={() =>
+					run(async () => {
+						if (!doc || !list) throw new Error("no pages");
+						const [stem] = splitName(picked.name);
+						const shots: Record<string, Uint8Array> = {};
+						for (const page of list) {
+							const proxy = await doc.getPage(page + 1);
+							const viewport = proxy.getViewport({ scale: 150 / 72 });
+							const canvas = document.createElement("canvas");
+							canvas.width = Math.ceil(viewport.width);
+							canvas.height = Math.ceil(viewport.height);
+							const ctx = canvas.getContext("2d");
+							if (!ctx) throw new Error("no canvas");
+							ctx.fillStyle = "#fff";
+							ctx.fillRect(0, 0, canvas.width, canvas.height);
+							await proxy.render({ canvasContext: ctx, viewport }).promise;
+							const blob = await new Promise<Blob | null>((done) =>
+								canvas.toBlob(done, "image/jpeg", 0.9),
+							);
+							if (!blob) throw new Error("no picture");
+							shots[`${stem} - ${t("page {n}", { n: page + 1 })}.jpg`] =
+								new Uint8Array(await blob.arrayBuffer());
+						}
+						const names = Object.keys(shots);
+						if (names.length === 1)
+							return {
+								name: names[0],
+								bytes: shots[names[0]],
+								mime: "image/jpeg",
+							};
+						return {
+							name: copyName(picked.name, t("pictures"), ".zip"),
+							bytes: zipSync(shots, { level: 0 }),
+							mime: "application/zip",
+						};
+					})
+				}
+			/>
+		</>
+	);
+}
+
+/** A choice of a few, as a row of buttons. */
+function Choice<T extends string>({
+	label,
+	value,
+	onChange,
+	options,
+	testId,
+}: {
+	label: string;
+	value: T;
+	onChange: (value: T) => void;
+	options: Array<[T, string]>;
+	testId: string;
+}) {
+	return (
+		<>
+			<span className={s.label}>{label}</span>
+			<div className={s.ways} role="radiogroup" aria-label={label}>
+				{options.map(([v, text]) => (
+					<button
+						key={v}
+						type="button"
+						// biome-ignore lint/a11y/useSemanticElements: a row of buttons with radio semantics
+						role="radio"
+						aria-checked={value === v}
+						aria-selected={value === v}
+						className={s.way}
+						onClick={() => onChange(v)}
+						data-testid={`${testId}-${v}`}
+					>
+						{text}
+					</button>
+				))}
+			</div>
+		</>
+	);
+}
+
+function NumbersTool({ file, onOpen }: ToolProps) {
+	const kit = useToolFiles("pdf", file);
+	const picked = kit.files[0];
+	const { running, run } = useRun(onOpen);
+	const [spot, setSpot] = useState<NumberSpot>("bottom-center");
+	const [style, setStyle] = useState<"n" | "of">("n");
+	// "Page 1 of 9" in the reader's language, where Helvetica can write it.
+	const words = t("Page {n} of {total}");
+	const pattern =
+		style === "n" ? "{n}" : standardText(words) ? words : "{n} / {total}";
+	return (
+		<>
+			<OnePdf kit={kit} />
+			<Choice
+				label={t("Where")}
+				value={spot}
+				onChange={setSpot}
+				options={[
+					["bottom-center", t("Foot, middle")],
+					["bottom-right", t("Foot, right")],
+					["top-right", t("Top, right")],
+				]}
+				testId="tool-spot"
+			/>
+			<Choice
+				label={t("How")}
+				value={style}
+				onChange={setStyle}
+				options={[
+					["n", "1, 2, 3"],
+					["of", pattern.replace("{n}", "1").replace("{total}", "9")],
+				]}
+				testId="tool-style"
+			/>
+			<Go
+				label={t("Number the pages")}
+				disabled={!picked}
+				running={running}
+				onClick={() =>
+					run(async () => ({
+						name: copyName(picked.name, t("numbered")),
+						bytes: await addPageNumbers(picked.bytes, {
+							password: picked.password,
+							spot,
+							pattern,
+						}),
+						mime: PDF,
+					}))
+				}
+			/>
+		</>
+	);
+}
+
+function WatermarkTool({ file, onOpen }: ToolProps) {
+	const kit = useToolFiles("pdf", file);
+	const picked = kit.files[0];
+	const { running, run } = useRun(onOpen);
+	const [text, setText] = useState(t("DRAFT"));
+	const usable = !!text.trim() && standardText(text);
+	return (
+		<>
+			<OnePdf kit={kit} />
+			<label className={s.label} htmlFor="tool-mark">
+				{t("Words")}
+			</label>
+			<input
+				id="tool-mark"
+				className={s.field}
+				value={text}
+				maxLength={40}
+				onChange={(e) => setText(e.target.value)}
+				data-testid="tool-mark"
+			/>
+			{!usable && text.trim() && (
+				<p className={s.hint}>
+					{t("Use Latin letters: a PDF's standard fonts have no others.")}
+				</p>
+			)}
+			<Go
+				label={t("Add the watermark")}
+				disabled={!picked || !usable}
+				running={running}
+				onClick={() =>
+					run(async () => ({
+						name: copyName(picked.name, t("watermarked")),
+						bytes: await addWatermark(picked.bytes, {
+							text: text.trim(),
+							password: picked.password,
+						}),
+						mime: PDF,
+					}))
+				}
+			/>
+		</>
+	);
+}
+
+function ProtectTool({ file, onOpen }: ToolProps) {
+	const kit = useToolFiles("pdf", file);
+	const picked = kit.files[0];
+	const { running, run } = useRun(onOpen);
+	const [one, setOne] = useState("");
+	const [two, setTwo] = useState("");
+	const same = one === two;
+	return (
+		<>
+			<OnePdf kit={kit} />
+			<label className={s.label} htmlFor="tool-password">
+				{t("Password")}
+			</label>
+			<input
+				id="tool-password"
+				className={s.field}
+				type="password"
+				autoComplete="new-password"
+				value={one}
+				onChange={(e) => setOne(e.target.value)}
+				data-testid="tool-new-password"
+			/>
+			<label className={s.label} htmlFor="tool-password-again">
+				{t("The same password again")}
+			</label>
+			<input
+				id="tool-password-again"
+				className={s.field}
+				type="password"
+				autoComplete="new-password"
+				value={two}
+				onChange={(e) => setTwo(e.target.value)}
+				data-testid="tool-new-password-again"
+			/>
+			<p className={s.hint}>
+				{!same && two
+					? t("The two passwords are not the same")
+					: t(
+							"Keep it somewhere safe: without it the copy cannot be opened. Paperwren does not keep it.",
+						)}
+			</p>
+			<Go
+				label={t("Save a locked copy")}
+				disabled={!picked || !one || !same}
+				running={running}
+				onClick={() =>
+					run(async () => ({
+						name: copyName(picked.name, t("locked")),
+						bytes: await protect(picked.bytes, one, {
+							password: picked.password,
+						}),
+						mime: PDF,
+					}))
+				}
+			/>
+		</>
+	);
+}
+
+function UnlockTool({ file, onOpen }: ToolProps) {
+	const kit = useToolFiles("pdf", file);
+	const picked = kit.files[0];
+	const { running, run } = useRun(onOpen);
+	return (
+		<>
+			<OnePdf kit={kit} />
+			<p className={s.hint}>
+				{picked && !picked.password
+					? t("This PDF has no password to remove.")
+					: t("Pick the PDF and type its password; the copy opens without it.")}
+			</p>
+			<Go
+				label={t("Save an unlocked copy")}
+				disabled={!picked?.password}
+				running={running}
+				onClick={() =>
+					run(async () => {
+						const password = picked.password ?? "";
+						const bytes = await unlock(picked.bytes, password);
+						if (sniffFormat(bytes.buffer as ArrayBuffer) !== "pdf")
+							throw new Error("bad");
+						return {
+							name: copyName(picked.name, t("unlocked")),
+							bytes,
+							mime: PDF,
+						};
+					})
+				}
+			/>
+		</>
+	);
+}

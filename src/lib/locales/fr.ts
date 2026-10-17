@@ -431,6 +431,112 @@ export const fr: Table = {
 	"As written": "Comme écrit",
 	Serif: "Avec empattement",
 	"Sans serif": "Sans empattement",
+	Tools: "Outils",
+	"Everything happens on this device. The files you pick stay as they are: each tool saves a new one.":
+		"Tout se passe sur cet appareil. Les fichiers choisis restent tels quels : chaque outil en enregistre un nouveau.",
+	"Fill in a form and sign it": "Remplissez un formulaire et signez-le",
+	"Merge PDFs": "Fusionner des PDF",
+	"Put several PDFs together, in the order you choose":
+		"Assemblez plusieurs PDF dans l'ordre de votre choix",
+	"Organize pages": "Organiser les pages",
+	"Turn, move or take out pages":
+		"Faites pivoter, déplacez ou retirez des pages",
+	"Split or extract pages": "Diviser ou extraire des pages",
+	"Some pages as a new PDF, or every page as its own":
+		"Quelques pages dans un nouveau PDF, ou chaque page à part",
+	"Pictures to PDF": "Images en PDF",
+	"Photos or scans as the pages of one PDF":
+		"Des photos ou des scans comme pages d'un même PDF",
+	"PDF to pictures": "PDF en images",
+	"Each page as a JPEG picture": "Chaque page en image JPEG",
+	"Page numbers": "Numéros de page",
+	"Number every page": "Numérotez chaque page",
+	Watermark: "Filigrane",
+	"A word such as DRAFT across every page":
+		"Un mot comme BROUILLON sur chaque page",
+	"Add a password": "Ajouter un mot de passe",
+	"A copy that asks for a password to open":
+		"Une copie qui demande un mot de passe à l'ouverture",
+	"Remove a password": "Retirer un mot de passe",
+	"A copy that opens without one, if you know it":
+		"Une copie qui s'ouvre sans, si vous le connaissez",
+	"Add a PDF": "Ajouter un PDF",
+	"Add a picture": "Ajouter une image",
+	"Add the watermark": "Ajouter le filigrane",
+	"All of them": "Toutes",
+	"Choose a PDF": "Choisir un PDF",
+	DRAFT: "BROUILLON",
+	"Each page is saved as a PDF of its own, together in a ZIP file.":
+		"Chaque page est enregistrée dans son propre PDF, le tout dans un fichier ZIP.",
+	"Each picture's own size": "La taille de chaque image",
+	Earlier: "Avant",
+	"Every page as its own PDF": "Chaque page dans son propre PDF",
+	Extract: "Extraire",
+	"Foot, middle": "En bas, au centre",
+	"Foot, right": "En bas, à droite",
+	"For example 1-3, 5": "Par exemple 1-3, 5",
+	How: "Comment",
+	"Keep it somewhere safe: without it the copy cannot be opened. Paperwren does not keep it.":
+		"Gardez-le en lieu sûr : sans lui, la copie ne peut pas être ouverte. Paperwren ne le conserve pas.",
+	Later: "Après",
+	"Make a PDF": "Créer un PDF",
+	"Make pictures": "Créer des images",
+	Merge: "Fusionner",
+	"Merge, split, organize pages, number them, add a password":
+		"Fusionnez, divisez, organisez et numérotez les pages, ajoutez un mot de passe",
+	"More PDF tools": "Autres outils PDF",
+	"Move down": "Descendre",
+	"Move up": "Monter",
+	"Number the pages": "Numéroter les pages",
+	"Opening…": "Ouverture…",
+	"Page {n} of {total}": "Page {n} sur {total}",
+	"Pages are drawn at 150 dots to the inch.":
+		"Les pages sont rendues à 150 points par pouce.",
+	"Pick the PDF and type its password; the copy opens without it.":
+		"Choisissez le PDF et saisissez son mot de passe ; la copie s'ouvre sans.",
+	"Save a locked copy": "Enregistrer une copie verrouillée",
+	"Save an unlocked copy": "Enregistrer une copie déverrouillée",
+	"Select none": "Tout désélectionner",
+	Split: "Diviser",
+	"Take out": "Retirer",
+	"Tap pages to select them": "Touchez des pages pour les sélectionner",
+	"The document has {n} pages": "Le document compte {n} pages",
+	"The pages you name are saved, in that order, as a new PDF.":
+		"Les pages indiquées sont enregistrées, dans cet ordre, dans un nouveau PDF.",
+	"The pictures are saved together in a ZIP file.":
+		"Les images sont enregistrées ensemble dans un fichier ZIP.",
+	"The same password again": "Le même mot de passe à nouveau",
+	"The two passwords are not the same":
+		"Les deux mots de passe ne sont pas identiques",
+	"This PDF has no password to remove.":
+		"Ce PDF n'a pas de mot de passe à retirer.",
+	"Top, right": "En haut, à droite",
+	"Turn left": "Pivoter à gauche",
+	"Turn right": "Pivoter à droite",
+	"Use Latin letters: a PDF's standard fonts have no others.":
+		"Utilisez des lettres latines : les polices standard d'un PDF n'en ont pas d'autres.",
+	Where: "Où",
+	"Working…": "Traitement…",
+	locked: "verrouillé",
+	merged: "fusionné",
+	numbered: "numéroté",
+	organized: "organisé",
+	"page {n}": "page {n}",
+	pages: "pages",
+	pictures: "images",
+	unlocked: "déverrouillé",
+	watermarked: "filigrané",
+	"{name} couldn't be read": "Impossible de lire {name}",
+	"{name} isn't a PDF": "{name} n'est pas un PDF",
+	"{name} isn't a picture": "{name} n'est pas une image",
+	"{n} pages in all": {
+		one: "{n} page en tout",
+		other: "{n} pages en tout",
+	},
+	"{n} pages selected": {
+		one: "{n} page sélectionnée",
+		other: "{n} pages sélectionnées",
+	},
 	"A new PDF is made; the file you opened stays as it was.":
 		"Un nouveau PDF est créé ; le fichier ouvert reste tel quel.",
 	"Add to the page from the tools": "Ajoutez à la page avec les outils",

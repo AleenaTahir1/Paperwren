@@ -8,6 +8,7 @@ import type { OpenRequest, RecentEntry } from "@/lib/types";
 import { type Tab, TabStrip } from "@/screens/TabStrip";
 import { Home } from "@/screens/home/Home";
 import { SettingsScreen } from "@/screens/settings/Settings";
+import type { ToolId } from "@/screens/tools/ToolsScreen";
 import { NavigationProvider, useNav } from "@/state/navigation";
 import { RecentsProvider, useRecents } from "@/state/recents";
 import { SettingsProvider } from "@/state/settings";
@@ -36,6 +37,11 @@ import {
 // The viewer engines (pdf.js, docx-preview, the grid) are the bulk of
 // the code; Home must not pay for them at cold start.
 const ViewerScreen = lazy(() => import("@/screens/viewer/ViewerScreen"));
+const ToolsScreen = lazy(() =>
+	import("@/screens/tools/ToolsScreen").then((m) => ({
+		default: m.ToolsScreen,
+	})),
+);
 // Shown once; never part of a regular launch's bundle.
 const Onboarding = lazy(() => import("@/screens/onboarding/Onboarding"));
 
@@ -435,11 +441,22 @@ function Root() {
 				onOpenRecent={openRecent}
 				onOpenRequest={open}
 				onSettings={() => push({ kind: "settings" })}
+				onTools={() => push({ kind: "tools" })}
 			/>
 			{state.screens.map((screen, i) => {
 				const atTop = i === state.screens.length - 1;
 				if (screen.kind === "settings")
 					return <SettingsScreen key="settings" />;
+				if (screen.kind === "tools")
+					return (
+						<Suspense key={`tools-${i}`} fallback={null}>
+							<ToolsScreen
+								start={screen.tool as ToolId | undefined}
+								file={screen.file}
+								onOpen={open}
+							/>
+						</Suspense>
+					);
 				// A document under another one (several shared at once, a file
 				// dropped while reading) is not kept in memory: Back opens it
 				// again, where the reader left it. A desktop draws its tabs
@@ -458,6 +475,7 @@ function Root() {
 								replace({ kind: "viewer", request, key: nextKey.current++ })
 							}
 							onOpen={open}
+							onTools={(tool, file) => push({ kind: "tools", tool, file })}
 							onLocate={() => {
 								const entry = entriesRef.current.find(
 									(e) => e.id === screen.request.id,
@@ -492,6 +510,7 @@ function Root() {
 								onClose={() => closeTab(tab.key)}
 								onReplace={(request) => replaceTab(tab.key, request)}
 								onOpen={open}
+								onTools={(tool, file) => push({ kind: "tools", tool, file })}
 								onLocate={() => {
 									const entry = entriesRef.current.find(
 										(e) => e.id === tab.request.id,

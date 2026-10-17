@@ -222,3 +222,252 @@ test.describe("fill & sign", () => {
 		await expect(page.getByTestId("signature-pad")).toBeVisible();
 	});
 });
+
+/** Hand the next pick a fixture (or bytes). */
+async function nextPick(
+	page: Page,
+	fixture: string | Uint8Array,
+	name?: string,
+) {
+	const bytes =
+		typeof fixture === "string"
+			? readFileSync(`fixtures/${fixture}`)
+			: Buffer.from(fixture);
+	await page.evaluate(
+		({ b64, name }) => {
+			const data = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+			window.__paperwrenTestFile = new File([data], name);
+		},
+		{
+			b64: bytes.toString("base64"),
+			name:
+				name ??
+				(typeof fixture === "string" ? fixture.split("/").pop() : "file.pdf"),
+		},
+	);
+}
+
+/** Add a file to the open tool. */
+async function addFile(
+	page: Page,
+	fixture: string | Uint8Array,
+	name?: string,
+) {
+	const before = await page.getByTestId("tool-file").count();
+	await nextPick(page, fixture, name);
+	await page.getByTestId("tool-add").click();
+	await expect(page.getByTestId("tool-file")).toHaveCount(before + 1);
+}
+
+/** Run the tool and return what it saved. */
+async function runTool(page: Page) {
+	const download = page.waitForEvent("download");
+	await page.getByTestId("tool-go").click();
+	const file = await download;
+	return {
+		name: file.suggestedFilename(),
+		bytes: new Uint8Array(readFileSync(await file.path())),
+	};
+}
+
+async function texts(bytes: Uint8Array, password?: string) {
+	const doc = await pdfjs.getDocument({
+		data: bytes.slice(),
+		password,
+		verbosity: 0,
+	}).promise;
+	const out: Array<{ text: string; rotate: number }> = [];
+	for (let n = 1; n <= doc.numPages; n++) {
+		const page = await doc.getPage(n);
+		out.push({
+			text: (await page.getTextContent()).items
+				.map((i) => ("str" in i ? i.str : ""))
+				.join(" "),
+			rotate: page.rotate,
+		});
+	}
+	await doc.destroy();
+	return out;
+}
+
+async function openTool(page: Page, id: string) {
+	await page.getByTestId("open-tools").click();
+	await expect(page.getByTestId("tools")).toBeVisible();
+	await page.getByTestId(`tool-${id}`).click();
+}
+
+test.describe("PDF tools", () => {
+	test("merge puts PDFs together in the order set", async ({ page }) => {
+		await boot(page);
+		await openTool(page, "merge");
+		await addFile(page, "features/pictures.pdf");
+		await addFile(page, "sample.pdf");
+		await expect(page.getByText("6 pages in all")).toBeVisible();
+		// sample.pdf first.
+		await page.getByTestId("tool-file-up").nth(1).click();
+		await expect(page.getByTestId("tool-file").first()).toContainText(
+			"sample.pdf",
+		);
+		const out = await runTool(page);
+		expect(out.name).toBe("sample (merged).pdf");
+		const pages = await texts(out.bytes);
+		expect(pages).toHaveLength(6);
+		expect(pages[0].text).toContain("Paperwren test page 1 of 3");
+		expect(pages[3].text).not.toContain("Paperwren test page");
+		await expect(page.getByText("Saved as sample (merged).pdf")).toBeVisible();
+	});
+
+	test("pages are organized from inside a PDF", async ({ page }) => {
+		await boot(page);
+		await openFixture(page, "sample.pdf");
+		await expect(page.getByTestId("pdf-page")).toHaveText("1 / 3", {
+			timeout: 20_000,
+		});
+		await page.getByTestId("file-more").click();
+		await page.getByTestId("pdf-tools").click();
+		await page.getByTestId("tool-organize").click();
+		await expect(page.getByTestId("tool-page")).toHaveCount(3);
+		// Page 3 turned and moved to the front; page 2 taken out.
+		await page.getByTestId("tool-page").nth(2).click();
+		await page.getByTestId("tool-turn-right").click();
+		await page.getByTestId("tool-earlier").click();
+		await page.getByTestId("tool-earlier").click();
+		await page.getByTestId("tool-page").nth(0).click();
+		await page.getByTestId("tool-page").nth(2).click();
+		await page.getByTestId("tool-delete").click();
+		await expect(page.getByTestId("tool-page")).toHaveCount(2);
+		const out = await runTool(page);
+		expect(out.name).toBe("sample (organized).pdf");
+		const pages = await texts(out.bytes);
+		expect(pages.map((p) => p.text.match(/page (\d) of 3/)?.[1])).toEqual([
+			"3",
+			"1",
+		]);
+		expect(pages.map((p) => p.rotate)).toEqual([90, 0]);
+		// Back leaves the tool, then the tools, back to the document.
+		await page.getByTestId("tools-back").click();
+		await expect(page.getByTestId("tool-organize")).toBeVisible();
+		await page.getByTestId("tools-back").click();
+		await expect(page.getByTestId("tools")).toHaveCount(0);
+		await expect(page.getByTestId("pdf-scroll")).toBeVisible();
+	});
+
+	test("pages are extracted, or split one to a file", async ({ page }) => {
+		await boot(page);
+		await openTool(page, "extract");
+		await addFile(page, "sample.pdf");
+		await page.getByTestId("tool-pages-field").fill("9");
+		await expect(page.getByTestId("tool-go")).toBeDisabled();
+		await expect(page.getByText("The document has 3 pages")).toBeVisible();
+		await page.getByTestId("tool-pages-field").fill("3, 1");
+		const some = await runTool(page);
+		expect(
+			(await texts(some.bytes)).map((p) => p.text.match(/page (\d)/)?.[1]),
+		).toEqual(["3", "1"]);
+		await page.getByTestId("tool-pages-field").fill("");
+		await page.getByTestId("tool-each").check();
+		const all = await runTool(page);
+		expect(all.name).toBe("sample (pages).zip");
+		const { unzipSync } = await import("fflate");
+		const parts = unzipSync(all.bytes);
+		expect(Object.keys(parts).sort()).toEqual([
+			"sample - page 1.pdf",
+			"sample - page 2.pdf",
+			"sample - page 3.pdf",
+		]);
+		expect((await texts(parts["sample - page 2.pdf"]))[0].text).toContain(
+			"page 2 of 3",
+		);
+	});
+
+	test("pictures become a PDF, and a PDF becomes pictures", async ({
+		page,
+	}) => {
+		await boot(page);
+		await openTool(page, "images");
+		await addFile(page, "sample.png");
+		await addFile(page, "features/photo.jpg");
+		await addFile(page, "features/photo.avif");
+		const made = await runTool(page);
+		expect(made.name).toBe("sample (pictures).pdf");
+		const doc = await PDFDocument.load(made.bytes);
+		expect(doc.getPageCount()).toBe(3);
+		// A4, turned to suit each picture: the sample is wide.
+		const { width, height } = doc.getPage(0).getSize();
+		expect([Math.round(width), Math.round(height)]).toEqual([842, 595]);
+
+		await page.getByTestId("tools-back").click();
+		await page.getByTestId("tool-pictures").click();
+		await addFile(page, "sample.pdf");
+		const shots = await runTool(page);
+		expect(shots.name).toBe("sample (pictures).zip");
+		const { unzipSync } = await import("fflate");
+		const jpegs = Object.values(unzipSync(shots.bytes));
+		expect(jpegs).toHaveLength(3);
+		expect([jpegs[0][0], jpegs[0][1]]).toEqual([0xff, 0xd8]);
+	});
+
+	test("page numbers and a watermark", async ({ page }) => {
+		await boot(page);
+		await openTool(page, "numbers");
+		await addFile(page, "sample.pdf");
+		await page.getByTestId("tool-style-of").click();
+		const numbered = await texts((await runTool(page)).bytes);
+		expect(numbered[2].text).toContain("Page 3 of 3");
+
+		await page.getByTestId("tools-back").click();
+		await page.getByTestId("tool-watermark").click();
+		await addFile(page, "sample.pdf");
+		await page.getByTestId("tool-mark").fill("CONFIDENTIAL");
+		const marked = await texts((await runTool(page)).bytes);
+		expect(marked.every((p) => p.text.includes("CONFIDENTIAL"))).toBe(true);
+	});
+
+	test("a password is added, and taken off again", async ({ page }) => {
+		await boot(page);
+		await openTool(page, "protect");
+		await addFile(page, "sample.pdf");
+		await page.getByTestId("tool-new-password").fill("wren-42");
+		await page.getByTestId("tool-new-password-again").fill("wren-43");
+		await expect(page.getByTestId("tool-go")).toBeDisabled();
+		await page.getByTestId("tool-new-password-again").fill("wren-42");
+		const locked = await runTool(page);
+		expect(locked.name).toBe("sample (locked).pdf");
+		await expect(texts(locked.bytes)).rejects.toThrow();
+		expect(await texts(locked.bytes, "wren-42")).toHaveLength(3);
+
+		await page.getByTestId("tools-back").click();
+		await page.getByTestId("tool-unlock").click();
+		await nextPick(page, locked.bytes, "sample (locked).pdf");
+		await page.getByTestId("tool-add").click();
+		await page.getByTestId("tool-password").fill("nope");
+		await page.getByTestId("tool-unlock").click();
+		await expect(page.getByText("That password didn't work")).toBeVisible();
+		await page.getByTestId("tool-password").fill("wren-42");
+		await page.getByTestId("tool-unlock").click();
+		await expect(page.getByTestId("tool-file")).toHaveCount(1);
+		const open = await runTool(page);
+		expect(
+			(await texts(open.bytes)).map((p) => p.text.match(/page (\d)/)?.[1]),
+		).toEqual(["1", "2", "3"]);
+	});
+});
+
+test("fill & sign starts from the tools too", async ({ page }) => {
+	await boot(page);
+	await openTool(page, "sign");
+	await expect(page.getByTestId("tool-go")).toBeDisabled();
+	await addFile(page, "features/form.pdf");
+	await page.getByTestId("tool-go").click();
+	const editor = page.getByTestId("fill-sign");
+	await expect(editor.getByTestId("fill-field")).toHaveCount(5);
+	await editor.getByLabel("fullname").fill("Lena");
+	const saved = await saveCopy(page);
+	expect(saved.name).toBe("form (filled in).pdf");
+	expect(
+		(await PDFDocument.load(saved.bytes))
+			.getForm()
+			.getTextField("fullname")
+			.getText(),
+	).toBe("Lena");
+});

@@ -1,6 +1,7 @@
 import { requestForBytes } from "@/lib/backend";
 import { isDesktop } from "@/lib/env";
 import { locale, t, tn } from "@/lib/i18n";
+import { loadEngine, pdfAsset } from "@/lib/pdfEngine";
 import { PrintCancelled } from "@/lib/print";
 import { resolvePageColor } from "@/lib/settings";
 import type { Position } from "@/lib/types";
@@ -34,6 +35,7 @@ import {
 	RotateCw,
 	Search,
 	StretchHorizontal,
+	Wrench,
 } from "lucide-react";
 import type {
 	PDFDocumentLoadingTask,
@@ -100,28 +102,11 @@ import type { ViewerProps } from "./types";
  * the shared zoom gestures and position memory.
  */
 
-async function loadEngine() {
-	const pdfjs = await import("pdfjs-dist");
-	pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-		"pdfjs-dist/build/pdf.worker.min.mjs",
-		import.meta.url,
-	).toString();
-	// pdf_viewer.mjs reads the core library from this global.
-	(globalThis as { pdfjsLib?: unknown }).pdfjsLib = pdfjs;
-	const viewer = await import("pdfjs-dist/web/pdf_viewer.mjs");
-	return { pdfjs, viewer };
-}
-
 interface Outline {
 	title: string;
 	dest: unknown;
 	items: Outline[];
 }
-
-/** Where pdf.js finds its character maps and standard fonts: beside
- * the app (see vite.config.ts), never on the network. */
-const pdfAsset = (dir: string) =>
-	new URL(`pdfjs/${dir}/`, document.baseURI).toString();
 
 const MIN_SCALE = 0.25;
 const MAX_SCALE = 8;
@@ -1037,6 +1022,19 @@ export default function PdfView({
 			>
 				{t("Fill & sign")}
 			</SheetItem>
+			{file?.openTools && (
+				<SheetItem
+					icon={<Wrench size={20} />}
+					hint={t("Merge, split, organize pages, number them, add a password")}
+					onClick={() => {
+						close();
+						file.openTools?.();
+					}}
+					testId="pdf-tools"
+				>
+					{t("More PDF tools")}
+				</SheetItem>
+			)}
 			{!isDesktop && (
 				<>
 					<SheetItem

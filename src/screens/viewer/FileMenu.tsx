@@ -46,6 +46,8 @@ export interface ViewerFile {
 	/** Open another file over this one (a PDF's attachment): Back
 	 * returns here. */
 	openOver?: (request: OpenRequest) => void;
+	/** Open the tools (or one of them) with this file in them. */
+	openTools?: (tool?: string) => void;
 }
 
 export const ViewerFileContext = createContext<ViewerFile | null>(null);
