@@ -175,6 +175,16 @@
       },
       {
         "ext": [
+          "epub"
+        ],
+        "name": "EPUB book",
+        "description": "EPUB book",
+        "role": "Viewer",
+        "rank": "Alternate",
+        "mimeType": "application/epub+zip"
+      },
+      {
+        "ext": [
           "md",
           "markdown"
         ],

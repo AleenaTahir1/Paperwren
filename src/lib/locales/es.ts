@@ -466,4 +466,14 @@ export const es: Table = {
 		one: "{n} marcador, guardado solo en este dispositivo",
 		other: "{n} marcadores, guardados solo en este dispositivo",
 	},
+	"This book has no contents list": "Este libro no tiene índice",
+	Publisher: "Editorial",
+	Chapters: "Capítulos",
+	"Opening book": "Abriendo el libro",
+	"This book is locked": "Este libro está bloqueado",
+	"Can't open this book": "No se puede abrir este libro",
+	"It is protected by its store (DRM) and can only be read in that store's app.":
+		"Está protegido por su tienda (DRM) y solo se puede leer en la aplicación de esa tienda.",
+	"The file is damaged or isn't a valid EPUB book.":
+		"El archivo está dañado o no es un libro EPUB válido.",
 };

@@ -461,4 +461,14 @@ export const ar: Table = {
 		many: "{n} إشارة مرجعية، محفوظة على هذا الجهاز فقط",
 		other: "{n} إشارة مرجعية، محفوظة على هذا الجهاز فقط",
 	},
+	"This book has no contents list": "لا يحتوي هذا الكتاب على فهرس",
+	Publisher: "الناشر",
+	Chapters: "الفصول",
+	"Opening book": "جارٍ فتح الكتاب",
+	"This book is locked": "هذا الكتاب مقفل",
+	"Can't open this book": "تعذّر فتح هذا الكتاب",
+	"It is protected by its store (DRM) and can only be read in that store's app.":
+		"إنه محمي من متجره (DRM) ولا يمكن قراءته إلا في تطبيق ذلك المتجر.",
+	"The file is damaged or isn't a valid EPUB book.":
+		"الملف تالف أو ليس كتاب EPUB صالحًا.",
 };

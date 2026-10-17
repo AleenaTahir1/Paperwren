@@ -31,6 +31,7 @@ describe("sniffFormat", () => {
 		["sample.rtf", "rtf"],
 		["sample.txt", "txt"],
 		["sample.csv", "csv"],
+		["features/book.epub", "epub"],
 	])("%s is %s even without a name", (file, expected) => {
 		const hint = expected === "csv" ? file : "";
 		expect(sniffFormat(fixture(file), hint)).toBe(expected);

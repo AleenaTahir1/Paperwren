@@ -51,7 +51,10 @@ impl Waiting {
 
     #[cfg(target_os = "macos")]
     fn add(&self, files: Vec<String>) {
-        self.0.lock().unwrap_or_else(|e| e.into_inner()).extend(files);
+        self.0
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .extend(files);
     }
 }
 

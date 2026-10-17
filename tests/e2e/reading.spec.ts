@@ -475,3 +475,68 @@ test.describe("bookmarks on a desktop", () => {
 		await expect(page.getByTestId("slide-page-field")).toHaveValue("2");
 	});
 });
+
+test.describe("books", () => {
+	test("an EPUB reads as one text, with its contents, pictures and notes", async ({
+		page,
+	}) => {
+		await boot(page);
+		await openFixture(page, "features/book.epub", "The Wren's Year.epub");
+		const book = page.getByTestId("epub-scroll");
+		await expect(book).toContainText("The first wren of spring", {
+			timeout: 20_000,
+		});
+		// The book's own styles (and their web address) are left out.
+		await expect(book.locator("link, style")).toHaveCount(0);
+		// The cover picture, drawn from inside the book.
+		const cover = book.locator("img").first();
+		await expect(cover).toHaveAttribute("src", /^blob:/);
+		await expect
+			.poll(() =>
+				cover.evaluate((img) => (img as HTMLImageElement).naturalWidth),
+			)
+			.toBe(300);
+		// A right-to-left chapter reads from the right.
+		await expect(book.locator('section[dir="rtl"]')).toContainText("بہار");
+
+		await page.getByTestId("file-more").click();
+		await page.getByTestId("epub-contents").click();
+		await expect(page.getByTestId("epub-toc")).toHaveText([
+			"Spring",
+			"Summer",
+			"The hot days",
+			"بہار",
+		]);
+		await page.getByTestId("epub-toc").nth(1).click();
+		await expect
+			.poll(() =>
+				page
+					.locator("#pw-c2")
+					.evaluate((el) => Math.round(el.getBoundingClientRect().top)),
+			)
+			.toBeLessThan(160);
+
+		// A note's link leads to the note.
+		await page.locator("#pw-c1").scrollIntoViewIfNeeded();
+		await page.locator('a[href="#pw-c4-n1"]').click();
+		await expect(page.locator("#pw-c4-n1")).toBeInViewport();
+
+		await page.getByTestId("epub-find").click();
+		await page.getByTestId("find-input").fill("hedge");
+		await expect(page.getByTestId("find-count")).toHaveText(/1 of 8\d/);
+		await page.keyboard.press("Escape");
+
+		await page.getByTestId("file-more").click();
+		await page.getByTestId("file-details-open").click();
+		await expect(page.getByTestId("file-details")).toContainText("Hedge Press");
+	});
+
+	test("a book locked by its store says so", async ({ page }) => {
+		await boot(page);
+		await openFixture(page, "features/locked.epub");
+		await expect(page.getByTestId("epub-error")).toContainText(
+			"This book is locked",
+			{ timeout: 20_000 },
+		);
+	});
+});

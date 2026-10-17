@@ -14,9 +14,10 @@ use crate::error::{AppError, AppResult, ErrorKind};
 
 /// Extensions of the documents Paperwren opens (lowercase).
 pub const DOCUMENT_EXTENSIONS: &[&str] = &[
-    "pdf", "docx", "docm", "dotx", "doc", "odt", "rtf", "xlsx", "xlsm", "xlsb", "xltx", "xls",
-    "ods", "csv", "tsv", "pptx", "pptm", "ppsx", "ppt", "pps", "odp", "md", "markdown", "txt",
-    "text", "log", "json", "xml", "yml", "yaml", "ini", "png", "jpg", "jpeg", "gif", "webp", "bmp",
+    "pdf", "docx", "docm", "dotx", "doc", "odt", "rtf", "epub", "xlsx", "xlsm", "xlsb", "xltx",
+    "xls", "ods", "csv", "tsv", "pptx", "pptm", "ppsx", "ppt", "pps", "odp", "md", "markdown",
+    "txt", "text", "log", "json", "xml", "yml", "yaml", "ini", "png", "jpg", "jpeg", "gif", "webp",
+    "bmp",
 ];
 
 /// True when the path's extension is a document type we open.
@@ -170,7 +171,10 @@ mod tests {
             tauri::Url::parse("https://example.com/remote.pdf").expect("url"),
         ];
         // The space in the name comes back out of the URL's %20.
-        assert_eq!(opened_files(&urls), vec![file.to_str().expect("utf-8").to_owned()]);
+        assert_eq!(
+            opened_files(&urls),
+            vec![file.to_str().expect("utf-8").to_owned()]
+        );
         std::fs::remove_dir_all(&dir).ok();
     }
 }

@@ -443,4 +443,13 @@ ROWS = [
         {"one": "{n} marcador, guardado solo en este dispositivo", "other": "{n} marcadores, guardados solo en este dispositivo"},
         {"one": "{n} signet, conservé uniquement sur cet appareil", "other": "{n} signets, conservés uniquement sur cet appareil"},
     ),
+    # ---- books (EPUB) ----
+    ("This book has no contents list", "اس کتاب میں فہرستِ مضامین نہیں", "لا يحتوي هذا الكتاب على فهرس", "这本书没有目录", "इस किताब में विषय-सूची नहीं है", "Este libro no tiene índice", "Ce livre n'a pas de table des matières"),
+    ("Publisher", "ناشر", "الناشر", "出版者", "प्रकाशक", "Editorial", "Éditeur"),
+    ("Chapters", "ابواب", "الفصول", "章节", "अध्याय", "Capítulos", "Chapitres"),
+    ("Opening book", "کتاب کھل رہی ہے", "جارٍ فتح الكتاب", "正在打开书籍", "किताब खुल रही है", "Abriendo el libro", "Ouverture du livre"),
+    ("This book is locked", "یہ کتاب مقفل ہے", "هذا الكتاب مقفل", "这本书已加密", "यह किताब लॉक है", "Este libro está bloqueado", "Ce livre est verrouillé"),
+    ("Can't open this book", "یہ کتاب نہیں کھل سکتی", "تعذّر فتح هذا الكتاب", "无法打开这本书", "यह किताब नहीं खुल सकती", "No se puede abrir este libro", "Impossible d'ouvrir ce livre"),
+    ("It is protected by its store (DRM) and can only be read in that store's app.", "یہ اپنے اسٹور کی طرف سے محفوظ (DRM) ہے اور صرف اسی اسٹور کی ایپ میں پڑھی جا سکتی ہے۔", "إنه محمي من متجره (DRM) ولا يمكن قراءته إلا في تطبيق ذلك المتجر.", "它受其商店保护（DRM），只能在该商店的应用中阅读。", "यह अपने स्टोर द्वारा सुरक्षित (DRM) है और केवल उसी स्टोर के ऐप में पढ़ी जा सकती है।", "Está protegido por su tienda (DRM) y solo se puede leer en la aplicación de esa tienda.", "Il est protégé par sa boutique (DRM) et ne peut être lu que dans l'application de cette boutique."),
+    ("The file is damaged or isn't a valid EPUB book.", "فائل خراب ہے یا درست EPUB کتاب نہیں۔", "الملف تالف أو ليس كتاب EPUB صالحًا.", "文件已损坏或不是有效的 EPUB 书籍。", "फ़ाइल खराब है या मान्य EPUB किताब नहीं है।", "El archivo está dañado o no es un libro EPUB válido.", "Le fichier est endommagé ou n'est pas un livre EPUB valide."),
 ]

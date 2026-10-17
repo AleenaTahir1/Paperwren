@@ -435,4 +435,14 @@ export const zh: Table = {
 	"Bookmarks deleted": "书签已删除",
 	"Delete bookmarks": "删除书签",
 	"{n} bookmarks, kept only on this device": "{n} 个书签，仅保存在此设备上",
+	"This book has no contents list": "这本书没有目录",
+	Publisher: "出版者",
+	Chapters: "章节",
+	"Opening book": "正在打开书籍",
+	"This book is locked": "这本书已加密",
+	"Can't open this book": "无法打开这本书",
+	"It is protected by its store (DRM) and can only be read in that store's app.":
+		"它受其商店保护（DRM），只能在该商店的应用中阅读。",
+	"The file is damaged or isn't a valid EPUB book.":
+		"文件已损坏或不是有效的 EPUB 书籍。",
 };

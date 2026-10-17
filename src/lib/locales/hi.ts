@@ -452,4 +452,14 @@ export const hi: Table = {
 		one: "{n} बुकमार्क, केवल इस डिवाइस पर",
 		other: "{n} बुकमार्क, केवल इस डिवाइस पर",
 	},
+	"This book has no contents list": "इस किताब में विषय-सूची नहीं है",
+	Publisher: "प्रकाशक",
+	Chapters: "अध्याय",
+	"Opening book": "किताब खुल रही है",
+	"This book is locked": "यह किताब लॉक है",
+	"Can't open this book": "यह किताब नहीं खुल सकती",
+	"It is protected by its store (DRM) and can only be read in that store's app.":
+		"यह अपने स्टोर द्वारा सुरक्षित (DRM) है और केवल उसी स्टोर के ऐप में पढ़ी जा सकती है।",
+	"The file is damaged or isn't a valid EPUB book.":
+		"फ़ाइल खराब है या मान्य EPUB किताब नहीं है।",
 };

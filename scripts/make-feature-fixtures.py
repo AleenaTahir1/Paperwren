@@ -163,12 +163,71 @@ def margins_pdf():
     c.save()
 
 
+def epub_book(path, locked=False):
+    """A small EPUB 3: a cover drawn as an SVG around a picture, three
+    chapters (one right-to-left), a footnote link, a style sheet."""
+    import zipfile
+
+    cover = io.BytesIO()
+    photo(300, 400).save(cover, "PNG")
+    chapter = lambda title, body, lang="en", dir_="ltr": f"""<?xml version="1.0" encoding="utf-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="{lang}" dir="{dir_}">
+<head><title>{title}</title><link rel="stylesheet" href="../style.css"/></head>
+<body>{body}</body></html>"""
+    long = "".join(
+        f"<p>The wren sang its {i}th song of the morning, small and loud, from the hedge by the wall.</p>"
+        for i in range(1, 41)
+    )
+    files = {
+        "META-INF/container.xml": """<?xml version="1.0"?>
+<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+<rootfiles><rootfile full-path="OEBPS/book.opf" media-type="application/oebps-package+xml"/></rootfiles></container>""",
+        "OEBPS/book.opf": """<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="id">
+<metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+<dc:identifier id="id">urn:uuid:paperwren-test-book</dc:identifier>
+<dc:title>The Wren's Year</dc:title><dc:creator>Paperwren Tests</dc:creator>
+<dc:language>en</dc:language><dc:publisher>Hedge Press</dc:publisher></metadata>
+<manifest>
+<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
+<item id="cover" href="text/cover.xhtml" media-type="application/xhtml+xml"/>
+<item id="c1" href="text/spring.xhtml" media-type="application/xhtml+xml"/>
+<item id="c2" href="text/summer.xhtml" media-type="application/xhtml+xml"/>
+<item id="c3" href="text/urdu.xhtml" media-type="application/xhtml+xml"/>
+<item id="notes" href="text/notes.xhtml" media-type="application/xhtml+xml"/>
+<item id="css" href="style.css" media-type="text/css"/>
+<item id="img" href="images/cover.png" media-type="image/png" properties="cover-image"/>
+</manifest>
+<spine><itemref idref="cover"/><itemref idref="c1"/><itemref idref="c2"/><itemref idref="c3"/><itemref idref="notes" linear="no"/></spine>
+</package>""",
+        "OEBPS/nav.xhtml": chapter("Contents", """<nav epub:type="toc"><h1>Contents</h1><ol>
+<li><a href="text/spring.xhtml">Spring</a></li>
+<li><a href="text/summer.xhtml">Summer</a><ol><li><a href="text/summer.xhtml#heat">The hot days</a></li></ol></li>
+<li><a href="text/urdu.xhtml">بہار</a></li></ol></nav>"""),
+        "OEBPS/style.css": "body { color: red; background: url(https://example.com/x.png); } p { text-indent: 2em; }",
+        "OEBPS/text/cover.xhtml": chapter("Cover", """<div><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 300 400"><image width="300" height="400" xlink:href="../images/cover.png"/></svg></div>"""),
+        "OEBPS/text/spring.xhtml": chapter("Spring", '<h1>Spring</h1><p>The first wren of spring<a href="notes.xhtml#n1" epub:type="noteref">1</a> came early.</p>' + long),
+        "OEBPS/text/summer.xhtml": chapter("Summer", '<h1>Summer</h1>' + long + '<h2 id="heat">The hot days</h2><p>In the heat the wren kept to the shade.</p>'),
+        "OEBPS/text/urdu.xhtml": chapter("بہار", "<h1>بہار</h1><p>چھوٹی سی چڑیا صبح سویرے گاتی ہے۔</p>", "ur", "rtl"),
+        "OEBPS/text/notes.xhtml": chapter("Notes", '<aside id="n1" epub:type="footnote"><p>1. A note about the first wren.</p></aside>'),
+    }
+    if locked:
+        files["META-INF/encryption.xml"] = """<encryption xmlns="urn:oasis:names:tc:opendocument:xmlns:container" xmlns:enc="http://www.w3.org/2001/04/xmlenc#"><enc:EncryptedData><enc:EncryptionMethod Algorithm="http://www.w3.org/2001/04/xmlenc#aes128-cbc"/><enc:CipherData><enc:CipherReference URI="OEBPS/text/spring.xhtml"/></enc:CipherData></enc:EncryptedData></encryption>"""
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr(zipfile.ZipInfo("mimetype"), "application/epub+zip", compress_type=zipfile.ZIP_STORED)
+        for name, body in files.items():
+            z.writestr(name, body, compress_type=zipfile.ZIP_DEFLATED)
+        z.writestr("OEBPS/images/cover.png", cover.getvalue(), compress_type=zipfile.ZIP_STORED)
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     pictures_pdf()
     extras_pdf()
     nocopy_pdf()
     margins_pdf()
+    epub_book(os.path.join(OUT, "book.epub"))
+    epub_book(os.path.join(OUT, "locked.epub"), locked=True)
     print("wrote", sorted(os.listdir(OUT)))
 
 

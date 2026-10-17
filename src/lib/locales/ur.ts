@@ -458,4 +458,14 @@ export const ur: Table = {
 		one: "{n} بُک مارک، صرف اس آلے پر محفوظ",
 		other: "{n} بُک مارکس، صرف اس آلے پر محفوظ",
 	},
+	"This book has no contents list": "اس کتاب میں فہرستِ مضامین نہیں",
+	Publisher: "ناشر",
+	Chapters: "ابواب",
+	"Opening book": "کتاب کھل رہی ہے",
+	"This book is locked": "یہ کتاب مقفل ہے",
+	"Can't open this book": "یہ کتاب نہیں کھل سکتی",
+	"It is protected by its store (DRM) and can only be read in that store's app.":
+		"یہ اپنے اسٹور کی طرف سے محفوظ (DRM) ہے اور صرف اسی اسٹور کی ایپ میں پڑھی جا سکتی ہے۔",
+	"The file is damaged or isn't a valid EPUB book.":
+		"فائل خراب ہے یا درست EPUB کتاب نہیں۔",
 };

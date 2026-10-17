@@ -469,4 +469,14 @@ export const fr: Table = {
 		one: "{n} signet, conservé uniquement sur cet appareil",
 		other: "{n} signets, conservés uniquement sur cet appareil",
 	},
+	"This book has no contents list": "Ce livre n'a pas de table des matières",
+	Publisher: "Éditeur",
+	Chapters: "Chapitres",
+	"Opening book": "Ouverture du livre",
+	"This book is locked": "Ce livre est verrouillé",
+	"Can't open this book": "Impossible d'ouvrir ce livre",
+	"It is protected by its store (DRM) and can only be read in that store's app.":
+		"Il est protégé par sa boutique (DRM) et ne peut être lu que dans l'application de cette boutique.",
+	"The file is damaged or isn't a valid EPUB book.":
+		"Le fichier est endommagé ou n'est pas un livre EPUB valide.",
 };

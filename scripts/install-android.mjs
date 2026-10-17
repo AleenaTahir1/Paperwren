@@ -63,6 +63,7 @@ export const MIME_TYPES = [
 	"application/vnd.oasis.opendocument.presentation",
 	"application/rtf",
 	"text/rtf",
+	"application/epub+zip",
 	"image/png",
 	"image/jpeg",
 	"image/gif",

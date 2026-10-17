@@ -135,6 +135,7 @@ function zipFamily(bytes: Uint8Array): FileFormat {
 			if (odf.includes("opendocument.text")) return "odt";
 			if (odf.includes("opendocument.spreadsheet")) return "ods";
 			if (odf.includes("opendocument.presentation")) return "odp";
+			if (odf.includes("application/epub+zip")) return "epub";
 		}
 		const types = entries["[Content_Types].xml"];
 		if (types) return ooxmlFamily(latin1.decode(types));
