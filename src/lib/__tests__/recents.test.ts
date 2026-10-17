@@ -119,6 +119,19 @@ describe("cleanPosition", () => {
 		expect(cleanPosition({ kind: "pdf" })).toBeUndefined();
 		expect(cleanPosition({ kind: "nope" })).toBeUndefined();
 	});
+
+	it("keeps two pages side by side across a restart", () => {
+		const pdf = { kind: "pdf", page: 2, scale: "auto", top: 0, left: 0 };
+		expect(cleanPosition({ ...pdf, rotation: 0, spread: true })).toEqual({
+			...pdf,
+			rotation: 0,
+			spread: true,
+		});
+		expect(cleanPosition({ ...pdf, spread: "yes" })).not.toHaveProperty(
+			"spread",
+		);
+		expect(cleanPosition({ kind: "nope" })).toBeUndefined();
+	});
 });
 
 describe("migrateLegacyRecents", () => {

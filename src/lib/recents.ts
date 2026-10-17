@@ -55,6 +55,7 @@ export function cleanPosition(value: unknown): Position | undefined {
 				rotation: [0, 90, 180, 270].includes(p.rotation as number)
 					? (p.rotation as number)
 					: 0,
+				...(p.spread === true ? { spread: true } : {}),
 			};
 		case "scroll":
 			return {
