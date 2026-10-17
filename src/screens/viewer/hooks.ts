@@ -534,3 +534,35 @@ export function useScrollBookmarks(
 		[scroller, content],
 	);
 }
+
+/**
+ * A tap on a side of the screen turns the page, where the reader asked
+ * for that (Settings, Reading): the left quarter back, the right quarter
+ * on. `onStep` turns a page; without it the document scrolls a screen.
+ * The returned handler says whether it turned (else the tap is the
+ * viewer's, to show or hide the bars).
+ */
+export function useTapToTurn(
+	scroller: RefObject<HTMLElement | null>,
+	onStep?: (dir: 1 | -1) => void,
+): (x: number) => boolean {
+	const { settings } = useSettings();
+	const on = useRef(settings.tapToTurn);
+	on.current = settings.tapToTurn;
+	const step = useRef(onStep);
+	step.current = onStep;
+	return useCallback(
+		(x: number) => {
+			const el = scroller.current;
+			if (!on.current || !el) return false;
+			const box = el.getBoundingClientRect();
+			const at = (x - box.left) / box.width;
+			const dir = at < 0.25 ? -1 : at > 0.75 ? 1 : 0;
+			if (!dir) return false;
+			if (step.current) step.current(dir);
+			else el.scrollTop += dir * el.clientHeight * 0.9;
+			return true;
+		},
+		[scroller],
+	);
+}

@@ -52,7 +52,7 @@ import {
 } from "./Shell";
 import { SlideChart } from "./SlideChart";
 import s from "./Slides.module.css";
-import { useZoom, useZoomLevel } from "./hooks";
+import { useTapToTurn, useZoom, useZoomLevel } from "./hooks";
 import { runWorker } from "./runWorker";
 import { domSpeech } from "./speechSources";
 import type { ViewerProps } from "./types";
@@ -688,6 +688,7 @@ export default function SlidesView({
 	const [presenting, setPresenting] = useState(false);
 	const [thumbsOpen, setThumbsOpen] = useState(false);
 	const find = useDomFind(list, scroller);
+	const tapTurn = useTapToTurn(scroller, (dir) => stepRef.current(dir));
 
 	useEffect(() => {
 		const abort = new AbortController();
@@ -747,7 +748,7 @@ export default function SlidesView({
 		max: 5,
 		enabled: !!deck,
 		active,
-		onTap: () => setChromeHidden((h) => !h),
+		onTap: (_target, x) => tapTurn(x) || setChromeHidden((h) => !h),
 	});
 	const scale = fit * zoom;
 

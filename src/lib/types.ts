@@ -90,6 +90,17 @@ export interface Settings {
 	wrapText: boolean;
 	/** How fast read aloud speaks, as a share of the voice's pace. */
 	speechRate: number;
+	/** Android: the volume keys turn the pages. */
+	volumeKeys: boolean;
+	/** A tap on the left or right side of the screen turns the page. */
+	tapToTurn: boolean;
+	/** Phones: the bars go while the reader scrolls on, and come back
+	 * when they scroll back. */
+	autoHideBars: boolean;
+	/** How dark the screen is made over the document (0 to 0.7). */
+	dim: number;
+	/** How fast a document scrolls by itself, in screen pixels a second. */
+	scrollSpeed: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -108,6 +119,11 @@ export const DEFAULT_SETTINGS: Settings = {
 	readingView: false,
 	wrapText: true,
 	speechRate: 1,
+	volumeKeys: false,
+	tapToTurn: false,
+	autoHideBars: false,
+	dim: 0,
+	scrollSpeed: 40,
 };
 
 export const STORAGE_KEYS = {

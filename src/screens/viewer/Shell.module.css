@@ -603,3 +603,25 @@
 .speechRate:hover {
 	background: var(--surface-2);
 }
+
+/* Dim the screen: a shade over the document, never the system's own
+ * brightness. Taps go through it. */
+.dim {
+	position: absolute;
+	inset: 0;
+	z-index: 5;
+	background: #000;
+	pointer-events: none;
+}
+.dimField {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	padding: 4px 8px 12px;
+	font-weight: 700;
+	color: var(--text-2);
+}
+.dimField input {
+	width: 100%;
+	accent-color: var(--accent);
+}

@@ -454,4 +454,17 @@ export const zh: Table = {
 	"Reading speed": "朗读速度",
 	"Stop reading": "停止朗读",
 	"Couldn't read this aloud": "无法朗读此内容",
+	"Scroll by itself": "自动滚动",
+	Slower: "更慢",
+	Faster: "更快",
+	"Stop scrolling": "停止滚动",
+	"Dim the screen": "调暗屏幕",
+	"{n}% darker": "调暗 {n}%",
+	"Turn pages with the volume keys": "用音量键翻页",
+	"Down for the next page, up for the one before":
+		"音量减翻到下一页，音量加翻回上一页",
+	"Tap the sides to turn pages": "点按两侧翻页",
+	"The left edge goes back, the right edge on": "左边缘后退，右边缘前进",
+	"Hide the bars while reading": "阅读时隐藏工具栏",
+	"They come back when you scroll back or tap": "向回滚动或点按即可重新显示",
 };

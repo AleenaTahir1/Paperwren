@@ -471,4 +471,18 @@ export const hi: Table = {
 	"Reading speed": "पढ़ने की गति",
 	"Stop reading": "पढ़ना बंद करें",
 	"Couldn't read this aloud": "इसे ज़ोर से नहीं पढ़ा जा सका",
+	"Scroll by itself": "अपने-आप स्क्रॉल",
+	Slower: "धीमा",
+	Faster: "तेज़",
+	"Stop scrolling": "स्क्रॉल रोकें",
+	"Dim the screen": "स्क्रीन धीमी करें",
+	"{n}% darker": "{n}% गहरा",
+	"Turn pages with the volume keys": "वॉल्यूम बटन से पृष्ठ पलटें",
+	"Down for the next page, up for the one before":
+		"नीचे वाला अगले पृष्ठ के लिए, ऊपर वाला पिछले के लिए",
+	"Tap the sides to turn pages": "पृष्ठ पलटने के लिए किनारों पर टैप करें",
+	"The left edge goes back, the right edge on": "बायाँ किनारा पीछे, दायाँ आगे",
+	"Hide the bars while reading": "पढ़ते समय बार छिपाएँ",
+	"They come back when you scroll back or tap":
+		"वापस स्क्रॉल करने या टैप करने पर लौट आते हैं",
 };

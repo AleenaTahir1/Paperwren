@@ -480,4 +480,19 @@ export const ar: Table = {
 	"Reading speed": "سرعة القراءة",
 	"Stop reading": "إيقاف القراءة",
 	"Couldn't read this aloud": "تعذّرت قراءة هذا بصوت عالٍ",
+	"Scroll by itself": "تمرير تلقائي",
+	Slower: "أبطأ",
+	Faster: "أسرع",
+	"Stop scrolling": "إيقاف التمرير",
+	"Dim the screen": "تعتيم الشاشة",
+	"{n}% darker": "أغمق بنسبة {n}%",
+	"Turn pages with the volume keys": "قلب الصفحات بأزرار الصوت",
+	"Down for the next page, up for the one before":
+		"خفض الصوت للصفحة التالية، ورفعه للسابقة",
+	"Tap the sides to turn pages": "انقر على الجانبين لقلب الصفحات",
+	"The left edge goes back, the right edge on":
+		"الحافة اليسرى للرجوع واليمنى للتقدم",
+	"Hide the bars while reading": "إخفاء الأشرطة أثناء القراءة",
+	"They come back when you scroll back or tap":
+		"تعود عند التمرير للخلف أو النقر",
 };

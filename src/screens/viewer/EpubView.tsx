@@ -25,6 +25,7 @@ import {
 import {
 	useScrollBookmarks,
 	useScrollMemory,
+	useTapToTurn,
 	useZoom,
 	useZoomLevel,
 } from "./hooks";
@@ -107,6 +108,7 @@ export default function EpubView(props: ViewerProps) {
 	const [chromeHidden, setChromeHidden] = useState(false);
 	const [tocOpen, setTocOpen] = useState(false);
 	const find = useDomFind(content, scroller);
+	const tapTurn = useTapToTurn(scroller);
 
 	useEffect(() => {
 		let alive = true;
@@ -153,7 +155,7 @@ export default function EpubView(props: ViewerProps) {
 		max: 3,
 		enabled: !!book,
 		active,
-		onTap: () => setChromeHidden((h) => !h),
+		onTap: (_target, x) => tapTurn(x) || setChromeHidden((h) => !h),
 	});
 	useScrollMemory(scroller, !!book, position, onPosition, zoom);
 	const marks = useScrollBookmarks(scroller, content);

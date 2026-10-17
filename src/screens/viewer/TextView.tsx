@@ -23,6 +23,7 @@ import s from "./Text.module.css";
 import {
 	useScrollBookmarks,
 	useScrollMemory,
+	useTapToTurn,
 	useZoom,
 	useZoomLevel,
 } from "./hooks";
@@ -73,6 +74,7 @@ export default function TextView({
 	const [source, setSource] = useState(false);
 	const [numbered, setNumbered] = useState(false);
 	const find = useDomFind(content, scroller);
+	const tapTurn = useTapToTurn(scroller);
 	// Find looks through what is on the page: put all of it there first.
 	const startFind = (query?: string) => {
 		setAll(true);
@@ -110,7 +112,7 @@ export default function TextView({
 		min: 0.6,
 		max: 3,
 		active,
-		onTap: () => setChromeHidden((h) => !h),
+		onTap: (_target, x) => tapTurn(x) || setChromeHidden((h) => !h),
 	});
 	useScrollMemory(scroller, true, position, onPosition, zoom);
 	const marks = useScrollBookmarks(scroller, content);

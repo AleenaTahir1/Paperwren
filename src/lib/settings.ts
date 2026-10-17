@@ -24,6 +24,14 @@ export function isDarkTheme(theme: ResolvedTheme): boolean {
 	return theme === "dark";
 }
 const ZOOMS: PdfZoom[] = ["page-width", "page-fit", "auto"];
+/** The darkest the screen is made over a document. */
+export const MAX_DIM = 0.7;
+/** The slowest and the fastest a document scrolls by itself. */
+export const SCROLL_SPEEDS = [10, 400] as const;
+const range = (v: unknown, min: number, max: number, fallback: number) =>
+	typeof v === "number" && Number.isFinite(v)
+		? Math.min(max, Math.max(min, v))
+		: fallback;
 const FLOWS: PdfFlow[] = ["down", "across"];
 export const PAGE_COLORS: PageColor[] = ["original", "sepia", "dark", "theme"];
 
@@ -78,6 +86,16 @@ export function normalizeSettings(value: unknown): Settings {
 		readingView: bool(raw.readingView, DEFAULT_SETTINGS.readingView),
 		wrapText: bool(raw.wrapText, DEFAULT_SETTINGS.wrapText),
 		speechRate: pick(raw.speechRate, SPEECH_RATES, DEFAULT_SETTINGS.speechRate),
+		volumeKeys: bool(raw.volumeKeys, DEFAULT_SETTINGS.volumeKeys),
+		tapToTurn: bool(raw.tapToTurn, DEFAULT_SETTINGS.tapToTurn),
+		autoHideBars: bool(raw.autoHideBars, DEFAULT_SETTINGS.autoHideBars),
+		dim: range(raw.dim, 0, MAX_DIM, DEFAULT_SETTINGS.dim),
+		scrollSpeed: range(
+			raw.scrollSpeed,
+			SCROLL_SPEEDS[0],
+			SCROLL_SPEEDS[1],
+			DEFAULT_SETTINGS.scrollSpeed,
+		),
 	};
 }
 

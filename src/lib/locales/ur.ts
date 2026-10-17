@@ -477,4 +477,18 @@ export const ur: Table = {
 	"Reading speed": "پڑھنے کی رفتار",
 	"Stop reading": "پڑھنا بند کریں",
 	"Couldn't read this aloud": "اسے بلند آواز سے نہیں پڑھا جا سکا",
+	"Scroll by itself": "خود بخود سکرول",
+	Slower: "آہستہ",
+	Faster: "تیز",
+	"Stop scrolling": "سکرولنگ روکیں",
+	"Dim the screen": "اسکرین مدھم کریں",
+	"{n}% darker": "{n}% گہرا",
+	"Turn pages with the volume keys": "والیوم بٹنوں سے صفحے پلٹیں",
+	"Down for the next page, up for the one before":
+		"نیچے والا اگلے صفحے کے لیے، اوپر والا پچھلے کے لیے",
+	"Tap the sides to turn pages": "صفحے پلٹنے کے لیے کناروں پر تھپتھپائیں",
+	"The left edge goes back, the right edge on": "بایاں کنارہ پیچھے، دایاں آگے",
+	"Hide the bars while reading": "پڑھتے وقت بار چھپائیں",
+	"They come back when you scroll back or tap":
+		"واپس سکرول کرنے یا تھپتھپانے پر واپس آ جاتے ہیں",
 };

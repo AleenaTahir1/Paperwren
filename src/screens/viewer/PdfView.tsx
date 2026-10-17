@@ -718,9 +718,10 @@ export default function PdfView({
 				?.div as HTMLElement | undefined) ??
 			null,
 		onTap: (_target, x) => {
-			// Pages in a row turn with a tap on either side.
+			// Pages in a row turn with a tap on either side, and so do pages
+			// down a scroll where the reader asked for it.
 			const box = container.current?.getBoundingClientRect();
-			if (acrossRef.current && box) {
+			if ((acrossRef.current || settings.tapToTurn) && box) {
 				const at = (x - box.left) / box.width;
 				if (at < 0.25) return turn(-1);
 				if (at > 0.75) return turn(1);

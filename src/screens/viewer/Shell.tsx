@@ -5,7 +5,7 @@ import type { FindOptions } from "@/lib/find";
 import type { FileFormat } from "@/lib/formats";
 import { msg, t, uiDir } from "@/lib/i18n";
 import { idForReopen } from "@/lib/recents";
-import { PAGE_COLORS, resolvePageColor } from "@/lib/settings";
+import { MAX_DIM, PAGE_COLORS, resolvePageColor } from "@/lib/settings";
 import { FIND_EVENT, SELECT_ALL_EVENT } from "@/lib/signals";
 import { canSpeak } from "@/lib/speech";
 import type { PageColor, Position } from "@/lib/types";
@@ -28,6 +28,8 @@ import {
 	Minus,
 	PanelLeft,
 	Plus,
+	ScrollText,
+	SunDim,
 	SwatchBook,
 	Volume2,
 	X,
@@ -42,6 +44,7 @@ import {
 } from "react";
 import { FileMenu, ViewerFileContext } from "./FileMenu";
 import { ReadAloud } from "./ReadAloud";
+import { AutoScroll, DimSheet } from "./ReadingControls";
 import s from "./Shell.module.css";
 import type { SpeechSource } from "./speechSources";
 
@@ -385,69 +388,153 @@ export function Shell({
 		return () => window.removeEventListener("keydown", onKey);
 	}, [active, canRead]);
 
-	const fileMenu =
-		paper || fileId || canRead
-			? (close: () => void) => (
-					<>
-						{menu?.(close)}
-						{canRead && (
-							<SheetItem
-								icon={<Volume2 size={20} />}
-								shortcut="Ctrl+Shift+U"
-								checked={reading}
-								onClick={() => {
-									close();
-									setReading((r) => !r);
-								}}
-								testId="read-aloud-start"
-							>
-								{t("Read aloud")}
-							</SheetItem>
-						)}
-						{fileId && (
-							<>
-								<SheetItem
-									icon={<BookmarkPlus size={20} />}
-									shortcut="Ctrl+D"
-									onClick={() => {
-										close();
-										addMark();
-									}}
-									testId="bookmark-add"
-								>
-									{t("Add bookmark")}
-								</SheetItem>
-								<SheetItem
-									icon={<Bookmark size={20} />}
-									hint={
-										marks.list.length ? String(marks.list.length) : undefined
-									}
-									onClick={() => {
-										close();
-										setMarksOpen(true);
-									}}
-									testId="bookmarks"
-								>
-									{t("Bookmarks")}
-								</SheetItem>
-							</>
-						)}
-						{paper && (
-							<SheetItem
-								icon={<SwatchBook size={20} />}
-								hint={t(PAGE_COLOR_NAMES[settings.pageColor])}
-								onClick={() => {
-									close();
-									setColorOpen(true);
-								}}
-								testId="page-color"
-							>
-								{t("Page colour")}
-							</SheetItem>
-						)}
-					</>
-				)
-			: menu;
+	// --- reading on a phone: dimmer, scrolling by itself, the volume
+	// keys, the bars out of the way ---
+	const [dimOpen, setDimOpen] = useState(false);
+	const [scrolling, setScrolling] = useState(false);
+	const canScroll = !!progressOf && !turnPages;
+	useEffect(() => {
+		if (!active || !canScroll) setScrolling(false);
+	}, [active, canScroll]);
+	const turnPage = useRef<(dir: 1 | -1) => void>(() => {});
+	turnPage.current = (dir) => {
+		if (stepRef.current) stepRef.current(dir);
+		else {
+			const el = progressOf?.current;
+			if (el) el.scrollTop += dir * el.clientHeight * 0.9;
+		}
+	};
+	useEffect(() => {
+		const bridge = window.__paperwrenAndroidExtras;
+		if (!active || !settings.volumeKeys || !bridge?.volumeKeys) return;
+		bridge.volumeKeys(true);
+		window.__paperwrenVolumeKey = (dir) => {
+			if (!modalOpen()) turnPage.current(dir < 0 ? -1 : 1);
+		};
+		return () => {
+			bridge.volumeKeys?.(false);
+			window.__paperwrenVolumeKey = undefined;
+		};
+	}, [active, settings.volumeKeys]);
+	// Scrolling on hides the bars; scrolling back (or a tap) brings them.
+	// The viewer's tap turns its own switch over: a tap while the bars
+	// went by themselves must bring them back, so then the switch reads
+	// the other way round.
+	const [autoHidden, setAutoHidden] = useState(false);
+	const [tapShows, setTapShows] = useState(false);
+	const autoHiddenRef = useRef(autoHidden);
+	autoHiddenRef.current = autoHidden;
+	useEffect(() => {
+		if (!autoHiddenRef.current) return;
+		setTapShows(chromeHidden);
+		setAutoHidden(false);
+	}, [chromeHidden]);
+	useEffect(() => {
+		const el = progressOf?.current;
+		if (isDesktop || !settings.autoHideBars || !el || !active) return;
+		let last = el.scrollTop;
+		const onScroll = () => {
+			const y = el.scrollTop;
+			if (y - last > 24) {
+				setAutoHidden(true);
+				last = y;
+			} else if (last - y > 48) {
+				setAutoHidden(false);
+				last = y;
+			} else if (y < last) last = Math.max(y, last - 48);
+		};
+		el.addEventListener("scroll", onScroll, { passive: true });
+		return () => el.removeEventListener("scroll", onScroll);
+	}, [progressOf, settings.autoHideBars, active]);
+
+	const fileMenu = (close: () => void) => (
+		<>
+			{menu?.(close)}
+			{canScroll && (
+				<SheetItem
+					icon={<ScrollText size={20} />}
+					checked={scrolling}
+					onClick={() => {
+						close();
+						setScrolling((on) => !on);
+					}}
+					testId="auto-scroll-start"
+				>
+					{t("Scroll by itself")}
+				</SheetItem>
+			)}
+			<SheetItem
+				icon={<SunDim size={20} />}
+				hint={
+					settings.dim > 0
+						? t("{n}% darker", {
+								n: Math.round((settings.dim / MAX_DIM) * 100),
+							})
+						: undefined
+				}
+				onClick={() => {
+					close();
+					setDimOpen(true);
+				}}
+				testId="dim"
+			>
+				{t("Dim the screen")}
+			</SheetItem>
+			{canRead && (
+				<SheetItem
+					icon={<Volume2 size={20} />}
+					shortcut="Ctrl+Shift+U"
+					checked={reading}
+					onClick={() => {
+						close();
+						setReading((r) => !r);
+					}}
+					testId="read-aloud-start"
+				>
+					{t("Read aloud")}
+				</SheetItem>
+			)}
+			{fileId && (
+				<>
+					<SheetItem
+						icon={<BookmarkPlus size={20} />}
+						shortcut="Ctrl+D"
+						onClick={() => {
+							close();
+							addMark();
+						}}
+						testId="bookmark-add"
+					>
+						{t("Add bookmark")}
+					</SheetItem>
+					<SheetItem
+						icon={<Bookmark size={20} />}
+						hint={marks.list.length ? String(marks.list.length) : undefined}
+						onClick={() => {
+							close();
+							setMarksOpen(true);
+						}}
+						testId="bookmarks"
+					>
+						{t("Bookmarks")}
+					</SheetItem>
+				</>
+			)}
+			{paper && (
+				<SheetItem
+					icon={<SwatchBook size={20} />}
+					hint={t(PAGE_COLOR_NAMES[settings.pageColor])}
+					onClick={() => {
+						close();
+						setColorOpen(true);
+					}}
+					testId="page-color"
+				>
+					{t("Page colour")}
+				</SheetItem>
+			)}
+		</>
+	);
 
 	// The window is named after the document, as in every desktop reader.
 	useEffect(() => {
@@ -595,6 +682,7 @@ export function Shell({
 		};
 	}, [active, finding]);
 
+	const barsHidden = (chromeHidden !== tapShows || autoHidden) && !finding;
 	const tabs = isDesktop
 		? [
 				...(side ?? []),
@@ -627,8 +715,8 @@ export function Shell({
 			style={active ? undefined : { display: "none" }}
 		>
 			<header
-				className={`${s.top} ${chromeHidden ? s.hiddenTop : ""} ${finding ? s.pinned : ""}`}
-				{...inert(chromeHidden)}
+				className={`${s.top} ${barsHidden ? s.hiddenTop : ""} ${finding ? s.pinned : ""}`}
+				{...inert(barsHidden)}
 			>
 				{/* The bar is the window's title bar where the app draws its own
 				 * frame: a press on it (not on a button) moves the window. */}
@@ -675,6 +763,17 @@ export function Shell({
 					data-page-color={pageColor}
 				>
 					{children}
+					{settings.dim > 0 && (
+						<div
+							className={s.dim}
+							style={{ opacity: settings.dim }}
+							aria-hidden="true"
+							data-testid="dim-layer"
+						/>
+					)}
+					{scrolling && progressOf && (
+						<AutoScroll of={progressOf} onClose={() => setScrolling(false)} />
+					)}
 					{reading && speech && (
 						<ReadAloud
 							source={speech}
@@ -690,6 +789,7 @@ export function Shell({
 			{paper && (
 				<PageColorSheet open={colorOpen} onClose={() => setColorOpen(false)} />
 			)}
+			<DimSheet open={dimOpen} onClose={() => setDimOpen(false)} />
 			{fileId && (
 				<Sheet
 					open={marksOpen}
@@ -707,8 +807,8 @@ export function Shell({
 			)}
 			{(bottom || (pager && !isDesktop)) && (
 				<footer
-					className={`${s.bottom} ${chromeHidden ? s.hiddenBottom : ""}`}
-					{...inert(chromeHidden)}
+					className={`${s.bottom} ${barsHidden ? s.hiddenBottom : ""}`}
+					{...inert(barsHidden)}
 				>
 					{bottom}
 					{pager && !isDesktop && <div className={s.pager}>{pager}</div>}

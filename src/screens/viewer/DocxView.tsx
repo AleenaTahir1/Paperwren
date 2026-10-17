@@ -34,6 +34,7 @@ import { type Heading, HeadingList, readHeadings } from "./headings";
 import {
 	useScrollBookmarks,
 	useScrollMemory,
+	useTapToTurn,
 	useZoom,
 	useZoomLevel,
 } from "./hooks";
@@ -178,7 +179,7 @@ export default function DocxView({
 		min: MIN_ZOOM,
 		max: MAX_ZOOM,
 		active,
-		onTap: () => setChromeHidden((h) => !h),
+		onTap: (_target, x) => tapTurn(x) || setChromeHidden((h) => !h),
 	});
 	useScrollMemory(scroller, status === "ready", position, onPosition, zoom);
 	const marks = useScrollBookmarks(scroller, host);
@@ -236,6 +237,11 @@ export default function DocxView({
 	};
 
 	const paged = !reading && pageCount > 0;
+	// A tap on a side turns a page of paper, or scrolls the flowing text.
+	const tapTurn = useTapToTurn(
+		scroller,
+		paged ? (dir) => goTo(page + dir) : undefined,
+	);
 	const side = useMemo<SideTab[]>(
 		() =>
 			status === "ready"

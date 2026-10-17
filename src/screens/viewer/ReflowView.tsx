@@ -29,6 +29,7 @@ import { type Heading, HeadingList, readHeadings } from "./headings";
 import {
 	useScrollBookmarks,
 	useScrollMemory,
+	useTapToTurn,
 	useZoom,
 	useZoomLevel,
 } from "./hooks";
@@ -94,6 +95,7 @@ export default function ReflowView(props: ViewerProps) {
 	const [headings, setHeadings] = useState<Heading[]>([]);
 	const [outlineOpen, setOutlineOpen] = useState(false);
 	const find = useDomFind(content, scroller);
+	const tapTurn = useTapToTurn(scroller);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: extract once per document
 	useEffect(() => {
@@ -125,7 +127,7 @@ export default function ReflowView(props: ViewerProps) {
 		max: 3,
 		enabled: !!doc,
 		active,
-		onTap: () => setChromeHidden((h) => !h),
+		onTap: (_target, x) => tapTurn(x) || setChromeHidden((h) => !h),
 	});
 	useScrollMemory(scroller, !!result?.ok, position, onPosition, zoom);
 	const marks = useScrollBookmarks(scroller, content);

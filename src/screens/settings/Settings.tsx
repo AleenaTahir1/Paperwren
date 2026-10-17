@@ -1,5 +1,12 @@
 import { backend, formatBytes } from "@/lib/backend";
-import { isDesktop, isMac, isTauri, ownsFrame, sharesFrame } from "@/lib/env";
+import {
+	isDesktop,
+	isMac,
+	isTauri,
+	isTouch,
+	ownsFrame,
+	sharesFrame,
+} from "@/lib/env";
 import { LANGUAGES, type LanguageSetting, msg, t, tn } from "@/lib/i18n";
 import { FULLSCREEN_KEYS, keys } from "@/lib/keys";
 import type { PageColor, PdfFlow, PdfZoom } from "@/lib/types";
@@ -294,6 +301,33 @@ export function SettingsScreen() {
 							]}
 							testId="page-color"
 						/>
+						{!!window.__paperwrenAndroidExtras?.volumeKeys && (
+							<Switch
+								label={t("Turn pages with the volume keys")}
+								hint={t("Down for the next page, up for the one before")}
+								checked={settings.volumeKeys}
+								onChange={(v) => update("volumeKeys", v)}
+								testId="volume-keys"
+							/>
+						)}
+						{isTouch && (
+							<Switch
+								label={t("Tap the sides to turn pages")}
+								hint={t("The left edge goes back, the right edge on")}
+								checked={settings.tapToTurn}
+								onChange={(v) => update("tapToTurn", v)}
+								testId="tap-to-turn"
+							/>
+						)}
+						{!isDesktop && (
+							<Switch
+								label={t("Hide the bars while reading")}
+								hint={t("They come back when you scroll back or tap")}
+								checked={settings.autoHideBars}
+								onChange={(v) => update("autoHideBars", v)}
+								testId="auto-hide-bars"
+							/>
+						)}
 						<Switch
 							label={t("Keep the screen on")}
 							hint={t("While a document is open, the screen won't dim or lock")}

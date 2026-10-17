@@ -688,3 +688,136 @@ test.describe("read aloud", () => {
 		await expect(page.getByTestId("read-aloud-start")).toHaveCount(0);
 	});
 });
+
+test.describe("reading on a phone", () => {
+	const tap = async (page: Page, testId: string, at: number) => {
+		const box = await page.getByTestId(testId).boundingBox();
+		if (!box) throw new Error(`no ${testId}`);
+		await page.getByTestId(testId).dispatchEvent("touchstart", {
+			touches: [
+				{ identifier: 0, clientX: box.x + box.width * at, clientY: 400 },
+			],
+		});
+		await page.getByTestId(testId).dispatchEvent("touchend", {
+			touches: [],
+			changedTouches: [
+				{ identifier: 0, clientX: box.x + box.width * at, clientY: 400 },
+			],
+		});
+	};
+	const scrollTop = (page: Page, testId: string) =>
+		page.getByTestId(testId).evaluate((el) => el.scrollTop);
+	const barsHidden = (page: Page) =>
+		page
+			.getByTestId("viewer")
+			.locator("header")
+			.evaluate((h) => h.hasAttribute("inert"));
+
+	test("the volume keys and the sides of the screen turn pages", async ({
+		page,
+	}) => {
+		await page.addInitScript(() => {
+			const w = window as unknown as {
+				__paperwrenAndroidExtras: Record<string, unknown>;
+				__volumeOn: boolean;
+			};
+			w.__paperwrenAndroidExtras = {
+				volumeKeys: (on: boolean) => {
+					w.__volumeOn = on;
+				},
+			};
+		});
+		await boot(page, { settings_v2: { volumeKeys: true, tapToTurn: true } });
+		await openFixture(page, "features/book.epub");
+		await expect(page.getByTestId("epub-scroll")).toContainText("Spring", {
+			timeout: 20_000,
+		});
+		expect(
+			await page.evaluate(
+				() => (window as unknown as { __volumeOn: boolean }).__volumeOn,
+			),
+		).toBe(true);
+		await page.evaluate(() =>
+			(
+				window as unknown as { __paperwrenVolumeKey: (d: number) => void }
+			).__paperwrenVolumeKey(1),
+		);
+		await expect
+			.poll(() => scrollTop(page, "epub-scroll"))
+			.toBeGreaterThan(300);
+		const after = await scrollTop(page, "epub-scroll");
+		await tap(page, "epub-scroll", 0.9);
+		await expect
+			.poll(() => scrollTop(page, "epub-scroll"))
+			.toBeGreaterThan(after + 300);
+		await tap(page, "epub-scroll", 0.1);
+		await expect
+			.poll(() => scrollTop(page, "epub-scroll"))
+			.toBeLessThan(after + 50);
+		// The middle still shows and hides the bars.
+		await tap(page, "epub-scroll", 0.5);
+		await expect.poll(() => barsHidden(page)).toBe(true);
+		await tap(page, "epub-scroll", 0.5);
+		await expect.poll(() => barsHidden(page)).toBe(false);
+		// Leaving the document gives the keys back to the volume.
+		await page.getByTestId("viewer-back").click();
+		expect(
+			await page.evaluate(
+				() => (window as unknown as { __volumeOn: boolean }).__volumeOn,
+			),
+		).toBe(false);
+	});
+
+	test("the bars go while reading on, and one tap brings them back", async ({
+		page,
+	}) => {
+		await boot(page, { settings_v2: { autoHideBars: true } });
+		await openFixture(page, "features/book.epub");
+		const book = page.getByTestId("epub-scroll");
+		await expect(book).toContainText("Spring", { timeout: 20_000 });
+		await book.evaluate((el) => {
+			el.scrollTop += 300;
+		});
+		await expect.poll(() => barsHidden(page)).toBe(true);
+		await tap(page, "epub-scroll", 0.5);
+		await expect.poll(() => barsHidden(page)).toBe(false);
+		await book.evaluate((el) => {
+			el.scrollTop += 300;
+		});
+		await expect.poll(() => barsHidden(page)).toBe(true);
+		await book.evaluate((el) => {
+			el.scrollTop -= 100;
+		});
+		await expect.poll(() => barsHidden(page)).toBe(false);
+	});
+
+	test("the screen dims, and the document scrolls by itself", async ({
+		page,
+	}) => {
+		await boot(page);
+		await openFixture(page, "features/book.epub");
+		await expect(page.getByTestId("epub-scroll")).toContainText("Spring", {
+			timeout: 20_000,
+		});
+		await page.getByTestId("file-more").click();
+		await page.getByTestId("dim").click();
+		await page.getByTestId("dim-range").fill("50");
+		await page.keyboard.press("Escape");
+		await expect(page.getByTestId("dim-layer")).toHaveCSS("opacity", "0.35");
+
+		const before = await scrollTop(page, "epub-scroll");
+		await page.getByTestId("file-more").click();
+		await page.getByTestId("auto-scroll-start").click();
+		await expect
+			.poll(() => scrollTop(page, "epub-scroll"))
+			.toBeGreaterThan(before + 20);
+		await page.getByTestId("auto-scroll-faster").click();
+		await expect(page.getByTestId("auto-scroll-speed")).toHaveText("50");
+		await page.getByTestId("auto-scroll-pause").click();
+		const paused = await scrollTop(page, "epub-scroll");
+		await page.waitForTimeout(500);
+		expect(await scrollTop(page, "epub-scroll")).toBe(paused);
+		await page.getByTestId("auto-scroll-stop").click();
+		await expect(page.getByTestId("auto-scroll")).toHaveCount(0);
+	});
+});

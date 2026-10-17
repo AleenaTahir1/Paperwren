@@ -485,4 +485,19 @@ export const es: Table = {
 	"Reading speed": "Velocidad de lectura",
 	"Stop reading": "Dejar de leer",
 	"Couldn't read this aloud": "No se pudo leer esto en voz alta",
+	"Scroll by itself": "Desplazamiento automático",
+	Slower: "Más lento",
+	Faster: "Más rápido",
+	"Stop scrolling": "Detener el desplazamiento",
+	"Dim the screen": "Atenuar la pantalla",
+	"{n}% darker": "{n} % más oscuro",
+	"Turn pages with the volume keys": "Pasar páginas con los botones de volumen",
+	"Down for the next page, up for the one before":
+		"Bajar para la siguiente página, subir para la anterior",
+	"Tap the sides to turn pages": "Tocar los lados para pasar páginas",
+	"The left edge goes back, the right edge on":
+		"El borde izquierdo retrocede, el derecho avanza",
+	"Hide the bars while reading": "Ocultar las barras al leer",
+	"They come back when you scroll back or tap":
+		"Vuelven al desplazarte hacia atrás o tocar",
 };

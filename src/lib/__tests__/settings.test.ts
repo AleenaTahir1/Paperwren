@@ -33,6 +33,20 @@ describe("settings", () => {
 		expect(normalizeSettings({ pdfFlow: "sideways" }).pdfFlow).toBe("down");
 	});
 
+	it("keeps the reading controls within their range", () => {
+		const read = normalizeSettings({
+			dim: 3,
+			scrollSpeed: -5,
+			volumeKeys: true,
+			tapToTurn: "yes",
+		});
+		expect(read.dim).toBe(0.7);
+		expect(read.scrollSpeed).toBe(10);
+		expect(read.volumeKeys).toBe(true);
+		expect(read.tapToTurn).toBe(false);
+		expect(normalizeSettings({ dim: "dark" }).dim).toBe(0);
+	});
+
 	it("draws the page the theme suggests", () => {
 		expect(resolvePageColor("theme", "light")).toBe("original");
 		expect(resolvePageColor("theme", "sepia")).toBe("sepia");

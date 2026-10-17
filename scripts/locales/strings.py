@@ -462,4 +462,17 @@ ROWS = [
     ("Reading speed", "پڑھنے کی رفتار", "سرعة القراءة", "朗读速度", "पढ़ने की गति", "Velocidad de lectura", "Vitesse de lecture"),
     ("Stop reading", "پڑھنا بند کریں", "إيقاف القراءة", "停止朗读", "पढ़ना बंद करें", "Dejar de leer", "Arrêter la lecture"),
     ("Couldn't read this aloud", "اسے بلند آواز سے نہیں پڑھا جا سکا", "تعذّرت قراءة هذا بصوت عالٍ", "无法朗读此内容", "इसे ज़ोर से नहीं पढ़ा जा सका", "No se pudo leer esto en voz alta", "Impossible de lire ceci à voix haute"),
+    # ---- reading on a phone ----
+    ("Scroll by itself", "خود بخود سکرول", "تمرير تلقائي", "自动滚动", "अपने-आप स्क्रॉल", "Desplazamiento automático", "Défilement automatique"),
+    ("Slower", "آہستہ", "أبطأ", "更慢", "धीमा", "Más lento", "Plus lent"),
+    ("Faster", "تیز", "أسرع", "更快", "तेज़", "Más rápido", "Plus vite"),
+    ("Stop scrolling", "سکرولنگ روکیں", "إيقاف التمرير", "停止滚动", "स्क्रॉल रोकें", "Detener el desplazamiento", "Arrêter le défilement"),
+    ("Dim the screen", "اسکرین مدھم کریں", "تعتيم الشاشة", "调暗屏幕", "स्क्रीन धीमी करें", "Atenuar la pantalla", "Assombrir l'écran"),
+    ("{n}% darker", "{n}% گہرا", "أغمق بنسبة {n}%", "调暗 {n}%", "{n}% गहरा", "{n} % más oscuro", "{n} % plus sombre"),
+    ("Turn pages with the volume keys", "والیوم بٹنوں سے صفحے پلٹیں", "قلب الصفحات بأزرار الصوت", "用音量键翻页", "वॉल्यूम बटन से पृष्ठ पलटें", "Pasar páginas con los botones de volumen", "Tourner les pages avec les touches de volume"),
+    ("Down for the next page, up for the one before", "نیچے والا اگلے صفحے کے لیے، اوپر والا پچھلے کے لیے", "خفض الصوت للصفحة التالية، ورفعه للسابقة", "音量减翻到下一页，音量加翻回上一页", "नीचे वाला अगले पृष्ठ के लिए, ऊपर वाला पिछले के लिए", "Bajar para la siguiente página, subir para la anterior", "Bas pour la page suivante, haut pour la précédente"),
+    ("Tap the sides to turn pages", "صفحے پلٹنے کے لیے کناروں پر تھپتھپائیں", "انقر على الجانبين لقلب الصفحات", "点按两侧翻页", "पृष्ठ पलटने के लिए किनारों पर टैप करें", "Tocar los lados para pasar páginas", "Toucher les bords pour tourner les pages"),
+    ("The left edge goes back, the right edge on", "بایاں کنارہ پیچھے، دایاں آگے", "الحافة اليسرى للرجوع واليمنى للتقدم", "左边缘后退，右边缘前进", "बायाँ किनारा पीछे, दायाँ आगे", "El borde izquierdo retrocede, el derecho avanza", "Le bord gauche recule, le bord droit avance"),
+    ("Hide the bars while reading", "پڑھتے وقت بار چھپائیں", "إخفاء الأشرطة أثناء القراءة", "阅读时隐藏工具栏", "पढ़ते समय बार छिपाएँ", "Ocultar las barras al leer", "Masquer les barres pendant la lecture"),
+    ("They come back when you scroll back or tap", "واپس سکرول کرنے یا تھپتھپانے پر واپس آ جاتے ہیں", "تعود عند التمرير للخلف أو النقر", "向回滚动或点按即可重新显示", "वापस स्क्रॉल करने या टैप करने पर लौट आते हैं", "Vuelven al desplazarte hacia atrás o tocar", "Elles reviennent quand vous remontez ou touchez l'écran"),
 ]

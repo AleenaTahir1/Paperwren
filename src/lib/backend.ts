@@ -178,6 +178,9 @@ declare global {
 		 * "open-with", "open"); the page says so in the reader's language
 		 * and answers true. */
 		__paperwrenNativeError?: (code: string) => boolean;
+		/** MainActivity: a volume key was pressed (1 down, -1 up) while
+		 * they turn pages. */
+		__paperwrenVolumeKey?: (dir: number) => void;
 		/** MainActivity's answer to importPicked. */
 		__paperwrenImported?: (token: string, copy: ManagedCopy | null) => void;
 		/** Test hook: the next pick returns this file. */
