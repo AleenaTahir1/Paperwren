@@ -49,7 +49,6 @@ ROWS = [
     ("Image", "تصویر", "صورة", "图片", "चित्र", "Imagen", "Image"),
     # ---- opening files ----
     ("Couldn't open the file picker", "فائل چننے والا نہیں کھل سکا", "تعذّر فتح منتقي الملفات", "无法打开文件选择器", "फ़ाइल चुनने की स्क्रीन नहीं खुल सकी", "No se pudo abrir el selector de archivos", "Impossible d'ouvrir le sélecteur de fichiers"),
-    ("Opened the first of {n} files", "{n} میں سے پہلی فائل کھولی گئی", "فُتح أول ملف من {n} ملفات", "已打开 {n} 个文件中的第一个", "{n} में से पहली फ़ाइल खोली गई", "Se abrió el primero de {n} archivos", "Premier des {n} fichiers ouvert"),
     ("This file", "یہ فائل", "هذا الملف", "此文件", "यह फ़ाइल", "Este archivo", "Ce fichier"),
     ("File not found", "فائل نہیں ملی", "الملف غير موجود", "找不到文件", "फ़ाइल नहीं मिली", "Archivo no encontrado", "Fichier introuvable"),
     ("{file} has been moved or deleted. Choose it again to update this recent.", "{file} منتقل یا حذف ہو چکی ہے۔ اس اندراج کو تازہ کرنے کے لیے اسے دوبارہ چنیں۔", "{file} نُقل أو حُذف. اختره مجددًا لتحديث هذا العنصر.", "{file} 已被移动或删除。请重新选择它以更新这条记录。", "{file} हटा दी गई है या कहीं और ले जाई गई है। इस प्रविष्टि को अपडेट करने के लिए इसे फिर से चुनें।", "{file} se ha movido o eliminado. Elígelo de nuevo para actualizar este reciente.", "{file} a été déplacé ou supprimé. Choisissez-le à nouveau pour mettre à jour ce fichier récent."),
@@ -494,4 +493,9 @@ ROWS = [
         {"one": "{n} imagen", "other": "{n} imágenes"},
         {"one": "{n} image", "other": "{n} images"},
     ),
+    # ---- tabs ----
+    ("Open documents", "کھلی دستاویزات", "المستندات المفتوحة", "打开的文档", "खुले दस्तावेज़", "Documentos abiertos", "Documents ouverts"),
+    ("Close {name}", "{name} بند کریں", "إغلاق {name}", "关闭 {name}", "{name} बंद करें", "Cerrar {name}", "Fermer {name}"),
+    ("Open another file", "دوسری فائل کھولیں", "فتح ملف آخر", "打开其他文件", "दूसरी फ़ाइल खोलें", "Abrir otro archivo", "Ouvrir un autre fichier"),
+    ("The next and the previous tab", "اگلا اور پچھلا ٹیب", "علامة التبويب التالية والسابقة", "下一个和上一个标签页", "अगला और पिछला टैब", "La pestaña siguiente y la anterior", "L'onglet suivant et le précédent"),
 ]

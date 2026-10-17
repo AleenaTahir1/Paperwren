@@ -33,6 +33,8 @@ interface NavApi {
 	 * close arrow and Ctrl+W close the document, where Back may first
 	 * retrace a step inside it. */
 	close: () => void;
+	/** Show exactly these screens over Home (none: Home itself). */
+	reset: (screens: Screen[]) => void;
 	/** Register an open overlay; its `close` runs when Back targets it. */
 	registerOverlay: (id: string, close: () => void) => () => void;
 }
@@ -87,6 +89,10 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
 		[],
 	);
 	const close = useCallback(() => dispatch({ type: "pop" }), []);
+	const reset = useCallback(
+		(screens: Screen[]) => dispatch({ type: "reset", screens }),
+		[],
+	);
 	const replace = useCallback(
 		(screen: Screen) => dispatch({ type: "replace", screen }),
 		[],
@@ -125,8 +131,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
 	}, [back]);
 
 	const api = useMemo(
-		() => ({ state, push, replace, back, close, registerOverlay }),
-		[state, push, replace, back, close, registerOverlay],
+		() => ({ state, push, replace, back, close, reset, registerOverlay }),
+		[state, push, replace, back, close, reset, registerOverlay],
 	);
 	return <NavContext.Provider value={api}>{children}</NavContext.Provider>;
 }

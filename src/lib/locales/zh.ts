@@ -40,7 +40,6 @@ export const zh: Table = {
 	"Embedded object": "嵌入对象",
 	Image: "图片",
 	"Couldn't open the file picker": "无法打开文件选择器",
-	"Opened the first of {n} files": "已打开 {n} 个文件中的第一个",
 	"This file": "此文件",
 	"File not found": "找不到文件",
 	"{file} has been moved or deleted. Choose it again to update this recent.":
@@ -478,4 +477,8 @@ export const zh: Table = {
 	"This device can't draw HEIC pictures. Open it in another app from the menu.":
 		"此设备无法显示 HEIC 图片。请从菜单中用其他应用打开。",
 	"{n} pictures": "{n} 张图片",
+	"Open documents": "打开的文档",
+	"Close {name}": "关闭 {name}",
+	"Open another file": "打开其他文件",
+	"The next and the previous tab": "下一个和上一个标签页",
 };

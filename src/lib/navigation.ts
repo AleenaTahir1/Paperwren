@@ -29,6 +29,9 @@ export type NavAction =
 	| { type: "push"; screen: Screen }
 	| { type: "pop" }
 	| { type: "replace"; screen: Screen }
+	/** Show these screens over Home, and nothing else (a desktop's tab
+	 * changing: the one document on show, or none). */
+	| { type: "reset"; screens: Screen[] }
 	| { type: "overlay-open"; id: string }
 	| { type: "overlay-close"; id: string };
 
@@ -52,6 +55,14 @@ export function navReducer(state: NavState, action: NavAction): NavState {
 				screens: [
 					...state.screens.slice(0, Math.max(1, state.screens.length - 1)),
 					action.screen,
+				],
+			};
+		case "reset":
+			return {
+				...state,
+				screens: [
+					initialNav.screens[0],
+					...action.screens.filter((screen) => screen.kind !== "home"),
 				],
 			};
 		case "overlay-open":

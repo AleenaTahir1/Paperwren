@@ -1,0 +1,93 @@
+/* The window's top row while several documents are open. */
+.strip {
+	position: fixed;
+	inset: 0 0 auto;
+	z-index: 40;
+	display: flex;
+	align-items: flex-end;
+	gap: 4px;
+	height: var(--bar-h);
+	padding: 0 calc(6px + var(--win-controls)) 0 calc(6px + var(--win-lights));
+	background: var(--surface-2);
+	border-bottom: 1px solid var(--line);
+}
+.tabs {
+	display: flex;
+	align-items: flex-end;
+	gap: 2px;
+	min-width: 0;
+	height: 100%;
+	overflow: hidden;
+}
+.tab {
+	display: flex;
+	align-items: center;
+	flex: 0 1 auto;
+	width: 220px;
+	min-width: 72px;
+	height: calc(100% - 6px);
+	padding-inline-start: 10px;
+	border-radius: var(--r-s) var(--r-s) 0 0;
+	color: var(--text-2);
+}
+.tab:hover {
+	background: var(--surface-3);
+}
+.on,
+.on:hover {
+	background: var(--canvas);
+	color: var(--text);
+}
+.main {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex: 1;
+	min-width: 0;
+	height: 100%;
+	font-size: 13px;
+	font-weight: 650;
+	text-align: start;
+}
+.dot {
+	flex-shrink: 0;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+}
+.name {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.close {
+	display: grid;
+	place-items: center;
+	flex-shrink: 0;
+	width: 24px;
+	height: 24px;
+	margin-inline-end: 4px;
+	border-radius: var(--r-s);
+	color: var(--text-3);
+}
+.close:hover {
+	background: var(--surface-2);
+	color: var(--text);
+}
+.home {
+	display: grid;
+	place-items: center;
+	flex-shrink: 0;
+	width: 32px;
+	height: 32px;
+	margin-bottom: 4px;
+	border-radius: var(--r-s);
+	color: var(--text-2);
+}
+.home:hover {
+	background: var(--surface-3);
+	color: var(--text);
+}
+:global(html[data-fullscreen]) .strip {
+	display: none;
+}

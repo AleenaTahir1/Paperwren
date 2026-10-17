@@ -974,3 +974,88 @@ test.describe("pictures and code", () => {
 		);
 	});
 });
+
+test.describe("tabs on a desktop", () => {
+	test.use({ viewport: { width: 1280, height: 800 } });
+
+	/** Open a fixture with Ctrl+O, as from inside a document. */
+	const openMore = async (page: Page, fixture: string) => {
+		const b64 = (await import("node:fs"))
+			.readFileSync(`fixtures/${fixture}`)
+			.toString("base64");
+		await page.evaluate(
+			({ b64, name }) => {
+				const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+				window.__paperwrenTestFile = new File([bytes], name);
+			},
+			{ b64, name: fixture.split("/").pop() ?? fixture },
+		);
+		await page.keyboard.press("Control+o");
+	};
+
+	test("documents open side by side, one on show, and close in turn", async ({
+		page,
+	}) => {
+		await boot(page, {}, "?desktop&frame");
+		await openFixture(page, "features/pictures.pdf");
+		await expect(page.getByTestId("pdf-page-field")).toHaveValue("1", {
+			timeout: 20_000,
+		});
+		// One document is just a document: no row of tabs.
+		await expect(page.getByTestId("tab-strip")).toHaveCount(0);
+
+		await openMore(page, "features/book.epub");
+		const tabs = page.getByTestId("tab");
+		await expect(tabs).toHaveText(["pictures.pdf", "book.epub"]);
+		await expect(page.getByTestId("epub-scroll")).toBeVisible();
+		await expect(page.getByTestId("pdf-scroll")).toBeHidden();
+		// The window's buttons sit in the row of tabs.
+		const strip = await page.getByTestId("tab-strip").boundingBox();
+		const buttons = await page.getByTestId("window-controls").boundingBox();
+		expect(Math.round(buttons?.y ?? -1)).toBe(Math.round(strip?.y ?? -2));
+
+		await tabs.first().getByRole("tab").click();
+		await expect(page.getByTestId("pdf-scroll")).toBeVisible();
+		await page.keyboard.press("Control+Tab");
+		await expect(page.getByTestId("epub-scroll")).toBeVisible();
+		await page.keyboard.press("Control+1");
+		await expect(page.getByTestId("pdf-scroll")).toBeVisible();
+
+		// Home, with the tabs kept; a document already open is not opened twice.
+		await page.getByTestId("tab-home").click();
+		await expect(page.getByTestId("home")).toBeVisible();
+		await expect(tabs).toHaveCount(2);
+		await page
+			.getByTestId("recent")
+			.filter({ hasText: "book.epub" })
+			.getByRole("button")
+			.first()
+			.click();
+		await expect(tabs).toHaveCount(2);
+		await expect(page.getByTestId("epub-scroll")).toBeVisible();
+
+		// Closing shows the tab shown before it; the last one leaves Home.
+		await page.keyboard.press("Control+w");
+		await expect(tabs).toHaveCount(0);
+		await expect(page.getByTestId("pdf-scroll")).toBeVisible();
+		await page.getByTestId("viewer-back").click();
+		await expect(page.getByTestId("home")).toBeVisible();
+		await expect(page.getByTestId("tab-strip")).toHaveCount(0);
+	});
+
+	test("files dropped together open a tab each", async ({ page }) => {
+		await boot(page, {}, "?desktop");
+		await openFixture(page, "sample.pdf");
+		await expect(page.getByTestId("pdf-page-field")).toHaveValue("1", {
+			timeout: 20_000,
+		});
+		await openMore(page, "sample.docx");
+		await openMore(page, "sample.txt");
+		await expect(page.getByTestId("tab")).toHaveCount(3);
+		await page.getByTestId("tab").nth(1).getByTestId("tab-close").click();
+		await expect(page.getByTestId("tab")).toHaveText([
+			"sample.pdf",
+			"sample.txt",
+		]);
+	});
+});

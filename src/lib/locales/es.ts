@@ -41,7 +41,6 @@ export const es: Table = {
 	"Embedded object": "Objeto incrustado",
 	Image: "Imagen",
 	"Couldn't open the file picker": "No se pudo abrir el selector de archivos",
-	"Opened the first of {n} files": "Se abrió el primero de {n} archivos",
 	"This file": "Este archivo",
 	"File not found": "Archivo no encontrado",
 	"{file} has been moved or deleted. Choose it again to update this recent.":
@@ -514,4 +513,8 @@ export const es: Table = {
 		one: "{n} imagen",
 		other: "{n} imágenes",
 	},
+	"Open documents": "Documentos abiertos",
+	"Close {name}": "Cerrar {name}",
+	"Open another file": "Abrir otro archivo",
+	"The next and the previous tab": "La pestaña siguiente y la anterior",
 };

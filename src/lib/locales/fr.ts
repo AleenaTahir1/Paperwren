@@ -42,7 +42,6 @@ export const fr: Table = {
 	Image: "Image",
 	"Couldn't open the file picker":
 		"Impossible d'ouvrir le sélecteur de fichiers",
-	"Opened the first of {n} files": "Premier des {n} fichiers ouvert",
 	"This file": "Ce fichier",
 	"File not found": "Fichier introuvable",
 	"{file} has been moved or deleted. Choose it again to update this recent.":
@@ -518,4 +517,8 @@ export const fr: Table = {
 		one: "{n} image",
 		other: "{n} images",
 	},
+	"Open documents": "Documents ouverts",
+	"Close {name}": "Fermer {name}",
+	"Open another file": "Ouvrir un autre fichier",
+	"The next and the previous tab": "L'onglet suivant et le précédent",
 };

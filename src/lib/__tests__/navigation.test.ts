@@ -69,3 +69,26 @@ describe("navReducer", () => {
 		expect(s.screens.map((screen) => screen.kind)).toEqual(["home", "viewer"]);
 	});
 });
+
+describe("reset", () => {
+	it("shows only the screens given, over Home", () => {
+		const viewer = (key: number) => ({
+			kind: "viewer" as const,
+			key,
+			request: {
+				id: `f${key}`,
+				name: `${key}.pdf`,
+				nameVerified: true,
+				size: 1,
+				reopen: { kind: "browser" as const, key: String(key) },
+			},
+		});
+		let state = navReducer(initialNav, { type: "push", screen: viewer(1) });
+		state = navReducer(state, { type: "push", screen: { kind: "settings" } });
+		state = navReducer(state, { type: "reset", screens: [viewer(2)] });
+		expect(state.screens.map((s) => s.kind)).toEqual(["home", "viewer"]);
+		expect((state.screens[1] as { key: number }).key).toBe(2);
+		state = navReducer(state, { type: "reset", screens: [] });
+		expect(state.screens).toEqual(initialNav.screens);
+	});
+});

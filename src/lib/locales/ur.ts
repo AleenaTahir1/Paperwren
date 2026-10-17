@@ -41,7 +41,6 @@ export const ur: Table = {
 	"Embedded object": "شامل شدہ شے",
 	Image: "تصویر",
 	"Couldn't open the file picker": "فائل چننے والا نہیں کھل سکا",
-	"Opened the first of {n} files": "{n} میں سے پہلی فائل کھولی گئی",
 	"This file": "یہ فائل",
 	"File not found": "فائل نہیں ملی",
 	"{file} has been moved or deleted. Choose it again to update this recent.":
@@ -505,4 +504,8 @@ export const ur: Table = {
 		one: "{n} تصویر",
 		other: "{n} تصاویر",
 	},
+	"Open documents": "کھلی دستاویزات",
+	"Close {name}": "{name} بند کریں",
+	"Open another file": "دوسری فائل کھولیں",
+	"The next and the previous tab": "اگلا اور پچھلا ٹیب",
 };

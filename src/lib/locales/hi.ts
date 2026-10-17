@@ -40,7 +40,6 @@ export const hi: Table = {
 	"Embedded object": "एम्बेड की गई वस्तु",
 	Image: "चित्र",
 	"Couldn't open the file picker": "फ़ाइल चुनने की स्क्रीन नहीं खुल सकी",
-	"Opened the first of {n} files": "{n} में से पहली फ़ाइल खोली गई",
 	"This file": "यह फ़ाइल",
 	"File not found": "फ़ाइल नहीं मिली",
 	"{file} has been moved or deleted. Choose it again to update this recent.":
@@ -499,4 +498,8 @@ export const hi: Table = {
 		one: "{n} चित्र",
 		other: "{n} चित्र",
 	},
+	"Open documents": "खुले दस्तावेज़",
+	"Close {name}": "{name} बंद करें",
+	"Open another file": "दूसरी फ़ाइल खोलें",
+	"The next and the previous tab": "अगला और पिछला टैब",
 };

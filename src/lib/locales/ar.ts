@@ -40,7 +40,6 @@ export const ar: Table = {
 	"Embedded object": "كائن مضمّن",
 	Image: "صورة",
 	"Couldn't open the file picker": "تعذّر فتح منتقي الملفات",
-	"Opened the first of {n} files": "فُتح أول ملف من {n} ملفات",
 	"This file": "هذا الملف",
 	"File not found": "الملف غير موجود",
 	"{file} has been moved or deleted. Choose it again to update this recent.":
@@ -513,4 +512,8 @@ export const ar: Table = {
 		many: "{n} صورة",
 		other: "{n} صورة",
 	},
+	"Open documents": "المستندات المفتوحة",
+	"Close {name}": "إغلاق {name}",
+	"Open another file": "فتح ملف آخر",
+	"The next and the previous tab": "علامة التبويب التالية والسابقة",
 };
