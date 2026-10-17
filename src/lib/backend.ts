@@ -116,6 +116,9 @@ interface Backend {
 	/** Provider display name of a content:// URI, or null. */
 	providerName(uri: string): string | null;
 	read(reopen: Reopen): Promise<ArrayBuffer>;
+	/** When the file was last changed (ms), to notice another app
+	 * change it while it is open; null where that cannot be known. */
+	stamp(reopen: Reopen): Promise<number | null>;
 	storeGet(key: string): Promise<unknown>;
 	storeSet(key: string, value: unknown): Promise<void>;
 	importsStats(): Promise<ImportsStats>;
@@ -191,6 +194,8 @@ declare global {
 		__paperwrenImported?: (token: string, copy: ManagedCopy | null) => void;
 		/** Test hook: the next pick returns this file. */
 		__paperwrenTestFile?: File;
+		/** Test hook: when the open file was last changed. */
+		__paperwrenTestStamp?: number;
 	}
 }
 
@@ -404,6 +409,10 @@ const browserBackend: Backend = {
 	},
 	async printOriginal() {
 		return false;
+	},
+	// A browser hands over a copy: the file on disk is out of sight.
+	async stamp() {
+		return window.__paperwrenTestStamp ?? null;
 	},
 	async read(reopen) {
 		if (reopen.kind !== "browser") throw new OpenError("not_found");
@@ -913,6 +922,17 @@ const tauriBackend: Backend = {
 			throw new OpenError(classifyError(err), String(err));
 		}
 	},
+	async stamp(reopen) {
+		// Only a desktop opens files in place; a phone's are copies or
+		// content the system hands over.
+		if (reopen.kind !== "path" || window.__paperwrenAndroid) return null;
+		try {
+			const { stat } = await import("@tauri-apps/plugin-fs");
+			return (await stat(reopen.path)).mtime?.getTime() ?? null;
+		} catch {
+			return null;
+		}
+	},
 	storeGet: (key) => invoke("store_get", { key }),
 	storeSet: (key, value) => invoke("store_set", { key, value }),
 	importsStats: () => invoke("imports_stats"),
@@ -947,6 +967,9 @@ export function requestForBytes(name: string, bytes: Uint8Array): OpenRequest {
 export const backend: Backend = {
 	...raw,
 	storeSet: createSerializedWriter((key, value) => raw.storeSet(key, value)),
+	stamp(reopen) {
+		return reopen.kind === "memory" ? Promise.resolve(null) : raw.stamp(reopen);
+	},
 	read(reopen) {
 		if (reopen.kind !== "memory") return raw.read(reopen);
 		const file = held.get(reopen.key);

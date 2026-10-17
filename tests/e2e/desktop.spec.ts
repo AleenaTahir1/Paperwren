@@ -682,3 +682,38 @@ test.describe("on a phone", () => {
 		await expect(counter).toHaveText("1 / 3");
 	});
 });
+
+test.describe("a file changed by another app", () => {
+	test("says so, and reads it again where the reader was", async ({ page }) => {
+		await boot(page, {}, DESKTOP);
+		await page.evaluate(() => {
+			window.__paperwrenTestStamp = 1;
+		});
+		await openFixture(page, "sample.txt");
+		await expect(page.getByTestId("text-scroll")).toBeVisible();
+		const bar = page.getByTestId("file-changed");
+		await page.waitForTimeout(2500);
+		await expect(bar).toHaveCount(0);
+
+		await page.evaluate(() => {
+			window.__paperwrenTestStamp = 2;
+		});
+		await expect(bar).toBeVisible({ timeout: 5000 });
+		await expect(bar).toContainText("This file was changed by another app");
+		// Kept as it is: not asked again until it changes once more.
+		await page.getByTestId("file-changed-dismiss").click();
+		await expect(bar).toHaveCount(0);
+		await page.waitForTimeout(2500);
+		await expect(bar).toHaveCount(0);
+
+		await page.evaluate(() => {
+			window.__paperwrenTestStamp = 3;
+		});
+		await expect(bar).toBeVisible({ timeout: 5000 });
+		await page.getByTestId("file-changed-reload").click();
+		await expect(bar).toHaveCount(0);
+		await expect(page.getByTestId("text-scroll")).toBeVisible();
+		await page.waitForTimeout(2500);
+		await expect(bar).toHaveCount(0);
+	});
+});

@@ -21,6 +21,7 @@ import {
 	useState,
 } from "react";
 import { PasswordDialog } from "./Dialogs";
+import { FileChangedBar, useFileChanged } from "./FileChanged";
 import { ViewerFileContext } from "./FileMenu";
 import { runWorker } from "./runWorker";
 import type { ViewerProps } from "./types";
@@ -135,10 +136,13 @@ export default function ViewerScreen({
 		() => !isLargeFile(request.name, request.size),
 	);
 	// Position at open time; later writes must not re-trigger restores.
-	const [initialPosition] = useState<Position | undefined>(
+	// A reload starts from where the reader had got to.
+	const [initialPosition, setInitialPosition] = useState<Position | undefined>(
 		() =>
 			request.position ?? entries.find((e) => e.id === request.id)?.position,
 	);
+	// Counts the reads of the file: a reload reads it again.
+	const [reads, setReads] = useState(0);
 
 	// A password-protected Office file, waiting for its password.
 	const [locked, setLocked] = useState<{
@@ -223,7 +227,20 @@ export default function ViewerScreen({
 		return () => {
 			alive = false;
 		};
-	}, [request, allowed]);
+	}, [request, allowed, reads]);
+
+	const [changed, keepVersion] = useFileChanged(
+		request.reopen,
+		!!loaded && active,
+		reads,
+	);
+	const reload = () => {
+		setInitialPosition(
+			(was) => entries.find((e) => e.id === request.id)?.position ?? was,
+		);
+		setLoaded(null);
+		setReads((n) => n + 1);
+	};
 
 	const onPosition = useCallback(
 		(p: Position) => setPosition(request.id, p),
@@ -343,6 +360,9 @@ export default function ViewerScreen({
 					/>
 				</Suspense>
 			</ViewerBoundary>
+			{changed && active && (
+				<FileChangedBar onReload={reload} onDismiss={keepVersion} />
+			)}
 		</ViewerFileContext.Provider>
 	);
 }
