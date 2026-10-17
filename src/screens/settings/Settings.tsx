@@ -2,7 +2,7 @@ import { backend, formatBytes } from "@/lib/backend";
 import { isDesktop, isMac, isTauri, ownsFrame, sharesFrame } from "@/lib/env";
 import { LANGUAGES, type LanguageSetting, msg, t, tn } from "@/lib/i18n";
 import { FULLSCREEN_KEYS, keys } from "@/lib/keys";
-import type { PdfZoom } from "@/lib/types";
+import type { PageColor, PdfZoom } from "@/lib/types";
 import { useNav } from "@/state/navigation";
 import { useRecents } from "@/state/recents";
 import { useSettings } from "@/state/settings";
@@ -263,12 +263,18 @@ export function SettingsScreen() {
 							checked={settings.rememberPosition}
 							onChange={(v) => update("rememberPosition", v)}
 						/>
-						<Switch
-							label={t("Dark pages")}
-							hint={t("Invert PDF pages in the Ink theme for night reading")}
-							checked={settings.darkPages}
-							onChange={(v) => update("darkPages", v)}
-							testId="dark-pages"
+						<Segmented<PageColor>
+							label={t("Page colour")}
+							value={settings.pageColor}
+							onChange={(v) => update("pageColor", v)}
+							options={[
+								["original", t("Original")],
+								["sepia", t("Sepia")],
+								["dark", t("Dark")],
+								// Paper's white, Sand's warm page, Ink's dark one.
+								["theme", t("Theme")],
+							]}
+							testId="page-color"
 						/>
 						<Switch
 							label={t("Keep the screen on")}

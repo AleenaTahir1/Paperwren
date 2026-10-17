@@ -1,7 +1,7 @@
 import { isDesktop } from "@/lib/env";
 import { locale, t, tn } from "@/lib/i18n";
 import { PrintCancelled } from "@/lib/print";
-import { isDarkTheme } from "@/lib/settings";
+import { resolvePageColor } from "@/lib/settings";
 import type { Position } from "@/lib/types";
 import { useSettings } from "@/state/settings";
 import {
@@ -25,7 +25,11 @@ import {
 	Search,
 	StretchHorizontal,
 } from "lucide-react";
-import type { PDFDocumentLoadingTask, PDFDocumentProxy } from "pdfjs-dist";
+import type {
+	PDFDocumentLoadingTask,
+	PDFDocumentProxy,
+	PDFPageProxy,
+} from "pdfjs-dist";
 import type {
 	EventBus,
 	PDFFindController,
@@ -49,6 +53,7 @@ import {
 	shellStyles,
 } from "./Shell";
 import { useZoom } from "./hooks";
+import { type Box, findPictures, placePictures } from "./pdfPictures";
 import type { ViewerProps } from "./types";
 
 /**
@@ -99,6 +104,18 @@ const ZOOM_LEVELS = [50, 75, 100, 125, 150, 200, 400];
 /** A file longer than this asks which pages to print before any are
  * drawn; a short one just prints. */
 const ASK_PAGES_OVER = 10;
+
+/** pdf.js's RenderingStates.FINISHED. */
+const RENDERED = 3;
+
+/** What this file reads of pdf.js's page view. */
+interface DrawnPage {
+	id: number;
+	div: HTMLElement;
+	pdfPage?: PDFPageProxy;
+	viewport: { rotation: number };
+	renderingState: number;
+}
 
 /** Which pages a print job takes. */
 type PrintChoice = { from: number; to: number };
@@ -182,6 +199,11 @@ export default function PdfView({
 	const fitWidthRef = useRef<() => number>(() => 1);
 	const spreadRef = useRef(spread);
 	spreadRef.current = spread;
+	const tintedRef = useRef(false);
+	tintedRef.current =
+		resolvePageColor(settings.pageColor, theme) !== "original";
+	/** Leave a drawn page's pictures as they are on coloured paper. */
+	const keepPictures = useRef<(view: DrawnPage) => void>(() => {});
 
 	// --- open the document ---
 	// pdf.js takes the bytes over: they move to its worker rather than
@@ -268,7 +290,7 @@ export default function PdfView({
 		if (!doc || !container.current || !viewerEl.current) return;
 		let cancelled = false;
 		let cleanup = () => {};
-		loadEngine().then(({ viewer }) => {
+		loadEngine().then(({ pdfjs, viewer }) => {
 			if (cancelled || !container.current || !viewerEl.current) return;
 			const eventBus = new viewer.EventBus();
 			const linkService = new viewer.PDFLinkService({
@@ -316,6 +338,25 @@ export default function PdfView({
 				}
 				setRotation(v.pagesRotation);
 			});
+			// The pictures of each page are read once, the first time it is
+			// drawn on coloured paper.
+			const pictures = new Map<number, Promise<Box[]>>();
+			keepPictures.current = (view: DrawnPage) => {
+				const page = view.pdfPage;
+				if (!tintedRef.current || !page) return;
+				let boxes = pictures.get(view.id);
+				if (!boxes) {
+					boxes = findPictures(page, pdfjs.OPS).catch(() => []);
+					pictures.set(view.id, boxes);
+				}
+				boxes.then((found) => {
+					if (!cancelled && view.div.isConnected)
+						placePictures(page, view.div, found, view.viewport.rotation);
+				});
+			};
+			eventBus.on("pagerendered", (e: { source: DrawnPage }) =>
+				keepPictures.current(e.source),
+			);
 			eventBus.on(
 				"pagechanging",
 				(e: { pageNumber: number; pageLabel?: string | null }) => {
@@ -543,7 +584,17 @@ export default function PdfView({
 		return () => window.removeEventListener("keydown", onKey);
 	}, [active, status]);
 
-	const darkPages = settings.darkPages && isDarkTheme(theme);
+	// Pages already drawn when the paper takes a colour get their
+	// pictures back now; the rest as they are drawn.
+	const tinted = tintedRef.current;
+	useEffect(() => {
+		const v = pdfViewer.current;
+		if (!tinted || !v) return;
+		for (let i = 0; i < v.pagesCount; i++) {
+			const view = v.getPageView(i) as DrawnPage | undefined;
+			if (view?.renderingState === RENDERED) keepPictures.current(view);
+		}
+	}, [tinted]);
 	// Two pages side by side need the room: a wide window, a tablet or an
 	// unfolded phone held sideways.
 	const [roomForTwo, setRoomForTwo] = useState(false);
@@ -830,6 +881,7 @@ export default function PdfView({
 			onFind={status === "ready" ? openFind : undefined}
 			menu={status === "ready" ? pdfMenu : undefined}
 			onPrint={doc ? printPages : undefined}
+			paper
 			chromeHidden={chromeHidden && !findOpen}
 			find={
 				findOpen ? (
@@ -874,7 +926,7 @@ export default function PdfView({
 		>
 			<div
 				ref={container}
-				className={`${s.container} ${darkPages ? s.dark : ""}`}
+				className={s.container}
 				data-testid="pdf-scroll"
 				tabIndex={-1}
 			>

@@ -1,8 +1,10 @@
 import { backend } from "@/lib/backend";
 import { isDesktop } from "@/lib/env";
 import type { FileFormat } from "@/lib/formats";
-import { t, uiDir } from "@/lib/i18n";
+import { msg, t, uiDir } from "@/lib/i18n";
+import { PAGE_COLORS, resolvePageColor } from "@/lib/settings";
 import { FIND_EVENT, SELECT_ALL_EVENT } from "@/lib/signals";
+import type { PageColor } from "@/lib/types";
 import { useSettings } from "@/state/settings";
 import { IconButton, Sheet, SheetItem, formatColor, modalOpen } from "@/ui";
 import {
@@ -12,6 +14,7 @@ import {
 	Minus,
 	PanelLeft,
 	Plus,
+	SwatchBook,
 	X,
 } from "lucide-react";
 import {
@@ -65,6 +68,51 @@ function Progress({ of }: { of: RefObject<HTMLElement | null> }) {
 		return () => el.removeEventListener("scroll", update);
 	}, [of]);
 	return <div ref={bar} className={s.progress} aria-hidden="true" />;
+}
+
+export const PAGE_COLOR_NAMES: Record<PageColor, string> = {
+	original: msg("Original"),
+	sepia: msg("Sepia"),
+	dark: msg("Dark"),
+	theme: msg("Match the theme"),
+};
+
+/** The paper the reader chose, as drawn: "original", "sepia" or "dark". */
+export function usePageColor() {
+	const { settings, theme } = useSettings();
+	return resolvePageColor(settings.pageColor, theme);
+}
+
+/** The choice of paper, from a viewer's menu. It is the same setting
+ * as in Settings: a reader who wants dark pages wants them in every
+ * document. */
+function PageColorSheet({
+	open,
+	onClose,
+}: { open: boolean; onClose: () => void }) {
+	const { settings, update } = useSettings();
+	return (
+		<Sheet
+			open={open}
+			title={t("Page colour")}
+			onClose={onClose}
+			testId="page-color-menu"
+		>
+			{PAGE_COLORS.map((value) => (
+				<SheetItem
+					key={value}
+					checked={settings.pageColor === value}
+					onClick={() => {
+						update("pageColor", value);
+						onClose();
+					}}
+					testId={`page-color-${value}`}
+				>
+					{t(PAGE_COLOR_NAMES[value])}
+				</SheetItem>
+			))}
+		</Sheet>
+	);
 }
 
 /** One list beside the document: its pages, its contents, its slides. */
@@ -132,6 +180,7 @@ export function Shell({
 	pageKeys = true,
 	onStep,
 	side,
+	paper = false,
 }: {
 	name: string;
 	format: FileFormat;
@@ -165,8 +214,31 @@ export function Shell({
 	onStep?: (dir: 1 | -1) => void;
 	/** Lists for the panel beside the document (desktop). */
 	side?: SideTab[];
+	/** The document is read on paper whose colour the reader picks. */
+	paper?: boolean;
 }) {
 	const { settings, update } = useSettings();
+	const [colorOpen, setColorOpen] = useState(false);
+	const paperColor = usePageColor();
+	const pageColor = paper ? paperColor : undefined;
+	const fileMenu = paper
+		? (close: () => void) => (
+				<>
+					{menu?.(close)}
+					<SheetItem
+						icon={<SwatchBook size={20} />}
+						hint={t(PAGE_COLOR_NAMES[settings.pageColor])}
+						onClick={() => {
+							close();
+							setColorOpen(true);
+						}}
+						testId="page-color"
+					>
+						{t("Page colour")}
+					</SheetItem>
+				</>
+			)
+		: menu;
 
 	// The window is named after the document, as in every desktop reader.
 	useEffect(() => {
@@ -331,7 +403,7 @@ export function Shell({
 					)}
 					{actions}
 					<FileMenu
-						extra={menu}
+						extra={fileMenu}
 						details={details}
 						onPrint={onPrint}
 						active={active}
@@ -344,13 +416,21 @@ export function Shell({
 				{sideOpen && (
 					<SidePanel tabs={tabs} onClose={() => update("sidePanel", false)} />
 				)}
-				<div ref={main} className={s.main} dir="ltr">
+				<div
+					ref={main}
+					className={s.main}
+					dir="ltr"
+					data-page-color={pageColor}
+				>
 					{children}
 					{hud && (
 						<div ref={hud} className={s.hud} dir={uiDir()} aria-hidden="true" />
 					)}
 				</div>
 			</div>
+			{paper && (
+				<PageColorSheet open={colorOpen} onClose={() => setColorOpen(false)} />
+			)}
 			{(bottom || (pager && !isDesktop)) && (
 				<footer
 					className={`${s.bottom} ${chromeHidden ? s.hiddenBottom : ""}`}

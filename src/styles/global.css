@@ -393,3 +393,53 @@ html.touch ::-webkit-scrollbar {
 		break-inside: avoid;
 	}
 }
+
+/* ---------- Page colour ----------
+ * The paper a document is read on, whatever the app's theme (Settings,
+ * Reading). A viewer marks its paper `.pw-paper` (a PDF's is pdf.js's
+ * own canvas) inside a box carrying data-page-color. Sepia scales the
+ * three channels, so white turns warm and black stays black. Dark turns
+ * the paper over. Either way the pictures on it are turned back, so a
+ * photo is not shown as its negative: sepia is undone by the opposite
+ * scaling, invert(0.9) by invert(1) then contrast(1.25), and a half
+ * turn of hue by another (close, as colours past the screen's range
+ * are cut on the way). */
+[data-page-color="sepia"] :is(.pw-paper, .docx-wrapper > section.docx),
+[data-page-color="sepia"] .pdfViewer .page .canvasWrapper {
+	filter: url("#pw-sepia");
+}
+[data-page-color="dark"] :is(.pw-paper, .docx-wrapper > section.docx),
+[data-page-color="dark"] .pdfViewer .page .canvasWrapper {
+	filter: invert(0.9) hue-rotate(180deg);
+}
+[data-page-color="sepia"]
+	:is(.pw-paper, .docx-wrapper > section.docx)
+	:is(img, video, picture) {
+	filter: url("#pw-sepia-undo");
+}
+[data-page-color="dark"]
+	:is(.pw-paper, .docx-wrapper > section.docx)
+	:is(img, video, picture) {
+	filter: hue-rotate(180deg) invert(1) contrast(1.25);
+}
+/* A PDF's pictures are pixels of the page itself: each is copied, as
+ * it is, over the dark page (see pdfPictures.ts). */
+.pw-pictures {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	display: none;
+}
+[data-page-color="sepia"] .pw-pictures,
+[data-page-color="dark"] .pw-pictures {
+	display: block;
+}
+.pw-picture {
+	position: absolute;
+}
+@media print {
+	:is(.pw-paper, .docx-wrapper > section.docx),
+	:is(.pw-paper, .docx-wrapper > section.docx) :is(img, video, picture) {
+		filter: none !important;
+	}
+}

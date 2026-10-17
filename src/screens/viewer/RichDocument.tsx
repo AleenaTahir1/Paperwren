@@ -156,7 +156,7 @@ export function RichDocument({ doc }: { doc: RichDoc }) {
 		};
 	}, [doc]);
 	return (
-		<article className={`${d.paper} ${d.rich}`}>
+		<article className={`${d.paper} ${d.rich} pw-paper`}>
 			<Blocks blocks={doc.blocks} urls={urls} />
 		</article>
 	);

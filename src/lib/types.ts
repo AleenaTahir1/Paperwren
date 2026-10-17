@@ -57,6 +57,9 @@ export interface RecentEntry {
 export type ResolvedTheme = "light" | "sepia" | "dark";
 export type ThemeSetting = "system" | ResolvedTheme;
 export type PdfZoom = "page-width" | "page-fit" | "auto";
+/** The paper a document is read on: as the file has it, warm, dark,
+ * or whichever of those the app's theme suggests. */
+export type PageColor = "original" | "sepia" | "dark" | "theme";
 
 export interface Settings {
 	theme: ThemeSetting;
@@ -64,7 +67,7 @@ export interface Settings {
 	language: LanguageSetting;
 	pdfZoom: PdfZoom;
 	rememberPosition: boolean;
-	darkPages: boolean;
+	pageColor: PageColor;
 	/** Keep the screen from dimming while a document is open. */
 	keepAwake: boolean;
 	keepRecents: boolean;
@@ -85,7 +88,7 @@ export const DEFAULT_SETTINGS: Settings = {
 	// wide window a readable page instead of a quarter of one.
 	pdfZoom: "auto",
 	rememberPosition: true,
-	darkPages: false,
+	pageColor: "original",
 	keepAwake: false,
 	keepRecents: true,
 	recentsLimit: 50,

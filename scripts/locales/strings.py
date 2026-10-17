@@ -152,8 +152,6 @@ ROWS = [
     ("Automatic", "خودکار", "تلقائي", "自动", "स्वचालित", "Automático", "Automatique"),
     ("Remember where I stopped", "یاد رکھیں میں کہاں رکا تھا", "تذكّر أين توقفت", "记住我读到哪里", "याद रखें मैं कहाँ रुका था", "Recordar dónde me quedé", "Mémoriser où je me suis arrêté"),
     ("Reopen files at the same page and zoom", "فائلیں اسی صفحے اور زوم پر دوبارہ کھولیں", "إعادة فتح الملفات عند الصفحة والتكبير نفسيهما", "以相同的页面和缩放重新打开文件", "फ़ाइलें उसी पृष्ठ और ज़ूम पर फिर खोलें", "Reabrir los archivos en la misma página y con el mismo zoom", "Rouvrir les fichiers à la même page et au même zoom"),
-    ("Dark pages", "گہرے صفحات", "صفحات داكنة", "深色页面", "गहरे पृष्ठ", "Páginas oscuras", "Pages sombres"),
-    ("Invert PDF pages in the Ink theme for night reading", "رات کے مطالعے کے لیے سیاہی تھیم میں PDF صفحات الٹ دیں", "عكس ألوان صفحات PDF في سمة الحبر للقراءة الليلية", "在墨主题中反转 PDF 页面颜色，便于夜间阅读", "रात में पढ़ने के लिए स्याही थीम में PDF पृष्ठों के रंग उलटें", "Invertir las páginas PDF en el tema Tinta para leer de noche", "Inverser les pages PDF dans le thème Encre pour la lecture de nuit"),
     ("Keep the screen on", "اسکرین آن رکھیں", "إبقاء الشاشة مضاءة", "保持屏幕常亮", "स्क्रीन चालू रखें", "Mantener la pantalla encendida", "Garder l'écran allumé"),
     ("While a document is open, the screen won't dim or lock", "جب تک دستاویز کھلی ہو، اسکرین مدھم یا لاک نہیں ہوگی", "ما دام المستند مفتوحًا، لن تخفت الشاشة ولن تُقفل", "文档打开时，屏幕不会变暗或锁定", "जब तक दस्तावेज़ खुला है, स्क्रीन न धीमी होगी न लॉक होगी", "Mientras haya un documento abierto, la pantalla no se atenuará ni se bloqueará", "Tant qu'un document est ouvert, l'écran ne s'assombrit pas et ne se verrouille pas"),
     ("Files", "فائلیں", "الملفات", "文件", "फ़ाइलें", "Archivos", "Fichiers"),
@@ -389,4 +387,10 @@ ROWS = [
     ("Last page to print", "پرنٹ کرنے کا آخری صفحہ", "آخر صفحة للطباعة", "要打印的最后一页", "प्रिंट करने का अंतिम पृष्ठ", "Última página que imprimir", "Dernière page à imprimer"),
     ("to", "تا", "إلى", "至", "से", "a", "à"),
     ("Print these", "یہ پرنٹ کریں", "طباعة هذه", "打印这些页", "इन्हें प्रिंट करें", "Imprimir estas", "Imprimer celles-ci"),
+    # ---- reading: page colour ----
+    ("Page colour", "صفحے کا رنگ", "لون الصفحة", "页面颜色", "पृष्ठ का रंग", "Color de página", "Couleur de la page"),
+    ("Original", "اصل", "الأصلي", "原始", "मूल", "Original", "D'origine"),
+    ("Sepia", "سیپیا", "سيبيا", "棕褐色", "सीपिया", "Sepia", "Sépia"),
+    ("Dark", "گہرا", "داكن", "深色", "गहरा", "Oscuro", "Sombre"),
+    ("Match the theme", "تھیم کے مطابق", "حسب السمة", "跟随主题", "थीम के अनुसार", "Según el tema", "Selon le thème"),
 ]

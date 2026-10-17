@@ -264,6 +264,7 @@ export default function DocxView({
 			hud={hud}
 			progressOf={scroller}
 			side={side}
+			paper
 			onStep={paged ? (dir) => goTo(page + dir) : undefined}
 			chromeHidden={chromeHidden && !find.open}
 			onFind={status === "ready" ? find.start : undefined}

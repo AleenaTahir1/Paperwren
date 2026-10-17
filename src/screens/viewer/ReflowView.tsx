@@ -175,6 +175,7 @@ export default function ReflowView(props: ViewerProps) {
 			hud={hud}
 			progressOf={scroller}
 			side={side}
+			paper
 			chromeHidden={chromeHidden && !find.open}
 			onFind={doc ? find.start : undefined}
 			menu={
@@ -253,7 +254,7 @@ export default function ReflowView(props: ViewerProps) {
 								{doc.kind === "rich" ? (
 									<RichDocument doc={doc} />
 								) : doc.kind === "document" ? (
-									<article className={d.paper}>
+									<article className={`${d.paper} pw-paper`}>
 										<Blocks blocks={doc.blocks} />
 									</article>
 								) : (

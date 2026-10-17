@@ -154,9 +154,6 @@ export const ar: Table = {
 	"Remember where I stopped": "تذكّر أين توقفت",
 	"Reopen files at the same page and zoom":
 		"إعادة فتح الملفات عند الصفحة والتكبير نفسيهما",
-	"Dark pages": "صفحات داكنة",
-	"Invert PDF pages in the Ink theme for night reading":
-		"عكس ألوان صفحات PDF في سمة الحبر للقراءة الليلية",
 	"Keep the screen on": "إبقاء الشاشة مضاءة",
 	"While a document is open, the screen won't dim or lock":
 		"ما دام المستند مفتوحًا، لن تخفت الشاشة ولن تُقفل",
@@ -411,4 +408,9 @@ export const ar: Table = {
 	"Last page to print": "آخر صفحة للطباعة",
 	to: "إلى",
 	"Print these": "طباعة هذه",
+	"Page colour": "لون الصفحة",
+	Original: "الأصلي",
+	Sepia: "سيبيا",
+	Dark: "داكن",
+	"Match the theme": "حسب السمة",
 };

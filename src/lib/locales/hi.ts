@@ -153,9 +153,6 @@ export const hi: Table = {
 	Automatic: "स्वचालित",
 	"Remember where I stopped": "याद रखें मैं कहाँ रुका था",
 	"Reopen files at the same page and zoom": "फ़ाइलें उसी पृष्ठ और ज़ूम पर फिर खोलें",
-	"Dark pages": "गहरे पृष्ठ",
-	"Invert PDF pages in the Ink theme for night reading":
-		"रात में पढ़ने के लिए स्याही थीम में PDF पृष्ठों के रंग उलटें",
 	"Keep the screen on": "स्क्रीन चालू रखें",
 	"While a document is open, the screen won't dim or lock":
 		"जब तक दस्तावेज़ खुला है, स्क्रीन न धीमी होगी न लॉक होगी",
@@ -406,4 +403,9 @@ export const hi: Table = {
 	"Last page to print": "प्रिंट करने का अंतिम पृष्ठ",
 	to: "से",
 	"Print these": "इन्हें प्रिंट करें",
+	"Page colour": "पृष्ठ का रंग",
+	Original: "मूल",
+	Sepia: "सीपिया",
+	Dark: "गहरा",
+	"Match the theme": "थीम के अनुसार",
 };

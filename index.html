@@ -12,6 +12,23 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- Sepia pages (global.css, "Page colour"): each channel scaled, so
+         white paper turns warm and black ink stays black; the second
+         scales a picture on that paper back. -->
+    <svg width="0" height="0" aria-hidden="true" style="position: absolute">
+      <filter id="pw-sepia" color-interpolation-filters="sRGB">
+        <feColorMatrix
+          type="matrix"
+          values="0.957 0 0 0 0  0 0.91 0 0 0  0 0 0.8 0 0  0 0 0 1 0"
+        />
+      </filter>
+      <filter id="pw-sepia-undo" color-interpolation-filters="sRGB">
+        <feColorMatrix
+          type="matrix"
+          values="1.045 0 0 0 0  0 1.099 0 0 0  0 0 1.25 0 0  0 0 0 1 0"
+        />
+      </filter>
+    </svg>
     <script>
       // Paperwren open-with bridge (Android). MainActivity evaluates
       // window.__paperwrenOpenFile once the webview exists; payloads

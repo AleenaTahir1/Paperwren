@@ -16,9 +16,6 @@
 	margin: 0 auto 6px;
 	box-shadow: var(--shadow-2);
 }
-.dark :global(.pdfViewer .page .canvasWrapper) {
-	filter: invert(0.88) hue-rotate(180deg);
-}
 .outline {
 	display: block;
 	width: 100%;

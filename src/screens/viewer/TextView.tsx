@@ -17,6 +17,7 @@ import {
 	ZoomControl,
 	percentPresets,
 	shellStyles,
+	usePageColor,
 } from "./Shell";
 import s from "./Text.module.css";
 import { useScrollMemory, useZoom, useZoomLevel } from "./hooks";
@@ -108,6 +109,9 @@ export default function TextView({
 	useScrollMemory(scroller, true, position, onPosition, zoom);
 
 	const wrap = settings.wrapText;
+	// Text is drawn in the app's own colours; a page colour of its own
+	// lends it those of the theme that has it.
+	const paper = usePageColor();
 	return (
 		<Shell
 			name={name}
@@ -116,6 +120,7 @@ export default function TextView({
 			active={active}
 			hud={hud}
 			progressOf={scroller}
+			paper
 			chromeHidden={chromeHidden && !find.open}
 			onFind={startFind}
 			menu={(close) => (
@@ -222,7 +227,12 @@ export default function TextView({
 				) : undefined
 			}
 		>
-			<div ref={scroller} className={s.wrap} data-testid="text-scroll">
+			<div
+				ref={scroller}
+				className={s.wrap}
+				data-theme={paper === "original" ? undefined : paper}
+				data-testid="text-scroll"
+			>
 				<div ref={stage} className={`${s.stage} ${wrap ? "" : s.wide}`}>
 					<div ref={content} style={{ zoom }}>
 						{html !== null ? (

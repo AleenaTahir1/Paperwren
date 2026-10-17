@@ -158,9 +158,6 @@ export const es: Table = {
 	"Remember where I stopped": "Recordar dónde me quedé",
 	"Reopen files at the same page and zoom":
 		"Reabrir los archivos en la misma página y con el mismo zoom",
-	"Dark pages": "Páginas oscuras",
-	"Invert PDF pages in the Ink theme for night reading":
-		"Invertir las páginas PDF en el tema Tinta para leer de noche",
 	"Keep the screen on": "Mantener la pantalla encendida",
 	"While a document is open, the screen won't dim or lock":
 		"Mientras haya un documento abierto, la pantalla no se atenuará ni se bloqueará",
@@ -419,4 +416,9 @@ export const es: Table = {
 	"Last page to print": "Última página que imprimir",
 	to: "a",
 	"Print these": "Imprimir estas",
+	"Page colour": "Color de página",
+	Original: "Original",
+	Sepia: "Sepia",
+	Dark: "Oscuro",
+	"Match the theme": "Según el tema",
 };

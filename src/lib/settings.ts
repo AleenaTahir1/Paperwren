@@ -1,6 +1,7 @@
 import { LANGUAGES, type LanguageSetting } from "./i18n";
 import {
 	DEFAULT_SETTINGS,
+	type PageColor,
 	type PdfZoom,
 	type ResolvedTheme,
 	type Settings,
@@ -21,6 +22,17 @@ export function isDarkTheme(theme: ResolvedTheme): boolean {
 	return theme === "dark";
 }
 const ZOOMS: PdfZoom[] = ["page-width", "page-fit", "auto"];
+export const PAGE_COLORS: PageColor[] = ["original", "sepia", "dark", "theme"];
+
+/** The paper actually drawn: "theme" is Paper's white, Sand's warm
+ * page or Ink's dark one. */
+export function resolvePageColor(
+	setting: PageColor,
+	theme: ResolvedTheme,
+): Exclude<PageColor, "theme"> {
+	if (setting !== "theme") return setting;
+	return theme === "dark" ? "dark" : theme === "sepia" ? "sepia" : "original";
+}
 const LIMITS = [20, 50, 100, 500];
 
 /** Validate stored settings field by field; unknown values fall back
@@ -48,7 +60,13 @@ export function normalizeSettings(value: unknown): Settings {
 			raw.rememberPosition,
 			DEFAULT_SETTINGS.rememberPosition,
 		),
-		darkPages: bool(raw.darkPages, DEFAULT_SETTINGS.darkPages),
+		// "Dark pages" (before 1.2) darkened PDFs in the Ink theme only:
+		// the paper that follows the theme does that and more.
+		pageColor: pick(
+			raw.pageColor ?? (raw.darkPages === true ? "theme" : undefined),
+			PAGE_COLORS,
+			DEFAULT_SETTINGS.pageColor,
+		),
 		keepAwake: bool(raw.keepAwake, DEFAULT_SETTINGS.keepAwake),
 		keepRecents: bool(raw.keepRecents, DEFAULT_SETTINGS.keepRecents),
 		recentsLimit: pick(raw.recentsLimit, LIMITS, DEFAULT_SETTINGS.recentsLimit),

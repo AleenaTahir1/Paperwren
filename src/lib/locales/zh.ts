@@ -153,9 +153,6 @@ export const zh: Table = {
 	Automatic: "自动",
 	"Remember where I stopped": "记住我读到哪里",
 	"Reopen files at the same page and zoom": "以相同的页面和缩放重新打开文件",
-	"Dark pages": "深色页面",
-	"Invert PDF pages in the Ink theme for night reading":
-		"在墨主题中反转 PDF 页面颜色，便于夜间阅读",
 	"Keep the screen on": "保持屏幕常亮",
 	"While a document is open, the screen won't dim or lock":
 		"文档打开时，屏幕不会变暗或锁定",
@@ -393,4 +390,9 @@ export const zh: Table = {
 	"Last page to print": "要打印的最后一页",
 	to: "至",
 	"Print these": "打印这些页",
+	"Page colour": "页面颜色",
+	Original: "原始",
+	Sepia: "棕褐色",
+	Dark: "深色",
+	"Match the theme": "跟随主题",
 };

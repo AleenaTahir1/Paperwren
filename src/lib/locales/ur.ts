@@ -155,9 +155,6 @@ export const ur: Table = {
 	"Remember where I stopped": "یاد رکھیں میں کہاں رکا تھا",
 	"Reopen files at the same page and zoom":
 		"فائلیں اسی صفحے اور زوم پر دوبارہ کھولیں",
-	"Dark pages": "گہرے صفحات",
-	"Invert PDF pages in the Ink theme for night reading":
-		"رات کے مطالعے کے لیے سیاہی تھیم میں PDF صفحات الٹ دیں",
 	"Keep the screen on": "اسکرین آن رکھیں",
 	"While a document is open, the screen won't dim or lock":
 		"جب تک دستاویز کھلی ہو، اسکرین مدھم یا لاک نہیں ہوگی",
@@ -411,4 +408,9 @@ export const ur: Table = {
 	"Last page to print": "پرنٹ کرنے کا آخری صفحہ",
 	to: "تا",
 	"Print these": "یہ پرنٹ کریں",
+	"Page colour": "صفحے کا رنگ",
+	Original: "اصل",
+	Sepia: "سیپیا",
+	Dark: "گہرا",
+	"Match the theme": "تھیم کے مطابق",
 };
