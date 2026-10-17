@@ -3,6 +3,7 @@ import { locale, t, tn } from "@/lib/i18n";
 import { PrintCancelled } from "@/lib/print";
 import { resolvePageColor } from "@/lib/settings";
 import type { Position } from "@/lib/types";
+import { useBackClose } from "@/state/navigation";
 import { useSettings } from "@/state/settings";
 import {
 	Button,
@@ -16,7 +17,10 @@ import {
 	toast,
 } from "@/ui";
 import {
+	ArrowLeft,
 	BookOpen,
+	BookOpenText,
+	GalleryHorizontal,
 	LayoutGrid,
 	ListTree,
 	Maximize,
@@ -33,6 +37,7 @@ import type {
 import type {
 	EventBus,
 	PDFFindController,
+	PDFHistory,
 	PDFLinkService,
 	PDFViewer,
 } from "pdfjs-dist/web/pdf_viewer.mjs";
@@ -93,9 +98,27 @@ const MAX_SCALE = 8;
  * fields, and what a reader typed there would be neither saved nor
  * printed: Paperwren shows documents, it does not fill them in. */
 const ANNOTATIONS_SHOWN = 1;
-/** pdf.js's SpreadMode: one page across, or two with odd pages first. */
+/** pdf.js's SpreadMode: one page across, or two with odd pages first,
+ * or two after a first page on its own (a book's cover). */
 const SPREAD_NONE = 0;
 const SPREAD_ODD = 1;
+const SPREAD_EVEN = 2;
+/** pdf.js's ScrollMode: pages down a long scroll, in a row, or one
+ * (or one pair) at a time. */
+const SCROLL_DOWN = 0;
+const SCROLL_ACROSS = 1;
+const SCROLL_ONE = 3;
+/** pdf.js lays no pairs in a row: pairs are shown one at a time. */
+const scrollMode = (across: boolean, pairs: boolean) =>
+	across ? (pairs ? SCROLL_ONE : SCROLL_ACROSS) : SCROLL_DOWN;
+/** A swipe this long, mostly sideways, turns a page shown on its own. */
+const SWIPE = 60;
+/** Where a followed link was left from, to go back to. */
+type Spot = { page: number; top: number; left: number };
+/** The steps kept to go back through. */
+const TRAIL_MAX = 50;
+/** How long "Back to page 3" stays on show after a link is followed. */
+const TRAIL_HINT_MS = 8000;
 /** The largest bitmap a page is drawn into before pdf.js stretches a
  * smaller one. A desktop has the memory for sharp pages at high zoom;
  * a phone is held to half of that. */
@@ -150,7 +173,7 @@ export default function PdfView({
 	onClose,
 	active,
 }: ViewerProps) {
-	const { settings, theme } = useSettings();
+	const { settings, theme, update } = useSettings();
 	const container = useRef<HTMLDivElement>(null);
 	const viewerEl = useRef<HTMLDivElement>(null);
 	const hud = useRef<HTMLDivElement>(null);
@@ -176,6 +199,16 @@ export default function PdfView({
 			settings.rememberPosition &&
 			position.spread === true,
 	);
+	const [cover, setCover] = useState(
+		() =>
+			position?.kind === "pdf" &&
+			settings.rememberPosition &&
+			position.cover === true,
+	);
+	const across = settings.pdfFlow === "across";
+	// A page that fits the screen snaps into place after a swipe; a
+	// zoomed one is panned freely.
+	const [fits, setFits] = useState(true);
 	const [chromeHidden, setChromeHidden] = useState(false);
 	const [outline, setOutline] = useState<Outline[] | null>(null);
 	const [outlineOpen, setOutlineOpen] = useState(false);
@@ -199,6 +232,19 @@ export default function PdfView({
 	const fitWidthRef = useRef<() => number>(() => 1);
 	const spreadRef = useRef(spread);
 	spreadRef.current = spread;
+	const coverRef = useRef(cover);
+	coverRef.current = cover;
+	const acrossRef = useRef(across);
+	acrossRef.current = across;
+	/** Where the reader is now, and the places links were followed from
+	 * (and, after going back, to). */
+	const here = useRef<Spot | null>(null);
+	const trail = useRef<{ back: Spot[]; forward: Spot[] }>({
+		back: [],
+		forward: [],
+	});
+	const [steps, setSteps] = useState({ back: 0, forward: 0 });
+	const [trailHint, setTrailHint] = useState(false);
 	const tintedRef = useRef(false);
 	tintedRef.current =
 		resolvePageColor(settings.pageColor, theme) !== "original";
@@ -319,9 +365,32 @@ export default function PdfView({
 			bus.current = eventBus;
 			links.current = linkService;
 
+			// Following a link (or a contents entry) remembers where it was
+			// followed from: Back returns there, as in a browser.
+			const history = {
+				pushCurrentPosition() {
+					const spot = here.current;
+					if (!spot) return;
+					const { back } = trail.current;
+					trail.current = {
+						back: [...back, spot].slice(-TRAIL_MAX),
+						forward: [],
+					};
+					setSteps({ back: trail.current.back.length, forward: 0 });
+					setTrailHint(true);
+				},
+				push() {},
+				pushPage() {},
+				back: () => stepRef.current(-1),
+				forward: () => stepRef.current(1),
+			};
+			linkService.setHistory(history as unknown as PDFHistory);
+
 			eventBus.on("pagesinit", () => {
 				const saved = positionRef.current;
-				if (spreadRef.current) v.spreadMode = SPREAD_ODD;
+				v.scrollMode = scrollMode(acrossRef.current, spreadRef.current);
+				if (spreadRef.current)
+					v.spreadMode = coverRef.current ? SPREAD_EVEN : SPREAD_ODD;
 				if (saved?.kind === "pdf" && rememberRef.current) {
 					v.pagesRotation = saved.rotation;
 					const numeric = /^[\d.]+$/.test(saved.scale);
@@ -334,7 +403,10 @@ export default function PdfView({
 						allowNegativeOffset: true,
 					});
 				} else {
-					v.currentScaleValue = defaultZoom.current;
+					// Pages in a row are read a whole page at a time.
+					v.currentScaleValue = acrossRef.current
+						? "page-fit"
+						: defaultZoom.current;
 				}
 				setRotation(v.pagesRotation);
 			});
@@ -399,6 +471,12 @@ export default function PdfView({
 					};
 				}) => {
 					const loc = e.location;
+					if (loc)
+						here.current = {
+							page: loc.pageNumber,
+							top: loc.top,
+							left: loc.left,
+						};
 					if (!loc || !rememberRef.current) return;
 					window.clearTimeout(saveTimer);
 					saveTimer = window.setTimeout(() => {
@@ -410,6 +488,7 @@ export default function PdfView({
 							left: loc.left,
 							rotation: loc.rotation,
 							...(spreadRef.current ? { spread: true } : {}),
+							...(spreadRef.current && coverRef.current ? { cover: true } : {}),
 						};
 						positionRef.current = pos;
 						onPositionRef.current(pos);
@@ -503,7 +582,16 @@ export default function PdfView({
 			(pdfViewer.current?.getPageView(pdfViewer.current.currentPageNumber - 1)
 				?.div as HTMLElement | undefined) ??
 			null,
-		onTap: () => setChromeHidden((h) => !h),
+		onTap: (_target, x) => {
+			// Pages in a row turn with a tap on either side.
+			const box = container.current?.getBoundingClientRect();
+			if (acrossRef.current && box) {
+				const at = (x - box.left) / box.width;
+				if (at < 0.25) return turn(-1);
+				if (at > 0.75) return turn(1);
+			}
+			setChromeHidden((h) => !h);
+		},
 		onDoubleTap: (x, y) => {
 			const v = pdfViewer.current;
 			if (!v) return;
@@ -554,6 +642,14 @@ export default function PdfView({
 		const v = pdfViewer.current;
 		if (v && n >= 1 && n <= pages) v.currentPageNumber = n;
 	};
+	/** The next or the previous page, or pair of pages. */
+	const turn = (dir: 1 | -1) => {
+		const v = pdfViewer.current;
+		if (dir > 0) v?.nextPage();
+		else v?.previousPage();
+	};
+	const turnRef = useRef(turn);
+	turnRef.current = turn;
 	const rotate = (by: 90 | -90) => {
 		const v = pdfViewer.current;
 		if (v) v.pagesRotation = (v.pagesRotation + by + 360) % 360;
@@ -563,10 +659,151 @@ export default function PdfView({
 		if (!v) return;
 		const next = !spreadRef.current;
 		setSpread(next);
-		v.spreadMode = next ? SPREAD_ODD : SPREAD_NONE;
+		v.scrollMode = scrollMode(acrossRef.current, next);
+		v.spreadMode = next
+			? coverRef.current
+				? SPREAD_EVEN
+				: SPREAD_ODD
+			: SPREAD_NONE;
 		// A pair needs the width one page had: fit it again.
-		v.currentScaleValue = "page-width";
+		v.currentScaleValue = acrossRef.current ? "page-fit" : "page-width";
 	};
+	const toggleCover = () => {
+		const v = pdfViewer.current;
+		if (!v) return;
+		const next = !coverRef.current;
+		setCover(next);
+		v.spreadMode = next ? SPREAD_EVEN : SPREAD_ODD;
+	};
+
+	// The pages change from a scroll to a row, or back, while reading.
+	const shownAcross = useRef(across);
+	useEffect(() => {
+		const v = pdfViewer.current;
+		if (!v || shownAcross.current === across) return;
+		shownAcross.current = across;
+		const at = v.currentPageNumber;
+		v.scrollMode = scrollMode(across, spreadRef.current);
+		v.currentScaleValue = across ? "page-fit" : defaultZoom.current;
+		v.currentPageNumber = at;
+	}, [across]);
+
+	// Whether the page on show fits the screen (then a swipe snaps to
+	// the next one).
+	const measureFit = useCallback(() => {
+		const v = pdfViewer.current;
+		const box = container.current;
+		const view = v?.getPageView(v.currentPageNumber - 1) as
+			| { width: number }
+			| undefined;
+		if (!v || !box || !view?.width) return;
+		const across = v.spreadMode === SPREAD_NONE ? 1 : 2;
+		setFits(view.width * across <= box.clientWidth + 2);
+	}, []);
+	useEffect(() => {
+		measureFit();
+	}, [scale, measureFit]);
+
+	// Back through the links followed, and forward again.
+	const step = (dir: -1 | 1) => {
+		const v = pdfViewer.current;
+		const { back, forward } = trail.current;
+		const from = dir < 0 ? back : forward;
+		const to = from[from.length - 1];
+		if (!v || !to) return;
+		const now = here.current;
+		trail.current =
+			dir < 0
+				? {
+						back: back.slice(0, -1),
+						forward: now ? [...forward, now] : forward,
+					}
+				: {
+						back: now ? [...back, now] : back,
+						forward: forward.slice(0, -1),
+					};
+		setSteps({
+			back: trail.current.back.length,
+			forward: trail.current.forward.length,
+		});
+		v.scrollPageIntoView({
+			pageNumber: Math.min(Math.max(1, to.page), v.pagesCount),
+			destArray: [null, { name: "XYZ" }, to.left, to.top, null],
+			allowNegativeOffset: true,
+		});
+	};
+	const stepRef = useRef(step);
+	stepRef.current = step;
+	// System Back (and Alt+Left, a mouse's back button) retraces a link
+	// before it leaves the document; the arrow in the bar still closes it.
+	useBackClose("pdf-trail", active && steps.back > 0, () =>
+		stepRef.current(-1),
+	);
+	useEffect(() => {
+		if (!trailHint) return;
+		const timer = window.setTimeout(() => setTrailHint(false), TRAIL_HINT_MS);
+		return () => window.clearTimeout(timer);
+	}, [trailHint]);
+	// Alt+Right goes forward again.
+	useEffect(() => {
+		if (!active || !steps.forward) return;
+		const onKey = (e: KeyboardEvent) => {
+			if (!e.altKey || e.ctrlKey || e.metaKey || e.key !== "ArrowRight") return;
+			e.preventDefault();
+			stepRef.current(1);
+		};
+		window.addEventListener("keydown", onKey);
+		return () => window.removeEventListener("keydown", onKey);
+	}, [active, steps.forward]);
+
+	// A mouse wheel turns pages in a row when there is nothing to scroll
+	// down to; a trackpad's small steps add up to a page.
+	useEffect(() => {
+		const el = container.current;
+		if (!el || !across || status !== "ready") return;
+		let sum = 0;
+		let last = 0;
+		const onWheel = (e: WheelEvent) => {
+			if (e.ctrlKey || e.metaKey) return;
+			if (Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
+			// A page taller than the screen scrolls down first.
+			if (el.scrollHeight > el.clientHeight + 8) return;
+			e.preventDefault();
+			if (e.timeStamp - last > 400) sum = 0;
+			last = e.timeStamp;
+			sum += e.deltaY;
+			if (Math.abs(sum) < 60) return;
+			turnRef.current(Math.sign(sum) as 1 | -1);
+			sum = 0;
+		};
+		// Pages shown one (or one pair) at a time do not scroll: a swipe
+		// across turns them. Pages in a row scroll and snap on their own.
+		let start: { x: number; y: number } | null = null;
+		const onStart = (e: TouchEvent) => {
+			start =
+				e.touches.length === 1
+					? { x: e.touches[0].clientX, y: e.touches[0].clientY }
+					: null;
+		};
+		const onEnd = (e: TouchEvent) => {
+			const from = start;
+			start = null;
+			const touch = e.changedTouches[0];
+			if (!from || !touch || el.scrollWidth > el.clientWidth + 1) return;
+			const dx = touch.clientX - from.x;
+			const dy = touch.clientY - from.y;
+			if (Math.abs(dx) > SWIPE && Math.abs(dx) > 2 * Math.abs(dy))
+				turnRef.current(dx < 0 ? 1 : -1);
+		};
+		el.addEventListener("wheel", onWheel, { passive: false });
+		el.addEventListener("touchstart", onStart, { passive: true });
+		el.addEventListener("touchend", onEnd);
+		return () => {
+			el.removeEventListener("wheel", onWheel);
+			el.removeEventListener("touchstart", onStart);
+			el.removeEventListener("touchend", onEnd);
+		};
+	}, [across, status]);
 
 	// Ctrl+] and Ctrl+[ turn the pages, as in other desktop readers.
 	const rotateRef = useRef(rotate);
@@ -601,13 +838,19 @@ export default function PdfView({
 	useEffect(() => {
 		const el = container.current;
 		if (!el) return;
-		const measure = () =>
+		const measure = () => {
 			setRoomForTwo(el.clientWidth >= 700 && el.clientWidth > el.clientHeight);
+			measureFit();
+		};
 		measure();
 		const ro = new ResizeObserver(measure);
 		ro.observe(el);
 		return () => ro.disconnect();
-	}, []);
+	}, [measureFit]);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: measured again on each page
+	useEffect(() => {
+		measureFit();
+	}, [page, measureFit]);
 
 	const pdfMenu = (close: () => void) => (
 		<>
@@ -633,6 +876,17 @@ export default function PdfView({
 					</SheetItem>
 				</>
 			)}
+			<SheetItem
+				icon={<GalleryHorizontal size={20} />}
+				checked={across}
+				onClick={() => {
+					update("pdfFlow", across ? "down" : "across");
+					close();
+				}}
+				testId="pdf-across"
+			>
+				{t("Scroll pages sideways")}
+			</SheetItem>
 			{(roomForTwo || spread) && (
 				<SheetItem
 					icon={<BookOpen size={20} />}
@@ -644,6 +898,19 @@ export default function PdfView({
 					testId="pdf-spread"
 				>
 					{t("Two pages side by side")}
+				</SheetItem>
+			)}
+			{spread && (
+				<SheetItem
+					icon={<BookOpenText size={20} />}
+					checked={cover}
+					onClick={() => {
+						toggleCover();
+						close();
+					}}
+					testId="pdf-cover"
+				>
+					{t("First page on its own")}
 				</SheetItem>
 			)}
 			<SheetItem
@@ -877,7 +1144,9 @@ export default function PdfView({
 			pager={pager}
 			side={side}
 			details={details}
-			onStep={(dir) => goTo(page + dir)}
+			onStep={turn}
+			turnPages={across}
+			onEdge={across ? (end) => goTo(end ? pages : 1) : undefined}
 			onFind={status === "ready" ? openFind : undefined}
 			menu={status === "ready" ? pdfMenu : undefined}
 			onPrint={doc ? printPages : undefined}
@@ -926,7 +1195,9 @@ export default function PdfView({
 		>
 			<div
 				ref={container}
-				className={s.container}
+				className={`${s.container} ${across && fits ? s.snap : ""}`}
+				data-flow={across ? "across" : undefined}
+				data-one={across && spread ? "" : undefined}
 				data-testid="pdf-scroll"
 				tabIndex={-1}
 			>
@@ -935,8 +1206,21 @@ export default function PdfView({
 			<Scrubber
 				of={container}
 				label={`${page} / ${pages}`}
-				enabled={status === "ready"}
+				enabled={status === "ready" && !across}
 			/>
+			{steps.back > 0 && trailHint && (
+				<button
+					type="button"
+					className={s.trail}
+					onClick={() => step(-1)}
+					data-testid="pdf-trail"
+				>
+					<ArrowLeft size={16} className="pw-flip" />
+					{t("Back to page {n}", {
+						n: trail.current.back[trail.current.back.length - 1]?.page ?? 1,
+					})}
+				</button>
+			)}
 
 			{status === "loading" && (
 				<StateView>

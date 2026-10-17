@@ -2,7 +2,7 @@ import { backend, formatBytes } from "@/lib/backend";
 import { isDesktop, isMac, isTauri, ownsFrame, sharesFrame } from "@/lib/env";
 import { LANGUAGES, type LanguageSetting, msg, t, tn } from "@/lib/i18n";
 import { FULLSCREEN_KEYS, keys } from "@/lib/keys";
-import type { PageColor, PdfZoom } from "@/lib/types";
+import type { PageColor, PdfFlow, PdfZoom } from "@/lib/types";
 import { useNav } from "@/state/navigation";
 import { useRecents } from "@/state/recents";
 import { useSettings } from "@/state/settings";
@@ -256,6 +256,16 @@ export function SettingsScreen() {
 								["auto", t("Automatic")],
 							]}
 							testId="pdf-zoom"
+						/>
+						<Segmented<PdfFlow>
+							label={t("PDF pages scroll")}
+							value={settings.pdfFlow}
+							onChange={(v) => update("pdfFlow", v)}
+							options={[
+								["down", t("Down")],
+								["across", t("Sideways")],
+							]}
+							testId="pdf-flow"
 						/>
 						<Switch
 							label={t("Remember where I stopped")}

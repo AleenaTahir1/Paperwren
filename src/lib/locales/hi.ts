@@ -408,4 +408,10 @@ export const hi: Table = {
 	Sepia: "सीपिया",
 	Dark: "गहरा",
 	"Match the theme": "थीम के अनुसार",
+	"Scroll pages sideways": "पृष्ठों को बगल में स्क्रॉल करें",
+	"First page on its own": "पहला पृष्ठ अलग",
+	"Back to page {n}": "पृष्ठ {n} पर वापस",
+	"PDF pages scroll": "PDF पृष्ठ स्क्रॉल",
+	Down: "नीचे",
+	Sideways: "बगल में",
 };

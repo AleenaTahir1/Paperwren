@@ -130,6 +130,12 @@ describe("cleanPosition", () => {
 		expect(cleanPosition({ ...pdf, spread: "yes" })).not.toHaveProperty(
 			"spread",
 		);
+		expect(cleanPosition({ ...pdf, spread: true, cover: true })).toMatchObject({
+			spread: true,
+			cover: true,
+		});
+		// A cover only means something beside a second page.
+		expect(cleanPosition({ ...pdf, cover: true })).not.toHaveProperty("cover");
 		expect(cleanPosition({ kind: "nope" })).toBeUndefined();
 	});
 });

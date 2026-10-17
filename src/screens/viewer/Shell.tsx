@@ -51,6 +51,9 @@ function Title({ name, format }: { name: string; format: FileFormat }) {
 	);
 }
 
+/** Pages laid in a row (data-flow="across") are read sideways. */
+const across = (el: HTMLElement) => el.dataset.flow === "across";
+
 /** How far through the document the reader is: a hairline under the
  * top bar, driven straight from scroll events (no re-renders). */
 function Progress({ of }: { of: RefObject<HTMLElement | null> }) {
@@ -59,8 +62,12 @@ function Progress({ of }: { of: RefObject<HTMLElement | null> }) {
 		const el = of.current;
 		if (!el) return;
 		const update = () => {
-			const range = el.scrollHeight - el.clientHeight;
-			const ratio = range > 1 ? Math.min(1, el.scrollTop / range) : 0;
+			const sideways = across(el);
+			const range = sideways
+				? el.scrollWidth - el.clientWidth
+				: el.scrollHeight - el.clientHeight;
+			const at = sideways ? Math.abs(el.scrollLeft) : el.scrollTop;
+			const ratio = range > 1 ? Math.min(1, at / range) : 0;
 			if (bar.current) bar.current.style.transform = `scaleX(${ratio})`;
 		};
 		update();
@@ -113,6 +120,12 @@ function PageColorSheet({
 			))}
 		</Sheet>
 	);
+}
+
+/** To the start or the end of a document, down or along its row. */
+function toEnd(el: HTMLElement, end: boolean) {
+	if (across(el)) el.scrollLeft = end ? el.scrollWidth : 0;
+	else el.scrollTop = end ? el.scrollHeight : 0;
 }
 
 /** One list beside the document: its pages, its contents, its slides. */
@@ -179,6 +192,8 @@ export function Shell({
 	active,
 	pageKeys = true,
 	onStep,
+	turnPages = false,
+	onEdge,
 	side,
 	paper = false,
 }: {
@@ -212,6 +227,12 @@ export function Shell({
 	pageKeys?: boolean;
 	/** Left and Right turn a whole page, when the page fits the width. */
 	onStep?: (dir: 1 | -1) => void;
+	/** Space, Page Up and Page Down turn a page too (`onStep`), for
+	 * pages laid in a row. */
+	turnPages?: boolean;
+	/** Home and End (and Ctrl with them) go to the first or the last
+	 * page this way, where scrolling does not reach them. */
+	onEdge?: (end: boolean) => void;
 	/** Lists for the panel beside the document (desktop). */
 	side?: SideTab[];
 	/** The document is read on paper whose colour the reader picks. */
@@ -261,6 +282,10 @@ export function Shell({
 	// a click into it first: Space, Page Up / Down, Home, End, the arrows.
 	const stepRef = useRef(onStep);
 	stepRef.current = onStep;
+	const turnRef = useRef(turnPages);
+	turnRef.current = turnPages;
+	const edgeRef = useRef(onEdge);
+	edgeRef.current = onEdge;
 	useEffect(() => {
 		if (!active) return;
 		const onKey = (e: KeyboardEvent) => {
@@ -286,14 +311,30 @@ export function Shell({
 							? false
 							: null;
 				if (!el || end === null || (e.ctrlKey && e.metaKey)) return;
-				el.scrollTop = end ? el.scrollHeight : 0;
+				if (edgeRef.current) edgeRef.current(end);
+				else toEnd(el, end);
 				e.preventDefault();
 				return;
 			}
-			const turn = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+			const turn =
+				e.key === "ArrowRight"
+					? 1
+					: e.key === "ArrowLeft"
+						? -1
+						: turnRef.current && e.key === "PageDown"
+							? 1
+							: turnRef.current && e.key === "PageUp"
+								? -1
+								: turnRef.current && e.key === " " && !onBar
+									? e.shiftKey
+										? -1
+										: 1
+									: 0;
 			if (turn && stepRef.current) {
-				// Sideways keys pan a page wider than the screen instead.
-				if (el && el.scrollWidth > el.clientWidth + 1) return;
+				// Sideways keys pan a page wider than the screen instead
+				// (pages in a row turn whatever their size).
+				const pans = el && !across(el) && el.scrollWidth > el.clientWidth + 1;
+				if (pans && e.key.startsWith("Arrow")) return;
 				stepRef.current(turn);
 				e.preventDefault();
 				return;
@@ -307,9 +348,11 @@ export function Shell({
 				...(onBar ? {} : { " ": e.shiftKey ? -page : page }),
 				...(pageKeys ? { PageDown: page, PageUp: -page } : {}),
 			};
-			if (e.key === "Home") el.scrollTop = 0;
-			else if (e.key === "End") el.scrollTop = el.scrollHeight;
-			else if (e.key in by) el.scrollTop += by[e.key];
+			if (e.key === "Home" || e.key === "End") {
+				const end = e.key === "End";
+				if (edgeRef.current) edgeRef.current(end);
+				else toEnd(el, end);
+			} else if (e.key in by) el.scrollTop += by[e.key];
 			else return;
 			e.preventDefault();
 		};

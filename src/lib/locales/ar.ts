@@ -413,4 +413,10 @@ export const ar: Table = {
 	Sepia: "سيبيا",
 	Dark: "داكن",
 	"Match the theme": "حسب السمة",
+	"Scroll pages sideways": "تمرير الصفحات أفقيًا",
+	"First page on its own": "الصفحة الأولى بمفردها",
+	"Back to page {n}": "العودة إلى الصفحة {n}",
+	"PDF pages scroll": "تمرير صفحات PDF",
+	Down: "للأسفل",
+	Sideways: "أفقيًا",
 };

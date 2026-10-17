@@ -393,4 +393,11 @@ ROWS = [
     ("Sepia", "سیپیا", "سيبيا", "棕褐色", "सीपिया", "Sepia", "Sépia"),
     ("Dark", "گہرا", "داكن", "深色", "गहरा", "Oscuro", "Sombre"),
     ("Match the theme", "تھیم کے مطابق", "حسب السمة", "跟随主题", "थीम के अनुसार", "Según el tema", "Selon le thème"),
+    # ---- PDF: pages in a row, a book's cover, links followed ----
+    ("Scroll pages sideways", "صفحات کو افقی طور پر سکرول کریں", "تمرير الصفحات أفقيًا", "横向滚动页面", "पृष्ठों को बगल में स्क्रॉल करें", "Desplazar las páginas en horizontal", "Faire défiler les pages horizontalement"),
+    ("First page on its own", "پہلا صفحہ الگ", "الصفحة الأولى بمفردها", "首页单独显示", "पहला पृष्ठ अलग", "Primera página sola", "Première page seule"),
+    ("Back to page {n}", "صفحہ {n} پر واپس", "العودة إلى الصفحة {n}", "返回第 {n} 页", "पृष्ठ {n} पर वापस", "Volver a la página {n}", "Revenir à la page {n}"),
+    ("PDF pages scroll", "PDF صفحات کی سکرولنگ", "تمرير صفحات PDF", "PDF 页面滚动方向", "PDF पृष्ठ स्क्रॉल", "Desplazamiento de las páginas PDF", "Défilement des pages PDF"),
+    ("Down", "نیچے", "للأسفل", "向下", "नीचे", "Hacia abajo", "Vers le bas"),
+    ("Sideways", "افقی", "أفقيًا", "横向", "बगल में", "En horizontal", "Horizontal"),
 ]

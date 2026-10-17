@@ -33,6 +33,8 @@ export type Position =
 			rotation: number;
 			/** Two pages side by side. */
 			spread?: boolean;
+			/** ...with the first page on its own, as a book's cover. */
+			cover?: boolean;
 	  }
 	| { kind: "scroll"; ratio: number; zoom?: number }
 	| { kind: "sheet"; sheet: number; top: number; left: number; zoom?: number }
@@ -60,12 +62,16 @@ export type PdfZoom = "page-width" | "page-fit" | "auto";
 /** The paper a document is read on: as the file has it, warm, dark,
  * or whichever of those the app's theme suggests. */
 export type PageColor = "original" | "sepia" | "dark" | "theme";
+/** How a PDF's pages follow one another: down a long scroll, or side
+ * by side, a swipe (or a key) to the next. */
+export type PdfFlow = "down" | "across";
 
 export interface Settings {
 	theme: ThemeSetting;
 	/** The interface language; "system" follows the phone. */
 	language: LanguageSetting;
 	pdfZoom: PdfZoom;
+	pdfFlow: PdfFlow;
 	rememberPosition: boolean;
 	pageColor: PageColor;
 	/** Keep the screen from dimming while a document is open. */
@@ -87,6 +93,7 @@ export const DEFAULT_SETTINGS: Settings = {
 	// Fit width, but never past 125%: a phone gets the full width, a
 	// wide window a readable page instead of a quarter of one.
 	pdfZoom: "auto",
+	pdfFlow: "down",
 	rememberPosition: true,
 	pageColor: "original",
 	keepAwake: false,

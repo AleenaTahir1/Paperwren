@@ -37,7 +37,8 @@ export interface ZoomOptions {
 	hud?: RefObject<HTMLElement | null>;
 	/** How a zoom reads in the badge (default: a percentage). */
 	label?: (zoom: number) => string;
-	onTap?: (target: HTMLElement) => void;
+	/** A single tap, and where it landed. */
+	onTap?: (target: HTMLElement, x: number, y: number) => void;
 	/** Replaces the default double-tap (zoom in / back to `home`). */
 	onDoubleTap?: (x: number, y: number) => void;
 	/** Replaces the default Ctrl+0 (back to `home`). */
@@ -312,7 +313,7 @@ export function useZoom(options: ZoomOptions): ZoomApi {
 			if (!o.current.onTap || window.getSelection()?.toString()) return;
 			// Wait out a possible second tap before acting on the first.
 			tapTimer = window.setTimeout(
-				() => o.current.onTap?.(target),
+				() => o.current.onTap?.(target, done.x, done.y),
 				twice ? 280 : 0,
 			);
 		};

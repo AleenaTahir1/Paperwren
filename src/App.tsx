@@ -49,7 +49,7 @@ function Root() {
 	// Every screen is drawn from here, so a change of language redraws
 	// them all.
 	const lang = useSyncExternalStore(subscribe, language);
-	const { state, push, replace, back } = useNav();
+	const { state, push, replace, back, close } = useNav();
 	const { entries, remove } = useRecents();
 	const nextKey = useRef(1);
 	const picking = useRef(false);
@@ -170,7 +170,7 @@ function Root() {
 				pick();
 			} else if (mod && !e.shiftKey && key === "w" && deep) {
 				e.preventDefault();
-				back();
+				close();
 			} else if (
 				e.altKey &&
 				!e.ctrlKey &&
@@ -207,7 +207,7 @@ function Root() {
 		};
 		window.addEventListener("keydown", onKey);
 		return () => window.removeEventListener("keydown", onKey);
-	}, [pick, back, deep]);
+	}, [pick, back, close, deep]);
 
 	// Ctrl+wheel, which is also how a trackpad pinch arrives: the same
 	// rule as the zoom keys above. A viewer takes it for its document
@@ -323,7 +323,7 @@ function Root() {
 						<ViewerScreen
 							request={screen.request}
 							active={top}
-							onClose={back}
+							onClose={close}
 							onReplace={(request) =>
 								replace({ kind: "viewer", request, key: nextKey.current++ })
 							}

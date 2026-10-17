@@ -395,4 +395,10 @@ export const zh: Table = {
 	Sepia: "棕褐色",
 	Dark: "深色",
 	"Match the theme": "跟随主题",
+	"Scroll pages sideways": "横向滚动页面",
+	"First page on its own": "首页单独显示",
+	"Back to page {n}": "返回第 {n} 页",
+	"PDF pages scroll": "PDF 页面滚动方向",
+	Down: "向下",
+	Sideways: "横向",
 };

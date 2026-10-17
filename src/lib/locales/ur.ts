@@ -413,4 +413,10 @@ export const ur: Table = {
 	Sepia: "سیپیا",
 	Dark: "گہرا",
 	"Match the theme": "تھیم کے مطابق",
+	"Scroll pages sideways": "صفحات کو افقی طور پر سکرول کریں",
+	"First page on its own": "پہلا صفحہ الگ",
+	"Back to page {n}": "صفحہ {n} پر واپس",
+	"PDF pages scroll": "PDF صفحات کی سکرولنگ",
+	Down: "نیچے",
+	Sideways: "افقی",
 };

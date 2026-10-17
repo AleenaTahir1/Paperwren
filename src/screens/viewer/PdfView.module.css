@@ -16,6 +16,46 @@
 	margin: 0 auto 6px;
 	box-shadow: var(--shadow-2);
 }
+/* Pages in a row: a swipe settles on the next page, centred. */
+.snap {
+	scroll-snap-type: x mandatory;
+}
+.snap :global(.pdfViewer .page) {
+	scroll-snap-align: center;
+	scroll-snap-stop: always;
+}
+/* Pairs shown one at a time do not scroll sideways: the swipe is the
+ * app's to turn them (and not the browser's, to go back). */
+.container[data-one] {
+	touch-action: pan-y;
+}
+.container[data-flow="across"] :global(.pdfViewer) {
+	padding: 0;
+}
+.container[data-flow="across"] :global(.pdfViewer.removePageBorders .page) {
+	margin: 0 3px;
+}
+/* "Back to page 3", after a link was followed. */
+.trail {
+	position: absolute;
+	inset-inline-start: 12px;
+	bottom: 16px;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	min-height: 40px;
+	padding: 0 14px;
+	border-radius: 999px;
+	border: 1px solid var(--line-strong);
+	background: var(--surface);
+	color: var(--text);
+	font-size: 14px;
+	font-weight: 600;
+	animation: pw-fade-in 160ms ease-out;
+}
+.trail:hover {
+	background: var(--surface-2);
+}
 .outline {
 	display: block;
 	width: 100%;

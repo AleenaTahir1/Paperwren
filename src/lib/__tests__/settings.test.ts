@@ -28,6 +28,11 @@ describe("settings", () => {
 		expect(normalizeSettings({ darkPages: false }).pageColor).toBe("original");
 	});
 
+	it("keeps how PDF pages follow one another", () => {
+		expect(normalizeSettings({ pdfFlow: "across" }).pdfFlow).toBe("across");
+		expect(normalizeSettings({ pdfFlow: "sideways" }).pdfFlow).toBe("down");
+	});
+
 	it("draws the page the theme suggests", () => {
 		expect(resolvePageColor("theme", "light")).toBe("original");
 		expect(resolvePageColor("theme", "sepia")).toBe("sepia");

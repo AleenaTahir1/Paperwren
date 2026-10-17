@@ -2,6 +2,7 @@ import { LANGUAGES, type LanguageSetting } from "./i18n";
 import {
 	DEFAULT_SETTINGS,
 	type PageColor,
+	type PdfFlow,
 	type PdfZoom,
 	type ResolvedTheme,
 	type Settings,
@@ -22,6 +23,7 @@ export function isDarkTheme(theme: ResolvedTheme): boolean {
 	return theme === "dark";
 }
 const ZOOMS: PdfZoom[] = ["page-width", "page-fit", "auto"];
+const FLOWS: PdfFlow[] = ["down", "across"];
 export const PAGE_COLORS: PageColor[] = ["original", "sepia", "dark", "theme"];
 
 /** The paper actually drawn: "theme" is Paper's white, Sand's warm
@@ -56,6 +58,7 @@ export function normalizeSettings(value: unknown): Settings {
 			DEFAULT_SETTINGS.language,
 		),
 		pdfZoom: pick(raw.pdfZoom, ZOOMS, DEFAULT_SETTINGS.pdfZoom),
+		pdfFlow: pick(raw.pdfFlow, FLOWS, DEFAULT_SETTINGS.pdfFlow),
 		rememberPosition: bool(
 			raw.rememberPosition,
 			DEFAULT_SETTINGS.rememberPosition,

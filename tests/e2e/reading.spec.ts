@@ -118,3 +118,111 @@ test.describe("on a desktop", () => {
 		await expect.poll(paired).toBe(true);
 	});
 });
+
+test.describe("PDF pages and links", () => {
+	test("pages laid sideways turn with a tap on either side", async ({
+		page,
+	}) => {
+		await boot(page);
+		await openFixture(page, "features/pictures.pdf");
+		const counter = page.getByTestId("pdf-page");
+		await expect(counter).toHaveText("1 / 3", { timeout: 20_000 });
+		await page.getByTestId("file-more").click();
+		await page.getByTestId("pdf-across").click();
+		const scroller = page.getByTestId("pdf-scroll");
+		await expect(scroller).toHaveAttribute("data-flow", "across");
+		await expect(page.getByTestId("pdf-scale")).toHaveText("Whole page");
+		const box = await scroller.boundingBox();
+		if (!box) throw new Error("no scroller");
+		await page.mouse.click(box.x + box.width * 0.9, box.y + box.height / 2);
+		await expect(counter).toHaveText("1 / 3");
+		// Taps are a touch screen's: send one.
+		await scroller.dispatchEvent("touchstart", {
+			touches: [
+				{ identifier: 0, clientX: box.x + box.width * 0.9, clientY: 300 },
+			],
+		});
+		await scroller.dispatchEvent("touchend", {
+			touches: [],
+			changedTouches: [
+				{ identifier: 0, clientX: box.x + box.width * 0.9, clientY: 300 },
+			],
+		});
+		await expect(counter).toHaveText("2 / 3");
+		// The choice holds for the next PDF.
+		await page.getByTestId("viewer-back").click();
+		await openFixture(page, "sample.pdf");
+		await expect(page.getByTestId("pdf-scroll")).toHaveAttribute(
+			"data-flow",
+			"across",
+			{ timeout: 20_000 },
+		);
+	});
+
+	test("Back retraces a link inside a PDF before it closes the document", async ({
+		page,
+	}) => {
+		await boot(page);
+		await openFixture(page, "features/pictures.pdf");
+		const counter = page.getByTestId("pdf-page");
+		await expect(counter).toHaveText("1 / 3", { timeout: 20_000 });
+		await page.locator(".annotationLayer a").first().click();
+		await expect(counter).toHaveText("3 / 3");
+		await expect(page.getByTestId("pdf-trail")).toHaveText("Back to page 1");
+		await page.goBack();
+		await expect(counter).toHaveText("1 / 3");
+		await expect(page.getByTestId("pdf-trail")).toHaveCount(0);
+		await page.goBack();
+		await expect(page.getByTestId("home")).toBeVisible();
+	});
+});
+
+test.describe("PDF pages on a desktop", () => {
+	test.use({ viewport: { width: 1280, height: 800 } });
+
+	test("keys, the wheel and a book's cover turn pages laid sideways", async ({
+		page,
+	}) => {
+		await boot(page, { settings_v2: { pdfFlow: "across" } }, "?desktop");
+		await openFixture(page, "features/pictures.pdf");
+		const field = page.getByTestId("pdf-page-field");
+		await expect(field).toHaveValue("1", { timeout: 20_000 });
+		await page.keyboard.press("PageDown");
+		await expect(field).toHaveValue("2");
+		await page.keyboard.press("End");
+		await expect(field).toHaveValue("3");
+		await page.keyboard.press("Home");
+		await expect(field).toHaveValue("1");
+		await page.mouse.move(640, 400);
+		await page.mouse.wheel(0, 120);
+		await expect(field).toHaveValue("2");
+
+		// Two pages at a time, then the first on its own as a cover.
+		await page.getByTestId("file-more").click();
+		await page.getByTestId("pdf-spread").click();
+		await page.keyboard.press("Home");
+		await expect(field).toHaveValue("1");
+		await page.keyboard.press("ArrowRight");
+		await expect(field).toHaveValue("3");
+		await page.getByTestId("file-more").click();
+		await page.getByTestId("pdf-cover").click();
+		await page.keyboard.press("Home");
+		await page.keyboard.press("ArrowRight");
+		await expect(field).toHaveValue("2");
+
+		// Alt+Left after a link, Alt+Right to return; Ctrl+W still closes.
+		await page.getByTestId("file-more").click();
+		await page.getByTestId("pdf-spread").click();
+		await page.getByTestId("file-more").click();
+		await page.getByTestId("pdf-across").click();
+		await page.keyboard.press("Home");
+		await page.locator(".annotationLayer a").first().click();
+		await expect(field).toHaveValue("3");
+		await page.keyboard.press("Alt+ArrowLeft");
+		await expect(field).toHaveValue("1");
+		await page.keyboard.press("Alt+ArrowRight");
+		await expect(field).toHaveValue("3");
+		await page.keyboard.press("Control+w");
+		await expect(page.getByTestId("home")).toBeVisible();
+	});
+});

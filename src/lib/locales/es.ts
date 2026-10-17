@@ -421,4 +421,10 @@ export const es: Table = {
 	Sepia: "Sepia",
 	Dark: "Oscuro",
 	"Match the theme": "Según el tema",
+	"Scroll pages sideways": "Desplazar las páginas en horizontal",
+	"First page on its own": "Primera página sola",
+	"Back to page {n}": "Volver a la página {n}",
+	"PDF pages scroll": "Desplazamiento de las páginas PDF",
+	Down: "Hacia abajo",
+	Sideways: "En horizontal",
 };
