@@ -1,4 +1,5 @@
 import { LANGUAGES, type LanguageSetting } from "./i18n";
+import { SPEECH_RATES } from "./speech";
 import {
 	DEFAULT_SETTINGS,
 	type PageColor,
@@ -76,6 +77,7 @@ export function normalizeSettings(value: unknown): Settings {
 		sidePanel: bool(raw.sidePanel, DEFAULT_SETTINGS.sidePanel),
 		readingView: bool(raw.readingView, DEFAULT_SETTINGS.readingView),
 		wrapText: bool(raw.wrapText, DEFAULT_SETTINGS.wrapText),
+		speechRate: pick(raw.speechRate, SPEECH_RATES, DEFAULT_SETTINGS.speechRate),
 	};
 }
 

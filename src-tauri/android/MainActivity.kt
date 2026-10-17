@@ -18,6 +18,10 @@ import android.print.PrintDocumentInfo
 import android.print.PrintManager
 import android.provider.DocumentsContract
 import android.provider.OpenableColumns
+import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
+import android.speech.tts.Voice
+import android.view.KeyEvent
 import android.view.WindowManager
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
@@ -38,6 +42,7 @@ import java.io.InputStream
 import java.security.DigestInputStream
 import java.security.MessageDigest
 import java.util.ArrayDeque
+import java.util.Locale
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -65,6 +70,9 @@ import java.util.concurrent.TimeUnit
  *    sideways (the WebView turns down a page's own request for full
  *    screen, so the page asks here instead), and the status-bar icons
  *    follow the app's theme rather than the phone's.
+ * 6. Read aloud, with the system's text-to-speech (a WebView has no
+ *    speech of its own), in voices that speak on the phone only, and
+ *    the volume keys turning pages while the reader asks for that.
  *
  * This file is copied verbatim over the generated activity by
  * scripts/install-android.mjs. Keep it self-contained.
@@ -143,7 +151,118 @@ class MainActivity : TauriActivity() {
   override fun onDestroy() {
     ingestExecutor.shutdown()
     scanExecutor.shutdown()
+    speech?.shutdown()
+    speech = null
     super.onDestroy()
+  }
+
+  // ---------- Volume keys ----------
+
+  /** The reader asked for the volume keys to turn pages. */
+  @Volatile private var volumeKeysTurn = false
+
+  override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+    val code = event.keyCode
+    if (volumeKeysTurn &&
+      (code == KeyEvent.KEYCODE_VOLUME_UP || code == KeyEvent.KEYCODE_VOLUME_DOWN)
+    ) {
+      // Down turns forward, up back; held, it keeps turning.
+      if (event.action == KeyEvent.ACTION_DOWN) {
+        callWeb("__paperwrenVolumeKey", if (code == KeyEvent.KEYCODE_VOLUME_DOWN) "1" else "-1")
+      }
+      return true
+    }
+    return super.dispatchKeyEvent(event)
+  }
+
+  // ---------- Read aloud ----------
+
+  /** The system's text-to-speech, started the first time it is asked
+   * for; what is asked before it is ready waits for it. */
+  private var speech: TextToSpeech? = null
+  private var speechReady = false
+  private val speechWaiting = ArrayDeque<() -> Unit>()
+
+  private fun spoken(token: String, outcome: String) =
+    callWeb("__paperwrenSpoken", "${JSONObject.quote(token)}, ${JSONObject.quote(outcome)}")
+
+  /** Main thread. */
+  private fun withSpeech(then: () -> Unit) {
+    if (speechReady) {
+      then()
+      return
+    }
+    speechWaiting.add(then)
+    if (speech != null) return
+    speech = TextToSpeech(this) { status ->
+      main.post {
+        val engine = speech
+        speechReady = status == TextToSpeech.SUCCESS && engine != null
+        if (speechReady && engine != null) {
+          engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+            override fun onStart(utteranceId: String?) {}
+            override fun onDone(utteranceId: String?) {
+              utteranceId?.let { spoken(it, "done") }
+            }
+            @Deprecated("Deprecated in Java")
+            override fun onError(utteranceId: String?) {
+              utteranceId?.let { spoken(it, "error") }
+            }
+            override fun onError(utteranceId: String?, errorCode: Int) {
+              utteranceId?.let { spoken(it, "error") }
+            }
+            override fun onStop(utteranceId: String?, interrupted: Boolean) {
+              utteranceId?.let { spoken(it, "stopped") }
+            }
+          })
+        }
+        val waiting = speechWaiting.toList()
+        speechWaiting.clear()
+        if (!speechReady) {
+          speech?.shutdown()
+          speech = null
+        }
+        waiting.forEach { it() }
+      }
+    }
+  }
+
+  /** The voice for a language that speaks on the phone itself: one that
+   * needs the network would send the text away. */
+  private fun onDeviceVoice(engine: TextToSpeech, lang: String): Voice? {
+    val wanted = if (lang.isBlank()) Locale.getDefault() else Locale.forLanguageTag(lang)
+    val voices = try {
+      engine.voices.orEmpty()
+    } catch (e: Exception) {
+      emptySet()
+    }.filter { voice ->
+      !voice.isNetworkConnectionRequired &&
+        voice.features?.contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED) != true
+    }
+    val ofLanguage = voices.filter { it.locale.language == wanted.language }
+    return (ofLanguage.filter { it.locale.country == wanted.country }.ifEmpty { ofLanguage })
+      .maxByOrNull { it.quality }
+  }
+
+  /** Main thread. */
+  private fun speakNow(text: String, lang: String, rate: Float, token: String) {
+    val engine = speech
+    if (!speechReady || engine == null) {
+      spoken(token, "no-voice")
+      return
+    }
+    val voice = onDeviceVoice(engine, lang)
+      ?: onDeviceVoice(engine, Locale.getDefault().toLanguageTag())
+    if (voice == null) {
+      spoken(token, "no-voice")
+      return
+    }
+    engine.voice = voice
+    engine.setSpeechRate(rate)
+    val params = Bundle()
+    if (engine.speak(text, TextToSpeech.QUEUE_FLUSH, params, token) != TextToSpeech.SUCCESS) {
+      spoken(token, "error")
+    }
   }
 
   /** Coming back to a slide show (from the share sheet, another app,
@@ -667,6 +786,27 @@ class MainActivity : TauriActivity() {
         manager.print(jobName, filePrintAdapter(target, jobName), PrintAttributes.Builder().build())
       }
       return true
+    }
+
+    /** Read `text` aloud; the outcome comes back through
+     * window.__paperwrenSpoken(token, "done" | "stopped" | "error" | "no-voice"). */
+    @JavascriptInterface
+    fun speak(text: String, lang: String, rate: Double, token: String): Boolean {
+      if (!fromApp()) return false
+      main.post { withSpeech { speakNow(text, lang, rate.toFloat(), token) } }
+      return true
+    }
+
+    @JavascriptInterface
+    fun stopSpeaking() {
+      main.post { if (speechReady) speech?.stop() }
+    }
+
+    /** The volume keys turn the pages (true), or change the volume. */
+    @JavascriptInterface
+    fun volumeKeys(on: Boolean) {
+      if (!fromApp()) return
+      volumeKeysTurn = on
     }
 
     @JavascriptInterface

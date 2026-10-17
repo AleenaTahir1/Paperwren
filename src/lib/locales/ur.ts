@@ -468,4 +468,13 @@ export const ur: Table = {
 		"یہ اپنے اسٹور کی طرف سے محفوظ (DRM) ہے اور صرف اسی اسٹور کی ایپ میں پڑھی جا سکتی ہے۔",
 	"The file is damaged or isn't a valid EPUB book.":
 		"فائل خراب ہے یا درست EPUB کتاب نہیں۔",
+	"Read aloud": "بلند آواز سے پڑھیں",
+	"Previous sentence": "پچھلا جملہ",
+	"Next sentence": "اگلا جملہ",
+	Pause: "روکیں",
+	Resume: "جاری رکھیں",
+	"Reading speed {n}×": "پڑھنے کی رفتار {n}×",
+	"Reading speed": "پڑھنے کی رفتار",
+	"Stop reading": "پڑھنا بند کریں",
+	"Couldn't read this aloud": "اسے بلند آواز سے نہیں پڑھا جا سکا",
 };

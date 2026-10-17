@@ -87,6 +87,7 @@ import {
 import { useZoom } from "./hooks";
 import { canCrop, cropPages, whole } from "./pdfCrop";
 import { type Box, findPictures, placePictures } from "./pdfPictures";
+import { pdfSpeech } from "./speechSources";
 import type { ViewerProps } from "./types";
 
 /**
@@ -1268,6 +1269,22 @@ export default function PdfView({
 		[],
 	);
 
+	// --- read aloud: the text of each page, from the one on show ---
+	const speech = useMemo(
+		() =>
+			doc && status === "ready"
+				? pdfSpeech(
+						doc,
+						() => pdfViewer.current?.currentPageNumber ?? 1,
+						(n) => {
+							const v = pdfViewer.current;
+							if (v) v.currentPageNumber = n;
+						},
+					)
+				: undefined,
+		[doc, status],
+	);
+
 	// --- comments, attachments and layers ---
 	const showComment = (item: Comment) => {
 		const v = pdfViewer.current;
@@ -1449,6 +1466,7 @@ export default function PdfView({
 			details={details}
 			onStep={turn}
 			bookmarks={status === "ready" ? marks : undefined}
+			speech={speech}
 			turnPages={across}
 			onEdge={across ? (end) => goTo(end ? pages : 1) : undefined}
 			onFind={status === "ready" ? openFind : undefined}

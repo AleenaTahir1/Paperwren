@@ -88,6 +88,8 @@ export interface Settings {
 	readingView: boolean;
 	/** Text files wrap long lines to the width of the screen. */
 	wrapText: boolean;
+	/** How fast read aloud speaks, as a share of the voice's pace. */
+	speechRate: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -105,6 +107,7 @@ export const DEFAULT_SETTINGS: Settings = {
 	sidePanel: false,
 	readingView: false,
 	wrapText: true,
+	speechRate: 1,
 };
 
 export const STORAGE_KEYS = {

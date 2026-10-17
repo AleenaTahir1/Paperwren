@@ -479,4 +479,13 @@ export const fr: Table = {
 		"Il est protégé par sa boutique (DRM) et ne peut être lu que dans l'application de cette boutique.",
 	"The file is damaged or isn't a valid EPUB book.":
 		"Le fichier est endommagé ou n'est pas un livre EPUB valide.",
+	"Read aloud": "Lire à voix haute",
+	"Previous sentence": "Phrase précédente",
+	"Next sentence": "Phrase suivante",
+	Pause: "Pause",
+	Resume: "Reprendre",
+	"Reading speed {n}×": "Vitesse de lecture {n}×",
+	"Reading speed": "Vitesse de lecture",
+	"Stop reading": "Arrêter la lecture",
+	"Couldn't read this aloud": "Impossible de lire ceci à voix haute",
 };

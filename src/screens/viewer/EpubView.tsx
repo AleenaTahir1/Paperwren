@@ -28,6 +28,7 @@ import {
 	useZoom,
 	useZoomLevel,
 } from "./hooks";
+import { domSpeech } from "./speechSources";
 import type { ViewerProps } from "./types";
 import { useDomFind } from "./useDomFind";
 
@@ -156,6 +157,7 @@ export default function EpubView(props: ViewerProps) {
 	});
 	useScrollMemory(scroller, !!book, position, onPosition, zoom);
 	const marks = useScrollBookmarks(scroller, content);
+	const speech = useMemo(() => domSpeech(scroller, content), []);
 
 	const goTo = (entry: TocEntry) => {
 		const el = scroller.current;
@@ -215,6 +217,7 @@ export default function EpubView(props: ViewerProps) {
 			side={side}
 			paper
 			bookmarks={book ? marks : undefined}
+			speech={book ? speech : undefined}
 			details={details}
 			chromeHidden={chromeHidden && !find.open}
 			onFind={book ? find.start : undefined}

@@ -37,6 +37,7 @@ import {
 	useZoom,
 	useZoomLevel,
 } from "./hooks";
+import { domSpeech } from "./speechSources";
 import type { ViewerProps } from "./types";
 import { useDomFind } from "./useDomFind";
 
@@ -181,6 +182,7 @@ export default function DocxView({
 	});
 	useScrollMemory(scroller, status === "ready", position, onPosition, zoom);
 	const marks = useScrollBookmarks(scroller, host);
+	const speech = useMemo(() => domSpeech(scroller, host), []);
 
 	// Which page the reader is on: the one under a line a third of the
 	// way down the screen (the last one, at the very end).
@@ -273,6 +275,7 @@ export default function DocxView({
 			side={side}
 			paper
 			bookmarks={status === "ready" ? marks : undefined}
+			speech={status === "ready" ? speech : undefined}
 			onStep={paged ? (dir) => goTo(page + dir) : undefined}
 			chromeHidden={chromeHidden && !find.open}
 			onFind={status === "ready" ? find.start : undefined}

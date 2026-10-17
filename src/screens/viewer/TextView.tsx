@@ -26,6 +26,7 @@ import {
 	useZoom,
 	useZoomLevel,
 } from "./hooks";
+import { domSpeech } from "./speechSources";
 import type { ViewerProps } from "./types";
 import { useDomFind } from "./useDomFind";
 
@@ -113,6 +114,7 @@ export default function TextView({
 	});
 	useScrollMemory(scroller, true, position, onPosition, zoom);
 	const marks = useScrollBookmarks(scroller, content);
+	const speech = useMemo(() => domSpeech(scroller, content), []);
 
 	const wrap = settings.wrapText;
 	// Text is drawn in the app's own colours; a page colour of its own
@@ -128,6 +130,7 @@ export default function TextView({
 			progressOf={scroller}
 			paper
 			bookmarks={marks}
+			speech={speech}
 			chromeHidden={chromeHidden && !find.open}
 			onFind={startFind}
 			menu={(close) => (

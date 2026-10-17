@@ -54,6 +54,7 @@ import { SlideChart } from "./SlideChart";
 import s from "./Slides.module.css";
 import { useZoom, useZoomLevel } from "./hooks";
 import { runWorker } from "./runWorker";
+import { domSpeech } from "./speechSources";
 import type { ViewerProps } from "./types";
 import { useDomFind } from "./useDomFind";
 
@@ -672,6 +673,8 @@ export default function SlidesView({
 	const stage = useRef<HTMLDivElement>(null);
 	const hud = useRef<HTMLDivElement>(null);
 	const list = useRef<HTMLDivElement>(null);
+	// Read aloud reads the slides' text, from the slide on show.
+	const speech = useMemo(() => domSpeech(scroller, list), []);
 	const [deck, setDeck] = useState<Presentation | null>(null);
 	const [error, setError] = useState<"corrupt" | "password" | null>(null);
 	const [textOnly, setTextOnly] = useState(false);
@@ -854,6 +857,7 @@ export default function SlidesView({
 			// Page Up / Down step through the slides here.
 			pageKeys={false}
 			side={side}
+			speech={deck ? speech : undefined}
 			bookmarks={
 				deck
 					? {

@@ -147,6 +147,15 @@ declare global {
 			 * the clock and battery are drawn to be read on them. */
 			systemBars?(dark: boolean): void;
 			pickFolder(token: string): boolean;
+			/** Read `text` aloud with the system's text-to-speech, in an
+			 * on-device voice for `lang`; the outcome comes back through
+			 * window.__paperwrenSpoken(token, ...). False when there is no
+			 * such voice. Added after 1.1.4. */
+			speak?(text: string, lang: string, rate: number, token: string): boolean;
+			stopSpeaking?(): void;
+			/** Hear the volume keys (they turn pages), or let them change
+			 * the volume again. Added after 1.1.4. */
+			volumeKeys?(on: boolean): void;
 			listFolder(treeUri: string, extensions: string, token: string): boolean;
 			releaseFolder(treeUri: string): void;
 		};

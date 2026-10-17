@@ -540,3 +540,151 @@ test.describe("books", () => {
 		);
 	});
 });
+
+/** A speech engine that says each piece in a moment and notes it down,
+ * with one voice on the device and one that would send text away. */
+function fakeSpeech() {
+	type Said = { text: string; rate: number; voice?: string };
+	const w = window as unknown as {
+		__spoken: Said[];
+		SpeechSynthesisUtterance: unknown;
+	};
+	w.__spoken = [];
+	let current: Record<string, unknown> | null = null;
+	w.SpeechSynthesisUtterance = class {
+		constructor(public text: string) {}
+	};
+	const synth = {
+		getVoices: () => [
+			{ lang: "en-US", localService: true, default: true, name: "Local" },
+			{ lang: "en-US", localService: false, name: "Cloud" },
+		],
+		speak(u: Record<string, unknown>) {
+			current = u;
+			w.__spoken.push({
+				text: u.text as string,
+				rate: u.rate as number,
+				voice: (u.voice as { name: string } | undefined)?.name,
+			});
+			u.timer = setTimeout(() => {
+				if (current !== u) return;
+				current = null;
+				(u.onend as () => void)?.();
+			}, 150);
+		},
+		cancel() {
+			const u = current;
+			current = null;
+			if (!u) return;
+			clearTimeout(u.timer as number);
+			(u.onerror as (e: unknown) => void)?.({ error: "interrupted" });
+		},
+		addEventListener() {},
+	};
+	Object.defineProperty(window, "speechSynthesis", {
+		value: synth,
+		configurable: true,
+	});
+}
+
+test.describe("read aloud", () => {
+	test("reads a book from the place on show, sentence by sentence", async ({
+		page,
+	}) => {
+		await page.addInitScript(fakeSpeech);
+		await boot(page);
+		await openFixture(page, "features/book.epub");
+		await expect(page.getByTestId("epub-scroll")).toContainText("Spring", {
+			timeout: 20_000,
+		});
+		await page.locator("#pw-c1").scrollIntoViewIfNeeded();
+		await page.getByTestId("file-more").click();
+		await page.getByTestId("read-aloud-start").click();
+		await expect(page.getByTestId("read-aloud")).toBeVisible();
+		const spoken = () =>
+			page.evaluate(
+				() =>
+					(window as unknown as { __spoken: Array<{ text: string }> }).__spoken,
+			);
+		await expect.poll(async () => (await spoken()).length).toBeGreaterThan(2);
+		const said = await spoken();
+		// From the chapter on show, in a voice on the device.
+		expect(said[0].text).toBe("Spring");
+		expect(said[1].text).toContain("The first wren of spring");
+		expect(
+			await page.evaluate(
+				() =>
+					(window as unknown as { __spoken: Array<{ voice: string }> })
+						.__spoken[0].voice,
+			),
+		).toBe("Local");
+
+		await page.getByTestId("read-aloud-pause").click();
+		const paused = (await spoken()).length;
+		await page.waitForTimeout(500);
+		expect((await spoken()).length).toBe(paused);
+		await page.getByTestId("read-aloud-play").click();
+		await page.getByTestId("read-aloud-rate").click();
+		await expect(page.getByTestId("read-aloud-rate")).toHaveText("1.25×");
+		await expect
+			.poll(
+				async () =>
+					(
+						await page.evaluate(
+							() =>
+								(window as unknown as { __spoken: Array<{ rate: number }> })
+									.__spoken,
+						)
+					).at(-1)?.rate,
+			)
+			.toBe(1.25);
+		await page.getByTestId("read-aloud-stop").click();
+		await expect(page.getByTestId("read-aloud")).toHaveCount(0);
+	});
+
+	test("reads a PDF page after page, and leaves with the document", async ({
+		page,
+	}) => {
+		await page.addInitScript(fakeSpeech);
+		await boot(page);
+		await openFixture(page, "features/pictures.pdf");
+		await expect(page.getByTestId("pdf-page")).toHaveText("1 / 3", {
+			timeout: 20_000,
+		});
+		await page.getByTestId("file-more").click();
+		await page.getByTestId("read-aloud-start").click();
+		await expect
+			.poll(() =>
+				page.evaluate(() =>
+					(
+						window as unknown as { __spoken: Array<{ text: string }> }
+					).__spoken.map((s) => s.text),
+				),
+			)
+			.toContainEqual(expect.stringContaining("Chapter two, line 1"));
+		// The reading takes the pages with it.
+		await expect(page.getByTestId("pdf-page")).toHaveText("2 / 3");
+		await page.getByTestId("viewer-back").click();
+		await expect(page.getByTestId("read-aloud")).toHaveCount(0);
+	});
+
+	test("is not offered where no voice speaks on the device", async ({
+		page,
+	}) => {
+		await page.addInitScript(() => {
+			Object.defineProperty(window, "speechSynthesis", {
+				value: {
+					getVoices: () => [{ lang: "en-US", localService: false }],
+					addEventListener() {},
+					cancel() {},
+				},
+				configurable: true,
+			});
+		});
+		await boot(page);
+		await openFixture(page, "sample.txt");
+		await page.getByTestId("file-more").click();
+		await expect(page.getByTestId("file-menu")).toBeVisible();
+		await expect(page.getByTestId("read-aloud-start")).toHaveCount(0);
+	});
+});

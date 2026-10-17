@@ -445,4 +445,13 @@ export const zh: Table = {
 		"它受其商店保护（DRM），只能在该商店的应用中阅读。",
 	"The file is damaged or isn't a valid EPUB book.":
 		"文件已损坏或不是有效的 EPUB 书籍。",
+	"Read aloud": "朗读",
+	"Previous sentence": "上一句",
+	"Next sentence": "下一句",
+	Pause: "暂停",
+	Resume: "继续",
+	"Reading speed {n}×": "朗读速度 {n}×",
+	"Reading speed": "朗读速度",
+	"Stop reading": "停止朗读",
+	"Couldn't read this aloud": "无法朗读此内容",
 };

@@ -7,6 +7,7 @@ import { msg, t, uiDir } from "@/lib/i18n";
 import { idForReopen } from "@/lib/recents";
 import { PAGE_COLORS, resolvePageColor } from "@/lib/settings";
 import { FIND_EVENT, SELECT_ALL_EVENT } from "@/lib/signals";
+import { canSpeak } from "@/lib/speech";
 import type { PageColor, Position } from "@/lib/types";
 import { useBookmarks } from "@/state/bookmarks";
 import { useSettings } from "@/state/settings";
@@ -28,6 +29,7 @@ import {
 	PanelLeft,
 	Plus,
 	SwatchBook,
+	Volume2,
 	X,
 } from "lucide-react";
 import {
@@ -39,7 +41,9 @@ import {
 	useState,
 } from "react";
 import { FileMenu, ViewerFileContext } from "./FileMenu";
+import { ReadAloud } from "./ReadAloud";
 import s from "./Shell.module.css";
+import type { SpeechSource } from "./speechSources";
 
 export { s as shellStyles };
 
@@ -269,6 +273,7 @@ export function Shell({
 	side,
 	paper = false,
 	bookmarks,
+	speech,
 }: {
 	name: string;
 	format: FileFormat;
@@ -312,6 +317,8 @@ export function Shell({
 	paper?: boolean;
 	/** Places in the document can be bookmarked and gone back to. */
 	bookmarks?: BookmarkSource;
+	/** The document's text, to be read aloud from the place on show. */
+	speech?: SpeechSource;
 }) {
 	const { settings, update } = useSettings();
 	const [colorOpen, setColorOpen] = useState(false);
@@ -357,11 +364,46 @@ export function Shell({
 		return () => window.removeEventListener("keydown", onKey);
 	}, [active, fileId]);
 
+	// --- read aloud ---
+	const [voiced, setVoiced] = useState(() => canSpeak());
+	useEffect(() => {
+		// The list of voices can arrive a moment after the page.
+		if (!voiced) canSpeak(() => setVoiced(canSpeak()));
+	}, [voiced]);
+	const [reading, setReading] = useState(false);
+	const canRead = !!speech && voiced;
+	useEffect(() => {
+		if (!active || !canRead) return;
+		// Ctrl+Shift+U, as in Edge.
+		const onKey = (e: KeyboardEvent) => {
+			if (modalOpen() || e.altKey || !e.shiftKey) return;
+			if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "u") return;
+			e.preventDefault();
+			setReading((r) => !r);
+		};
+		window.addEventListener("keydown", onKey);
+		return () => window.removeEventListener("keydown", onKey);
+	}, [active, canRead]);
+
 	const fileMenu =
-		paper || fileId
+		paper || fileId || canRead
 			? (close: () => void) => (
 					<>
 						{menu?.(close)}
+						{canRead && (
+							<SheetItem
+								icon={<Volume2 size={20} />}
+								shortcut="Ctrl+Shift+U"
+								checked={reading}
+								onClick={() => {
+									close();
+									setReading((r) => !r);
+								}}
+								testId="read-aloud-start"
+							>
+								{t("Read aloud")}
+							</SheetItem>
+						)}
 						{fileId && (
 							<>
 								<SheetItem
@@ -633,6 +675,13 @@ export function Shell({
 					data-page-color={pageColor}
 				>
 					{children}
+					{reading && speech && (
+						<ReadAloud
+							source={speech}
+							active={active}
+							onClose={() => setReading(false)}
+						/>
+					)}
 					{hud && (
 						<div ref={hud} className={s.hud} dir={uiDir()} aria-hidden="true" />
 					)}

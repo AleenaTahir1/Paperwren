@@ -33,6 +33,7 @@ import {
 	useZoomLevel,
 } from "./hooks";
 import { runWorker } from "./runWorker";
+import { domSpeech } from "./speechSources";
 import type { ViewerProps } from "./types";
 import { useDomFind } from "./useDomFind";
 
@@ -128,6 +129,7 @@ export default function ReflowView(props: ViewerProps) {
 	});
 	useScrollMemory(scroller, !!result?.ok, position, onPosition, zoom);
 	const marks = useScrollBookmarks(scroller, content);
+	const speech = useMemo(() => domSpeech(scroller, content), []);
 
 	const goToHeading = (heading: Heading) => {
 		const el = scroller.current;
@@ -184,6 +186,7 @@ export default function ReflowView(props: ViewerProps) {
 			side={side}
 			paper
 			bookmarks={doc ? marks : undefined}
+			speech={doc ? speech : undefined}
 			chromeHidden={chromeHidden && !find.open}
 			onFind={doc ? find.start : undefined}
 			menu={

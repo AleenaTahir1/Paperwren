@@ -471,4 +471,13 @@ export const ar: Table = {
 		"إنه محمي من متجره (DRM) ولا يمكن قراءته إلا في تطبيق ذلك المتجر.",
 	"The file is damaged or isn't a valid EPUB book.":
 		"الملف تالف أو ليس كتاب EPUB صالحًا.",
+	"Read aloud": "القراءة بصوت عالٍ",
+	"Previous sentence": "الجملة السابقة",
+	"Next sentence": "الجملة التالية",
+	Pause: "إيقاف مؤقت",
+	Resume: "استئناف",
+	"Reading speed {n}×": "سرعة القراءة {n}×",
+	"Reading speed": "سرعة القراءة",
+	"Stop reading": "إيقاف القراءة",
+	"Couldn't read this aloud": "تعذّرت قراءة هذا بصوت عالٍ",
 };

@@ -452,4 +452,14 @@ ROWS = [
     ("Can't open this book", "یہ کتاب نہیں کھل سکتی", "تعذّر فتح هذا الكتاب", "无法打开这本书", "यह किताब नहीं खुल सकती", "No se puede abrir este libro", "Impossible d'ouvrir ce livre"),
     ("It is protected by its store (DRM) and can only be read in that store's app.", "یہ اپنے اسٹور کی طرف سے محفوظ (DRM) ہے اور صرف اسی اسٹور کی ایپ میں پڑھی جا سکتی ہے۔", "إنه محمي من متجره (DRM) ولا يمكن قراءته إلا في تطبيق ذلك المتجر.", "它受其商店保护（DRM），只能在该商店的应用中阅读。", "यह अपने स्टोर द्वारा सुरक्षित (DRM) है और केवल उसी स्टोर के ऐप में पढ़ी जा सकती है।", "Está protegido por su tienda (DRM) y solo se puede leer en la aplicación de esa tienda.", "Il est protégé par sa boutique (DRM) et ne peut être lu que dans l'application de cette boutique."),
     ("The file is damaged or isn't a valid EPUB book.", "فائل خراب ہے یا درست EPUB کتاب نہیں۔", "الملف تالف أو ليس كتاب EPUB صالحًا.", "文件已损坏或不是有效的 EPUB 书籍。", "फ़ाइल खराब है या मान्य EPUB किताब नहीं है।", "El archivo está dañado o no es un libro EPUB válido.", "Le fichier est endommagé ou n'est pas un livre EPUB valide."),
+    # ---- read aloud ----
+    ("Read aloud", "بلند آواز سے پڑھیں", "القراءة بصوت عالٍ", "朗读", "ज़ोर से पढ़ें", "Leer en voz alta", "Lire à voix haute"),
+    ("Previous sentence", "پچھلا جملہ", "الجملة السابقة", "上一句", "पिछला वाक्य", "Frase anterior", "Phrase précédente"),
+    ("Next sentence", "اگلا جملہ", "الجملة التالية", "下一句", "अगला वाक्य", "Frase siguiente", "Phrase suivante"),
+    ("Pause", "روکیں", "إيقاف مؤقت", "暂停", "रोकें", "Pausa", "Pause"),
+    ("Resume", "جاری رکھیں", "استئناف", "继续", "जारी रखें", "Reanudar", "Reprendre"),
+    ("Reading speed {n}×", "پڑھنے کی رفتار {n}×", "سرعة القراءة {n}×", "朗读速度 {n}×", "पढ़ने की गति {n}×", "Velocidad de lectura {n}×", "Vitesse de lecture {n}×"),
+    ("Reading speed", "پڑھنے کی رفتار", "سرعة القراءة", "朗读速度", "पढ़ने की गति", "Velocidad de lectura", "Vitesse de lecture"),
+    ("Stop reading", "پڑھنا بند کریں", "إيقاف القراءة", "停止朗读", "पढ़ना बंद करें", "Dejar de leer", "Arrêter la lecture"),
+    ("Couldn't read this aloud", "اسے بلند آواز سے نہیں پڑھا جا سکا", "تعذّرت قراءة هذا بصوت عالٍ", "无法朗读此内容", "इसे ज़ोर से नहीं पढ़ा जा सका", "No se pudo leer esto en voz alta", "Impossible de lire ceci à voix haute"),
 ]

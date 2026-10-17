@@ -100,6 +100,17 @@ ${data}
 ${data}
             </intent-filter>`;
 
+/** Android 11 and later only let an app see the services it names: the
+ * system's text-to-speech, for read aloud. This is not a permission. */
+const QUERIES = `
+    <!-- paperwren:tts -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+    </queries>
+`;
+
 function fail(message, content = "") {
 	console.error(message + (content ? `\n---- content ----\n${content}` : ""));
 	process.exit(1);
@@ -129,6 +140,11 @@ function validateActivity(src) {
 		"__paperwrenNativeError",
 		"fun immersive(on: Boolean, landscape: Boolean)",
 		"fun systemBars(dark: Boolean)",
+		"fun speak(text: String, lang: String, rate: Double, token: String)",
+		"fun stopSpeaking()",
+		"fun volumeKeys(on: Boolean)",
+		"__paperwrenSpoken",
+		"__paperwrenVolumeKey",
 		"class PaperwrenFiles : FileProvider()",
 		'"$packageName.files"',
 	];
@@ -164,6 +180,11 @@ export function hardenManifest(original) {
 		const end = src.lastIndexOf("</application>");
 		if (end === -1) fail("No </application> in manifest.", src);
 		src = `${src.slice(0, end).trimEnd()}\n${PROVIDER}    ${src.slice(end)}`;
+	}
+	if (!src.includes("paperwren:tts")) {
+		const at = src.search(/<application\b/);
+		if (at === -1) fail("No <application> tag.", src);
+		src = `${src.slice(0, at).trimEnd()}\n${QUERIES}    ${src.slice(at)}`;
 	}
 	if (!/launchMode="singleTask"/.test(src)) {
 		src = src.replace(
@@ -215,6 +236,10 @@ if (mode === "check") {
 		fail("launchMode missing.", once);
 	if (!once.includes('android:name=".PaperwrenFiles"'))
 		fail("FileProvider missing.", once);
+	if (!once.includes("android.intent.action.TTS_SERVICE"))
+		fail("Text-to-speech query missing.", once);
+	if (once.indexOf("<queries>") > once.indexOf("<application"))
+		fail("<queries> must come before <application>.", once);
 	// Each type appears once per filter (open-with, share), exactly.
 	for (const type of MIME_TYPES) {
 		const found = once.split(`android:mimeType="${type}"`).length - 1;

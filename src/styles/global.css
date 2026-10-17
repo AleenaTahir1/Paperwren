@@ -443,3 +443,8 @@ html.touch ::-webkit-scrollbar {
 		filter: none !important;
 	}
 }
+
+/* The sentence being read aloud. */
+::highlight(pw-speech) {
+	background-color: color-mix(in srgb, var(--accent) 24%, transparent);
+}
