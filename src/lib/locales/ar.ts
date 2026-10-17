@@ -441,4 +441,24 @@ export const ar: Table = {
 	"This PDF restricts copying": "يقيّد ملف PDF هذا النسخ",
 	"Inside another document": "داخل مستند آخر",
 	"Crop margins": "قص الهوامش",
+	"Add bookmark": "إضافة إشارة مرجعية",
+	Bookmarks: "الإشارات المرجعية",
+	"Remove bookmark": "إزالة الإشارة المرجعية",
+	"Bookmark added": "أُضيفت الإشارة المرجعية",
+	"No bookmarks yet. Add one from the menu, or with Ctrl+D.":
+		"لا توجد إشارات مرجعية بعد. أضف واحدة من القائمة أو باستخدام Ctrl+D.",
+	"No bookmarks yet. Add one from the menu.":
+		"لا توجد إشارات مرجعية بعد. أضف واحدة من القائمة.",
+	"{n}% through": "{n}% من المستند",
+	"Bookmark this place": "إضافة هذا الموضع إلى الإشارات المرجعية",
+	"Bookmarks deleted": "حُذفت الإشارات المرجعية",
+	"Delete bookmarks": "حذف الإشارات المرجعية",
+	"{n} bookmarks, kept only on this device": {
+		zero: "لا إشارات مرجعية، تُحفظ على هذا الجهاز فقط",
+		one: "إشارة مرجعية واحدة، محفوظة على هذا الجهاز فقط",
+		two: "إشارتان مرجعيتان، محفوظتان على هذا الجهاز فقط",
+		few: "{n} إشارات مرجعية، محفوظة على هذا الجهاز فقط",
+		many: "{n} إشارة مرجعية، محفوظة على هذا الجهاز فقط",
+		other: "{n} إشارة مرجعية، محفوظة على هذا الجهاز فقط",
+	},
 };

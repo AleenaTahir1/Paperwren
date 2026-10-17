@@ -828,6 +828,7 @@ export default function SlidesView({
 						{
 							id: "slides",
 							label: t("Slides"),
+							icon: <LayoutGrid size={16} />,
 							content: (
 								<SlideThumbs
 									deck={deck}
@@ -853,6 +854,20 @@ export default function SlidesView({
 			// Page Up / Down step through the slides here.
 			pageKeys={false}
 			side={side}
+			bookmarks={
+				deck
+					? {
+							here: () => ({
+								label: t("Slide {n}", { n: current + 1 }),
+								position: { kind: "slides", slide: current },
+							}),
+							go: (p) => {
+								if (p.kind === "slides")
+									goToRef.current(Math.min(p.slide, deck.slides.length - 1));
+							},
+						}
+					: undefined
+			}
 			chromeHidden={chromeHidden && !find.open}
 			onFind={deck ? find.start : undefined}
 			menu={

@@ -74,6 +74,7 @@ import { PdfThumbs } from "./PdfThumbs";
 import s from "./PdfView.module.css";
 import { Scrubber } from "./Scrubber";
 import {
+	type BookmarkSource,
 	FindBar,
 	type FindState,
 	Shell,
@@ -1232,6 +1233,41 @@ export default function PdfView({
 		return from >= 1 && to >= from && to <= pages ? { from, to } : null;
 	};
 
+	// --- bookmarks: a page, and the spot on it ---
+	const marks = useMemo<BookmarkSource>(
+		() => ({
+			here: () => {
+				const v = pdfViewer.current;
+				const spot = here.current;
+				if (!v || !spot) return null;
+				return {
+					// Named as the page counter shows it.
+					label: t("Page {n}", {
+						n: v.currentPageLabel || v.currentPageNumber,
+					}),
+					position: {
+						kind: "pdf",
+						page: spot.page,
+						top: spot.top,
+						left: spot.left,
+						scale: String(v.currentScaleValue),
+						rotation: v.pagesRotation,
+					},
+				};
+			},
+			go: (p) => {
+				const v = pdfViewer.current;
+				if (!v || p.kind !== "pdf") return;
+				v.scrollPageIntoView({
+					pageNumber: Math.min(Math.max(1, p.page), v.pagesCount),
+					destArray: [null, { name: "XYZ" }, p.left, p.top, null],
+					allowNegativeOffset: true,
+				});
+			},
+		}),
+		[],
+	);
+
 	// --- comments, attachments and layers ---
 	const showComment = (item: Comment) => {
 		const v = pdfViewer.current;
@@ -1412,6 +1448,7 @@ export default function PdfView({
 			side={side}
 			details={details}
 			onStep={turn}
+			bookmarks={status === "ready" ? marks : undefined}
 			turnPages={across}
 			onEdge={across ? (end) => goTo(end ? pages : 1) : undefined}
 			onFind={status === "ready" ? openFind : undefined}

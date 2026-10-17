@@ -437,4 +437,19 @@ export const hi: Table = {
 	"This PDF restricts copying": "यह PDF कॉपी करने पर रोक लगाती है",
 	"Inside another document": "किसी दूसरे दस्तावेज़ के अंदर",
 	"Crop margins": "हाशिये काटें",
+	"Add bookmark": "बुकमार्क जोड़ें",
+	Bookmarks: "बुकमार्क",
+	"Remove bookmark": "बुकमार्क हटाएँ",
+	"Bookmark added": "बुकमार्क जोड़ा गया",
+	"No bookmarks yet. Add one from the menu, or with Ctrl+D.":
+		"अभी कोई बुकमार्क नहीं। मेनू से या Ctrl+D से जोड़ें।",
+	"No bookmarks yet. Add one from the menu.": "अभी कोई बुकमार्क नहीं। मेनू से जोड़ें।",
+	"{n}% through": "{n}% पूरा",
+	"Bookmark this place": "इस जगह को बुकमार्क करें",
+	"Bookmarks deleted": "बुकमार्क हटा दिए गए",
+	"Delete bookmarks": "बुकमार्क हटाएँ",
+	"{n} bookmarks, kept only on this device": {
+		one: "{n} बुकमार्क, केवल इस डिवाइस पर",
+		other: "{n} बुकमार्क, केवल इस डिवाइस पर",
+	},
 };

@@ -563,3 +563,14 @@
 .scrub[data-held] .scrubLabel {
 	opacity: 0.94;
 }
+
+/* A bookmark: the place, and a way to forget it. */
+.mark {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+}
+.mark > button:first-child {
+	flex: 1;
+	min-width: 0;
+}

@@ -20,7 +20,12 @@ import {
 	usePageColor,
 } from "./Shell";
 import s from "./Text.module.css";
-import { useScrollMemory, useZoom, useZoomLevel } from "./hooks";
+import {
+	useScrollBookmarks,
+	useScrollMemory,
+	useZoom,
+	useZoomLevel,
+} from "./hooks";
 import type { ViewerProps } from "./types";
 import { useDomFind } from "./useDomFind";
 
@@ -107,6 +112,7 @@ export default function TextView({
 		onTap: () => setChromeHidden((h) => !h),
 	});
 	useScrollMemory(scroller, true, position, onPosition, zoom);
+	const marks = useScrollBookmarks(scroller, content);
 
 	const wrap = settings.wrapText;
 	// Text is drawn in the app's own colours; a page colour of its own
@@ -121,6 +127,7 @@ export default function TextView({
 			hud={hud}
 			progressOf={scroller}
 			paper
+			bookmarks={marks}
 			chromeHidden={chromeHidden && !find.open}
 			onFind={startFind}
 			menu={(close) => (

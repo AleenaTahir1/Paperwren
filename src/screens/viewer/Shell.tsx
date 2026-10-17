@@ -1,15 +1,27 @@
 import { backend } from "@/lib/backend";
+import type { Bookmark as Mark } from "@/lib/bookmarks";
 import { isDesktop } from "@/lib/env";
 import type { FindOptions } from "@/lib/find";
 import type { FileFormat } from "@/lib/formats";
 import { msg, t, uiDir } from "@/lib/i18n";
+import { idForReopen } from "@/lib/recents";
 import { PAGE_COLORS, resolvePageColor } from "@/lib/settings";
 import { FIND_EVENT, SELECT_ALL_EVENT } from "@/lib/signals";
-import type { PageColor } from "@/lib/types";
+import type { PageColor, Position } from "@/lib/types";
+import { useBookmarks } from "@/state/bookmarks";
 import { useSettings } from "@/state/settings";
-import { IconButton, Sheet, SheetItem, formatColor, modalOpen } from "@/ui";
+import {
+	IconButton,
+	Sheet,
+	SheetItem,
+	formatColor,
+	modalOpen,
+	toast,
+} from "@/ui";
 import {
 	ArrowLeft,
+	Bookmark,
+	BookmarkPlus,
 	ChevronDown,
 	ChevronUp,
 	Minus,
@@ -21,11 +33,12 @@ import {
 import {
 	type ReactNode,
 	type RefObject,
+	useContext,
 	useEffect,
 	useRef,
 	useState,
 } from "react";
-import { FileMenu } from "./FileMenu";
+import { FileMenu, ViewerFileContext } from "./FileMenu";
 import s from "./Shell.module.css";
 
 export { s as shellStyles };
@@ -129,6 +142,58 @@ function toEnd(el: HTMLElement, end: boolean) {
 	else el.scrollTop = end ? el.scrollHeight : 0;
 }
 
+/** Where a viewer's reader is, and how to take them back there. */
+export interface BookmarkSource {
+	/** The place on show now, named ("Page 12", or the words there). */
+	here: () => { label: string; position: Position } | null;
+	go: (position: Position) => void;
+}
+
+function BookmarkList({
+	list,
+	onPick,
+	onRemove,
+	compact = false,
+}: {
+	list: Mark[];
+	onPick: (mark: Mark) => void;
+	onRemove: (mark: Mark) => void;
+	compact?: boolean;
+}) {
+	if (!list.length)
+		return (
+			<p className={s.sideEmpty}>
+				{isDesktop
+					? t("No bookmarks yet. Add one from the menu, or with Ctrl+D.")
+					: t("No bookmarks yet. Add one from the menu.")}
+			</p>
+		);
+	return (
+		<>
+			{list.map((mark) => (
+				<div key={mark.id} className={s.mark} data-testid="bookmark">
+					<button
+						type="button"
+						className={compact ? s.sideItem : s.listItem}
+						onClick={() => onPick(mark)}
+						title={compact ? mark.label : undefined}
+						dir="auto"
+					>
+						{mark.label}
+					</button>
+					<IconButton
+						label={t("Remove bookmark")}
+						onClick={() => onRemove(mark)}
+						data-testid="bookmark-remove"
+					>
+						<X size={compact ? 14 : 18} />
+					</IconButton>
+				</div>
+			))}
+		</>
+	);
+}
+
 /** One list beside the document: its pages, its contents, its slides. */
 export interface SideTab {
 	id: string;
@@ -203,6 +268,7 @@ export function Shell({
 	onEdge,
 	side,
 	paper = false,
+	bookmarks,
 }: {
 	name: string;
 	format: FileFormat;
@@ -244,29 +310,102 @@ export function Shell({
 	side?: SideTab[];
 	/** The document is read on paper whose colour the reader picks. */
 	paper?: boolean;
+	/** Places in the document can be bookmarked and gone back to. */
+	bookmarks?: BookmarkSource;
 }) {
 	const { settings, update } = useSettings();
 	const [colorOpen, setColorOpen] = useState(false);
 	const paperColor = usePageColor();
 	const pageColor = paper ? paperColor : undefined;
-	const fileMenu = paper
-		? (close: () => void) => (
-				<>
-					{menu?.(close)}
-					<SheetItem
-						icon={<SwatchBook size={20} />}
-						hint={t(PAGE_COLOR_NAMES[settings.pageColor])}
-						onClick={() => {
-							close();
-							setColorOpen(true);
-						}}
-						testId="page-color"
-					>
-						{t("Page colour")}
-					</SheetItem>
-				</>
-			)
-		: menu;
+
+	// --- bookmarks ---
+	const viewing = useContext(ViewerFileContext);
+	const fileId =
+		bookmarks && viewing && viewing.file.reopen.kind !== "memory"
+			? idForReopen(viewing.file.reopen)
+			: null;
+	const marks = useBookmarks(fileId);
+	const [marksOpen, setMarksOpen] = useState(false);
+	const sourceRef = useRef(bookmarks);
+	sourceRef.current = bookmarks;
+	const addMark = () => {
+		const place = sourceRef.current?.here();
+		if (!place || !fileId) return;
+		const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+		marks.add({ id, ...place, at: Date.now() });
+		toast(t("Bookmark added"), {
+			label: t("Undo"),
+			run: () => marks.remove(id),
+		});
+	};
+	const addRef = useRef(addMark);
+	addRef.current = addMark;
+	const goMark = (mark: Mark) => {
+		setMarksOpen(false);
+		sourceRef.current?.go(mark.position);
+	};
+	// Ctrl+D, as a browser bookmarks a page.
+	useEffect(() => {
+		if (!active || !fileId) return;
+		const onKey = (e: KeyboardEvent) => {
+			if (modalOpen() || e.altKey || e.shiftKey) return;
+			if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "d") return;
+			e.preventDefault();
+			addRef.current();
+		};
+		window.addEventListener("keydown", onKey);
+		return () => window.removeEventListener("keydown", onKey);
+	}, [active, fileId]);
+
+	const fileMenu =
+		paper || fileId
+			? (close: () => void) => (
+					<>
+						{menu?.(close)}
+						{fileId && (
+							<>
+								<SheetItem
+									icon={<BookmarkPlus size={20} />}
+									shortcut="Ctrl+D"
+									onClick={() => {
+										close();
+										addMark();
+									}}
+									testId="bookmark-add"
+								>
+									{t("Add bookmark")}
+								</SheetItem>
+								<SheetItem
+									icon={<Bookmark size={20} />}
+									hint={
+										marks.list.length ? String(marks.list.length) : undefined
+									}
+									onClick={() => {
+										close();
+										setMarksOpen(true);
+									}}
+									testId="bookmarks"
+								>
+									{t("Bookmarks")}
+								</SheetItem>
+							</>
+						)}
+						{paper && (
+							<SheetItem
+								icon={<SwatchBook size={20} />}
+								hint={t(PAGE_COLOR_NAMES[settings.pageColor])}
+								onClick={() => {
+									close();
+									setColorOpen(true);
+								}}
+								testId="page-color"
+							>
+								{t("Page colour")}
+							</SheetItem>
+						)}
+					</>
+				)
+			: menu;
 
 	// The window is named after the document, as in every desktop reader.
 	useEffect(() => {
@@ -414,7 +553,28 @@ export function Shell({
 		};
 	}, [active, finding]);
 
-	const tabs = isDesktop ? (side ?? []) : [];
+	const tabs = isDesktop
+		? [
+				...(side ?? []),
+				...(fileId
+					? [
+							{
+								id: "bookmarks",
+								label: t("Bookmarks"),
+								icon: <Bookmark size={16} />,
+								content: (
+									<BookmarkList
+										list={marks.list}
+										onPick={goMark}
+										onRemove={(mark) => marks.remove(mark.id)}
+										compact
+									/>
+								),
+							},
+						]
+					: []),
+			]
+		: [];
 	const sideOpen = settings.sidePanel && tabs.length > 0;
 
 	return (
@@ -480,6 +640,21 @@ export function Shell({
 			</div>
 			{paper && (
 				<PageColorSheet open={colorOpen} onClose={() => setColorOpen(false)} />
+			)}
+			{fileId && (
+				<Sheet
+					open={marksOpen}
+					title={t("Bookmarks")}
+					onClose={() => setMarksOpen(false)}
+					wide
+					testId="bookmark-list"
+				>
+					<BookmarkList
+						list={marks.list}
+						onPick={goMark}
+						onRemove={(mark) => marks.remove(mark.id)}
+					/>
+				</Sheet>
 			)}
 			{(bottom || (pager && !isDesktop)) && (
 				<footer

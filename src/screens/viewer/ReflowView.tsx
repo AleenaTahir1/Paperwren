@@ -26,7 +26,12 @@ import {
 	shellStyles,
 } from "./Shell";
 import { type Heading, HeadingList, readHeadings } from "./headings";
-import { useScrollMemory, useZoom, useZoomLevel } from "./hooks";
+import {
+	useScrollBookmarks,
+	useScrollMemory,
+	useZoom,
+	useZoomLevel,
+} from "./hooks";
 import { runWorker } from "./runWorker";
 import type { ViewerProps } from "./types";
 import { useDomFind } from "./useDomFind";
@@ -122,6 +127,7 @@ export default function ReflowView(props: ViewerProps) {
 		onTap: () => setChromeHidden((h) => !h),
 	});
 	useScrollMemory(scroller, !!result?.ok, position, onPosition, zoom);
+	const marks = useScrollBookmarks(scroller, content);
 
 	const goToHeading = (heading: Heading) => {
 		const el = scroller.current;
@@ -140,6 +146,7 @@ export default function ReflowView(props: ViewerProps) {
 						{
 							id: "contents",
 							label: t("Contents"),
+							icon: <ListTree size={16} />,
 							content: (
 								<HeadingList
 									headings={headings}
@@ -176,6 +183,7 @@ export default function ReflowView(props: ViewerProps) {
 			progressOf={scroller}
 			side={side}
 			paper
+			bookmarks={doc ? marks : undefined}
 			chromeHidden={chromeHidden && !find.open}
 			onFind={doc ? find.start : undefined}
 			menu={

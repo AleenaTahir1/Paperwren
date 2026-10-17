@@ -442,4 +442,20 @@ export const ur: Table = {
 	"This PDF restricts copying": "یہ PDF نقل کرنے پر پابندی لگاتی ہے",
 	"Inside another document": "کسی دوسری دستاویز کے اندر",
 	"Crop margins": "حاشیے کاٹیں",
+	"Add bookmark": "بُک مارک شامل کریں",
+	Bookmarks: "بُک مارکس",
+	"Remove bookmark": "بُک مارک ہٹائیں",
+	"Bookmark added": "بُک مارک شامل ہو گیا",
+	"No bookmarks yet. Add one from the menu, or with Ctrl+D.":
+		"ابھی کوئی بُک مارک نہیں۔ مینو سے یا Ctrl+D سے شامل کریں۔",
+	"No bookmarks yet. Add one from the menu.":
+		"ابھی کوئی بُک مارک نہیں۔ مینو سے شامل کریں۔",
+	"{n}% through": "{n}% مکمل",
+	"Bookmark this place": "اس جگہ کو بُک مارک کریں",
+	"Bookmarks deleted": "بُک مارکس حذف ہو گئے",
+	"Delete bookmarks": "بُک مارکس حذف کریں",
+	"{n} bookmarks, kept only on this device": {
+		one: "{n} بُک مارک، صرف اس آلے پر محفوظ",
+		other: "{n} بُک مارکس، صرف اس آلے پر محفوظ",
+	},
 };

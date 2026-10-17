@@ -1,3 +1,4 @@
+import { t } from "@/lib/i18n";
 import type { Position } from "@/lib/types";
 import { useSettings } from "@/state/settings";
 import {
@@ -9,6 +10,7 @@ import {
 	useState,
 } from "react";
 import { flushSync } from "react-dom";
+import type { BookmarkSource } from "./Shell";
 
 export interface ZoomOptions {
 	/** The scrolling viewport. */
@@ -462,4 +464,73 @@ export function useScrollMemory(
 			el.removeEventListener("scroll", onScroll);
 		};
 	}, [ready, scroller, remember]);
+}
+
+/** A bookmark's name: the words at the top of the screen. */
+const WORDS = 80;
+/** What reads as a line or a paragraph of a document. */
+const BLOCKS = "p, li, h1, h2, h3, h4, h5, h6, pre, td, th, blockquote, dt, dd";
+
+/**
+ * The first words at the top of the screen. Found by halving the
+ * document's paragraphs (in order, so the first one still showing is
+ * found in a few steps however long it is), not by asking what is under
+ * a point: a menu that is still closing would answer that instead.
+ */
+function wordsAtTop(scroller: HTMLElement, content: HTMLElement): string {
+	const top = scroller.getBoundingClientRect().top + 8;
+	const blocks = content.querySelectorAll<HTMLElement>(BLOCKS);
+	let lo = 0;
+	let hi = blocks.length;
+	while (lo < hi) {
+		const mid = (lo + hi) >> 1;
+		if (blocks[mid].getBoundingClientRect().bottom <= top) lo = mid + 1;
+		else hi = mid;
+	}
+	for (let i = lo; i < Math.min(blocks.length, lo + 20); i++) {
+		const block = blocks[i];
+		let text = block.textContent ?? "";
+		if (block.tagName === "PRE") {
+			// A whole text file is one block: its line at the top.
+			const box = block.getBoundingClientRect();
+			const line = Number.parseFloat(getComputedStyle(block).lineHeight) || 20;
+			const lines = text.split("\n");
+			const from = Math.max(0, Math.floor((top - box.top) / line));
+			text = lines.slice(from).find((l) => l.trim()) ?? "";
+		}
+		const words = text.replace(/\s+/g, " ").trim();
+		if (words) return words.slice(0, WORDS);
+	}
+	return "";
+}
+
+/**
+ * Bookmarks for a document that scrolls (Word, text, flowing documents):
+ * a place is how far down it is, named after the words found there.
+ */
+export function useScrollBookmarks(
+	scroller: RefObject<HTMLElement | null>,
+	content: RefObject<HTMLElement | null>,
+): BookmarkSource {
+	return useMemo(
+		() => ({
+			here: () => {
+				const el = scroller.current;
+				if (!el) return null;
+				const range = el.scrollHeight - el.clientHeight;
+				const ratio = range > 0 ? Math.min(1, el.scrollTop / range) : 0;
+				const words = content.current ? wordsAtTop(el, content.current) : "";
+				return {
+					label: words || t("{n}% through", { n: Math.round(ratio * 100) }),
+					position: { kind: "scroll", ratio },
+				};
+			},
+			go: (position) => {
+				const el = scroller.current;
+				if (!el || position.kind !== "scroll") return;
+				el.scrollTop = position.ratio * (el.scrollHeight - el.clientHeight);
+			},
+		}),
+		[scroller, content],
+	);
 }

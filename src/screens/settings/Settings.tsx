@@ -3,6 +3,11 @@ import { isDesktop, isMac, isTauri, ownsFrame, sharesFrame } from "@/lib/env";
 import { LANGUAGES, type LanguageSetting, msg, t, tn } from "@/lib/i18n";
 import { FULLSCREEN_KEYS, keys } from "@/lib/keys";
 import type { PageColor, PdfFlow, PdfZoom } from "@/lib/types";
+import {
+	clearBookmarks,
+	restoreBookmarks,
+	useBookmarkCount,
+} from "@/state/bookmarks";
 import { useNav } from "@/state/navigation";
 import { useRecents } from "@/state/recents";
 import { useSettings } from "@/state/settings";
@@ -80,6 +85,7 @@ const SHORTCUTS: Array<[keys: string, what: string, mac?: string]> = [
 	["Home · End", msg("The start and the end of the document"), "⌘↑ · ⌘↓"],
 	["← · →", msg("The previous and the next page or slide")],
 	["F5", msg("Start a slide show")],
+	["Ctrl+D", msg("Bookmark this place")],
 	["Ctrl+] · Ctrl+[", msg("Turn the pages of a PDF")],
 	["Ctrl+Page Up · Ctrl+Page Down", msg("The previous and the next sheet")],
 	["Alt+←", msg("Back")],
@@ -154,6 +160,7 @@ export function SettingsScreen() {
 		null,
 	);
 	const [confirmCopies, setConfirmCopies] = useState(false);
+	const bookmarkCount = useBookmarkCount();
 	const [showLicenses, setShowLicenses] = useState(false);
 
 	useEffect(() => {
@@ -352,6 +359,30 @@ export function SettingsScreen() {
 									{t("{n} on this device. Your files are not touched.", {
 										n: entries.length,
 									})}
+								</span>
+							</span>
+						</button>
+						<button
+							type="button"
+							className={s.action}
+							disabled={bookmarkCount === 0}
+							onClick={async () => {
+								const previous = await clearBookmarks();
+								toast(t("Bookmarks deleted"), {
+									label: t("Undo"),
+									run: () => restoreBookmarks(previous),
+								});
+							}}
+							data-testid="clear-bookmarks"
+						>
+							<span className={s.actionText}>
+								{t("Delete bookmarks")}
+								<span className={s.hint}>
+									{tn(
+										bookmarkCount,
+										"{n} bookmark, kept only on this device",
+										"{n} bookmarks, kept only on this device",
+									)}
 								</span>
 							</span>
 						</button>

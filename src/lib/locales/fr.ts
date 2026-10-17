@@ -453,4 +453,20 @@ export const fr: Table = {
 	"This PDF restricts copying": "Ce PDF restreint la copie",
 	"Inside another document": "Dans un autre document",
 	"Crop margins": "Rogner les marges",
+	"Add bookmark": "Ajouter un signet",
+	Bookmarks: "Signets",
+	"Remove bookmark": "Retirer le signet",
+	"Bookmark added": "Signet ajouté",
+	"No bookmarks yet. Add one from the menu, or with Ctrl+D.":
+		"Aucun signet pour l'instant. Ajoutez-en un depuis le menu ou avec Ctrl+D.",
+	"No bookmarks yet. Add one from the menu.":
+		"Aucun signet pour l'instant. Ajoutez-en un depuis le menu.",
+	"{n}% through": "À {n} %",
+	"Bookmark this place": "Marquer cet endroit",
+	"Bookmarks deleted": "Signets supprimés",
+	"Delete bookmarks": "Supprimer les signets",
+	"{n} bookmarks, kept only on this device": {
+		one: "{n} signet, conservé uniquement sur cet appareil",
+		other: "{n} signets, conservés uniquement sur cet appareil",
+	},
 };

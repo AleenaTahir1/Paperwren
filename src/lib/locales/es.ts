@@ -450,4 +450,20 @@ export const es: Table = {
 	"This PDF restricts copying": "Este PDF restringe la copia",
 	"Inside another document": "Dentro de otro documento",
 	"Crop margins": "Recortar márgenes",
+	"Add bookmark": "Añadir marcador",
+	Bookmarks: "Marcadores",
+	"Remove bookmark": "Quitar marcador",
+	"Bookmark added": "Marcador añadido",
+	"No bookmarks yet. Add one from the menu, or with Ctrl+D.":
+		"Aún no hay marcadores. Añade uno desde el menú o con Ctrl+D.",
+	"No bookmarks yet. Add one from the menu.":
+		"Aún no hay marcadores. Añade uno desde el menú.",
+	"{n}% through": "Al {n}%",
+	"Bookmark this place": "Marcar este lugar",
+	"Bookmarks deleted": "Marcadores eliminados",
+	"Delete bookmarks": "Eliminar marcadores",
+	"{n} bookmarks, kept only on this device": {
+		one: "{n} marcador, guardado solo en este dispositivo",
+		other: "{n} marcadores, guardados solo en este dispositivo",
+	},
 };

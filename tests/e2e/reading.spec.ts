@@ -375,3 +375,103 @@ test("crop margins fills the screen with text, cuts nothing and is remembered", 
 		"true",
 	);
 });
+
+test.describe("bookmarks", () => {
+	test("are added, named, gone back to, kept and deleted", async ({ page }) => {
+		await boot(page);
+		await openFixture(page, "features/pictures.pdf");
+		const counter = page.getByTestId("pdf-page");
+		await expect(counter).toHaveText("1 / 3", { timeout: 20_000 });
+		const jump = async (n: string) => {
+			await counter.click();
+			await page.getByTestId("pdf-jump-input").fill(n);
+			await page.getByTestId("pdf-jump-go").click();
+			await expect(counter).toHaveText(`${n} / 3`);
+		};
+		await jump("2");
+		await page.getByTestId("file-more").click();
+		await page.getByTestId("bookmark-add").click();
+		await expect(page.getByText("Bookmark added")).toBeVisible();
+		await jump("1");
+		await page.getByTestId("file-more").click();
+		await page.getByTestId("bookmarks").click();
+		const marks = page.getByTestId("bookmark");
+		await expect(marks).toHaveText(["Page 2"]);
+		await marks.first().getByRole("button").first().click();
+		await expect(counter).toHaveText("2 / 3");
+
+		// Kept on this device, with the file.
+		await page.getByTestId("viewer-back").click();
+		await page.reload();
+		await page
+			.getByTestId("recent")
+			.first()
+			.getByRole("button")
+			.first()
+			.click();
+		await expect(counter).toHaveText(/\/ 3/, { timeout: 20_000 });
+		await page.getByTestId("file-more").click();
+		await page.getByTestId("bookmarks").click();
+		await expect(marks).toHaveText(["Page 2"]);
+		await page.getByTestId("bookmark-remove").click();
+		await expect(marks).toHaveCount(0);
+		await expect(page.getByTestId("bookmark-list")).toContainText(
+			"No bookmarks yet",
+		);
+	});
+
+	test("a Word document's bookmark is named after its words", async ({
+		page,
+	}) => {
+		await boot(page);
+		await openFixture(page, "viewer-regressions/multipage.docx");
+		const scroller = page.getByTestId("doc-scroll");
+		await expect(scroller).toBeVisible({ timeout: 20_000 });
+		await expect
+			.poll(() =>
+				scroller.evaluate((el) => el.scrollHeight > el.clientHeight * 2),
+			)
+			.toBe(true);
+		await scroller.evaluate((el) => {
+			el.scrollTop = el.scrollHeight / 2;
+		});
+		await page.getByTestId("file-more").click();
+		await page.getByTestId("bookmark-add").click();
+		await page.getByTestId("file-more").click();
+		await page.getByTestId("bookmarks").click();
+		const label = (await page.getByTestId("bookmark").textContent()) ?? "";
+		expect(label.length).toBeGreaterThan(3);
+		expect(label).not.toContain("% through");
+		await page.keyboard.press("Escape");
+		await scroller.evaluate((el) => {
+			el.scrollTop = 0;
+		});
+		await page.getByTestId("file-more").click();
+		await page.getByTestId("bookmarks").click();
+		await page.getByTestId("bookmark").getByRole("button").first().click();
+		await expect
+			.poll(() => scroller.evaluate((el) => el.scrollTop))
+			.toBeGreaterThan(100);
+	});
+});
+
+test.describe("bookmarks on a desktop", () => {
+	test.use({ viewport: { width: 1280, height: 800 } });
+
+	test("Ctrl+D adds one, and the side panel lists them", async ({ page }) => {
+		await boot(page, {}, "?desktop");
+		await openFixture(page, "sample.pptx");
+		await expect(page.getByTestId("slide-page-field")).toBeVisible({
+			timeout: 20_000,
+		});
+		await page.keyboard.press("ArrowRight");
+		await expect(page.getByTestId("slide-page-field")).toHaveValue("2");
+		await page.keyboard.press("Control+d");
+		await page.getByTestId("side-toggle").click();
+		await page.getByTestId("side-tab-bookmarks").click();
+		await expect(page.getByTestId("bookmark")).toHaveText(["Slide 2"]);
+		await page.keyboard.press("Home");
+		await page.getByTestId("bookmark").getByRole("button").first().click();
+		await expect(page.getByTestId("slide-page-field")).toHaveValue("2");
+	});
+});

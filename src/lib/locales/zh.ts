@@ -423,4 +423,16 @@ export const zh: Table = {
 	"This PDF restricts copying": "此 PDF 限制复制",
 	"Inside another document": "在另一个文档中",
 	"Crop margins": "裁剪页边距",
+	"Add bookmark": "添加书签",
+	Bookmarks: "书签",
+	"Remove bookmark": "移除书签",
+	"Bookmark added": "已添加书签",
+	"No bookmarks yet. Add one from the menu, or with Ctrl+D.":
+		"还没有书签。可从菜单或按 Ctrl+D 添加。",
+	"No bookmarks yet. Add one from the menu.": "还没有书签。可从菜单添加。",
+	"{n}% through": "已读 {n}%",
+	"Bookmark this place": "为此处添加书签",
+	"Bookmarks deleted": "书签已删除",
+	"Delete bookmarks": "删除书签",
+	"{n} bookmarks, kept only on this device": "{n} 个书签，仅保存在此设备上",
 };
