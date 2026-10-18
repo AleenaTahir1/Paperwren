@@ -19,6 +19,7 @@ jobs:
     outputs:
       should_release: ${{ steps.bump.outputs.should_release }}
       version: ${{ steps.bump.outputs.version }}
+      commit: ${{ steps.source.outputs.sha }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -78,6 +79,10 @@ jobs:
             echo "version=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Pin the versioned source for every release artifact
+        id: source
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
   desktop:
     name: Windows installer
     needs: check-and-bump
@@ -87,7 +92,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ needs.check-and-bump.outputs.commit }}
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -116,6 +121,7 @@ jobs:
         with:
           tauriScript: npx tauri
           tagName: v__VERSION__
+          releaseCommitish: ${{ needs.check-and-bump.outputs.commit }}
           releaseName: Paperwren v__VERSION__
           releaseBody: |
             Paperwren v__VERSION__. Open anything. Instantly.
@@ -142,7 +148,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ needs.check-and-bump.outputs.commit }}
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
