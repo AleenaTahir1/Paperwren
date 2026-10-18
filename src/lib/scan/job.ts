@@ -29,22 +29,11 @@ export interface Photo {
 	find: HTMLCanvasElement;
 }
 
-function loadImage(blob: Blob): Promise<HTMLImageElement> {
-	const url = URL.createObjectURL(blob);
-	const img = new Image();
-	img.decoding = "async";
-	img.src = url;
-	return img.decode().then(
-		() => {
-			URL.revokeObjectURL(url);
-			return img;
-		},
-		(err) => {
-			URL.revokeObjectURL(url);
-			throw err;
-		},
-	);
-}
+/** A picture's pixels, the right way up (the camera's orientation tag
+ * is followed). Decoded off the page's own drawing, so a photo still
+ * opens while the app is not on screen. */
+const bitmapOf = (blob: Blob) =>
+	createImageBitmap(blob, { imageOrientation: "from-image" });
 
 function drawn(
 	from: CanvasImageSource,
@@ -63,26 +52,32 @@ function drawn(
 	return canvas;
 }
 
-/** A photo's pixels, the right way up (an <img> follows the camera's
- * orientation tag). A HEIC photo the webview cannot draw is drawn by
- * the system where it can be. Rejects when the file is no picture. */
+/** A photo, ready to scan. A HEIC photo the webview cannot draw is
+ * drawn by the system where it can be. Rejects when the file is no
+ * picture. */
 export async function decodePhoto(blob: Blob): Promise<Photo> {
-	let img: HTMLImageElement;
+	let full: ImageBitmap;
 	try {
-		img = await loadImage(blob);
+		full = await bitmapOf(blob);
 	} catch (err) {
 		const jpeg = await systemDecode(new Uint8Array(await blob.arrayBuffer()));
 		if (!jpeg) throw err;
-		img = await loadImage(jpeg);
+		full = await bitmapOf(jpeg);
 	}
-	const keep = drawn(img, img.naturalWidth, img.naturalHeight, PHOTO_MAX);
-	const view = drawn(keep, keep.width, keep.height, VIEW_MAX);
+	const fits = Math.max(full.width, full.height) <= PHOTO_MAX;
+	const keep = fits ? null : drawn(full, full.width, full.height, PHOTO_MAX);
+	const from = keep ?? full;
+	const view = drawn(from, from.width, from.height, VIEW_MAX);
 	const find = drawn(view, view.width, view.height, FIND_MAX);
-	const bitmap = await createImageBitmap(keep);
-	const { width, height } = keep;
-	// Let the big canvas go now; the bitmap holds the pixels.
-	keep.width = 0;
-	keep.height = 0;
+	const { width, height } = from;
+	let bitmap = full;
+	if (keep) {
+		full.close();
+		bitmap = await createImageBitmap(keep);
+		// Let the big canvas go now; the bitmap holds the pixels.
+		keep.width = 0;
+		keep.height = 0;
+	}
 	return { bitmap, width, height, view, find };
 }
 

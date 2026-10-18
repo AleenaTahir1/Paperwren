@@ -669,6 +669,10 @@
 	height: 56px;
 	background: var(--surface);
 }
+/* The words stop short of the paper drawn at the card's end. */
+.featured > .toolText {
+	padding-inline-end: 136px;
+}
 .featured .toolText strong {
 	font-size: 26px;
 	letter-spacing: -0.035em;
@@ -962,6 +966,9 @@
 	}
 	.paperArt {
 		display: none;
+	}
+	.featured > .toolText {
+		padding-inline-end: 0;
 	}
 	.taskPanel {
 		padding: 18px;

@@ -10,7 +10,7 @@ import {
 import { type Photo, ScanJob, decodePhoto, photoScale } from "@/lib/scan/job";
 import { LOOKS, type Look } from "@/lib/scan/pixels";
 import { useBackClose } from "@/state/navigation";
-import { Button, IconButton } from "@/ui";
+import { Button, IconButton, toast } from "@/ui";
 import { useModalFocus } from "@/ui/Overlay";
 import {
 	ArrowLeft,
@@ -117,15 +117,18 @@ export function ScanEditor({
 		};
 	}, []);
 
+	/** The glide under way; a hand on a corner stops it. */
+	const gliding = useRef(0);
 	/** Ease the outline from where it is to where it should be. */
 	const glide = useCallback((from: Quad, to: Quad) => {
+		const run = ++gliding.current;
 		if (reduced()) {
 			setQuad(to);
 			return;
 		}
 		const start = performance.now();
 		const step = (now: number) => {
-			if (!alive.current) return;
+			if (!alive.current || gliding.current !== run) return;
 			const k = Math.min(1, (now - start) / 420);
 			const e = 1 - (1 - k) ** 3;
 			setQuad(
@@ -231,7 +234,10 @@ export function ScanEditor({
 			setLooks(made);
 			setPhase("look");
 		} catch {
-			if (alive.current) setPhase("failed");
+			// The outline stays as it was: try again, or change it first.
+			if (!alive.current) return;
+			setPhase("edges");
+			toast(t("Something went wrong with this photo."));
 		}
 	};
 
@@ -332,7 +338,10 @@ export function ScanEditor({
 				<Corners
 					image={photo.view}
 					quad={quad}
-					onChange={setQuad}
+					onChange={(q) => {
+						gliding.current++;
+						setQuad(q);
+					}}
 					showHandles={phase === "edges"}
 				>
 					{phase === "finding" && (
@@ -350,7 +359,7 @@ export function ScanEditor({
 					busy={phase === "looking"}
 				/>
 			)}
-			{onEdges ? (
+			{phase === "failed" ? null : onEdges ? (
 				<div className={s.tools}>
 					<Button
 						variant="ghost"
@@ -389,38 +398,40 @@ export function ScanEditor({
 					))}
 				</div>
 			)}
-			<footer className={s.footer}>
-				{onEdges ? (
-					<>
-						<Button variant="ghost" onClick={onCancel}>
-							{t("Cancel")}
-						</Button>
-						<Button
-							onClick={toLooks}
-							disabled={phase !== "edges" || !good}
-							data-testid="scan-next"
-						>
-							{t("Next")}
-							<ArrowRight size={18} className="pw-flip" />
-						</Button>
-					</>
-				) : (
-					<>
-						<Button variant="ghost" onClick={() => setPhase("edges")}>
-							<ArrowLeft size={18} className="pw-flip" />
-							{t("Edges")}
-						</Button>
-						<Button
-							onClick={finish}
-							disabled={phase !== "look"}
-							data-testid="scan-done"
-						>
-							<Check size={18} />
-							{editing ? t("Done") : t("Add page")}
-						</Button>
-					</>
-				)}
-			</footer>
+			{phase !== "failed" && (
+				<footer className={s.footer}>
+					{onEdges ? (
+						<>
+							<Button variant="ghost" onClick={onCancel}>
+								{t("Cancel")}
+							</Button>
+							<Button
+								onClick={toLooks}
+								disabled={phase !== "edges" || !good}
+								data-testid="scan-next"
+							>
+								{t("Next")}
+								<ArrowRight size={18} className="pw-flip" />
+							</Button>
+						</>
+					) : (
+						<>
+							<Button variant="ghost" onClick={() => setPhase("edges")}>
+								<ArrowLeft size={18} className="pw-flip" />
+								{t("Edges")}
+							</Button>
+							<Button
+								onClick={finish}
+								disabled={phase !== "look"}
+								data-testid="scan-done"
+							>
+								<Check size={18} />
+								{editing ? t("Done") : t("Add page")}
+							</Button>
+						</>
+					)}
+				</footer>
+			)}
 		</div>,
 		document.body,
 	);

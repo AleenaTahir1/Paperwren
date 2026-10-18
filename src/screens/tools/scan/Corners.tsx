@@ -123,6 +123,10 @@ export function Corners({
 	const loupe = useRef<HTMLCanvasElement>(null);
 	const scale = box.scale || 1;
 	const good = isConvex(quad);
+	// The outline as last changed here, ahead of the next render: keys
+	// held down repeat faster than the screen redraws.
+	const latest = useRef(quad);
+	latest.current = quad;
 
 	const toImage = (e: { clientX: number; clientY: number }): Point => {
 		const rect = frame.current?.getBoundingClientRect();
@@ -190,7 +194,9 @@ export function Corners({
 		if (!d) return;
 		e.preventDefault();
 		e.stopPropagation();
-		onChange(moved(quad, which, d[0], d[1]));
+		const next = moved(latest.current, which, d[0], d[1]);
+		latest.current = next;
+		onChange(next);
 	};
 
 	// The magnifier: the photo around the moving point, three times as
