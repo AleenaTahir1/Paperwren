@@ -518,7 +518,6 @@ ROWS = [
     ),
     # ---- tools: fill & sign ----
     ("A new PDF is made; the file you opened stays as it was.", "ایک نئی PDF بنتی ہے؛ کھولی گئی فائل جوں کی توں رہتی ہے۔", "يُنشأ ملف PDF جديد، ويبقى الملف الذي فتحته كما هو.", "将生成一个新的 PDF；你打开的文件保持不变。", "एक नई PDF बनती है; खोली गई फ़ाइल जैसी थी वैसी रहती है।", "Se crea un PDF nuevo; el archivo que abriste queda como estaba.", "Un nouveau PDF est créé ; le fichier ouvert reste tel quel."),
-    ("Add to the page from the tools", "اوزاروں سے صفحے پر کچھ لگائیں", "أضف إلى الصفحة من الأدوات", "用工具在页面上添加内容", "औज़ारों से पृष्ठ पर कुछ जोड़ें", "Añade a la página con las herramientas", "Ajoutez à la page avec les outils"),
     ("Add to the page", "صفحے پر لگائیں", "إضافة إلى الصفحة", "添加到页面", "पृष्ठ पर जोड़ें", "Añadir a la página", "Ajouter à la page"),
     ("Black ink", "کالی سیاہی", "حبر أسود", "黑色墨水", "काली स्याही", "Tinta negra", "Encre noire"),
     ("Blue ink", "نیلی سیاہی", "حبر أزرق", "蓝色墨水", "नीली स्याही", "Tinta azul", "Encre bleue"),
@@ -548,7 +547,6 @@ ROWS = [
     ("Sign a white sheet of paper with a dark pen and take a photo of it. The paper is made clear.", "سفید کاغذ پر گہرے قلم سے دستخط کریں اور اس کی تصویر لیں۔ کاغذ شفاف کر دیا جاتا ہے۔", "وقّع على ورقة بيضاء بقلم داكن والتقط لها صورة. تُجعل الورقة شفافة.", "用深色笔在白纸上签名并拍照。纸张部分会变为透明。", "सफ़ेद कागज़ पर गहरे पेन से हस्ताक्षर करें और उसकी फ़ोटो लें। कागज़ पारदर्शी कर दिया जाता है।", "Firma en una hoja blanca con un bolígrafo oscuro y hazle una foto. El papel se vuelve transparente.", "Signez une feuille blanche avec un stylo foncé et prenez-la en photo. Le papier devient transparent."),
     ("Sign here", "یہاں دستخط کریں", "وقّع هنا", "在此签名", "यहाँ हस्ताक्षर करें", "Firma aquí", "Signez ici"),
     ("Signature", "دستخط", "التوقيع", "签名", "हस्ताक्षर", "Firma", "Signature"),
-    ("Tap the page where it goes", "صفحے پر وہاں ٹیپ کریں جہاں اسے لگانا ہے", "انقر على الصفحة حيث تريد وضعه", "点按页面上要放置的位置", "पृष्ठ पर वहाँ टैप करें जहाँ इसे लगाना है", "Toca la página donde va", "Touchez la page à l'endroit voulu"),
     ("That picture couldn't be read", "یہ تصویر پڑھی نہیں جا سکی", "تعذّرت قراءة تلك الصورة", "无法读取该图片", "वह चित्र पढ़ा नहीं जा सका", "No se pudo leer esa imagen", "Impossible de lire cette image"),
     ("This PDF's password is needed to save a copy", "کاپی محفوظ کرنے کے لیے اس PDF کا پاس ورڈ درکار ہے", "يلزم كلمة مرور ملف PDF هذا لحفظ نسخة", "需要此 PDF 的密码才能保存副本", "कॉपी सहेजने के लिए इस PDF का पासवर्ड चाहिए", "Se necesita la contraseña de este PDF para guardar una copia", "Le mot de passe de ce PDF est nécessaire pour enregistrer une copie"),
     ("Tick", "ٹک", "علامة صح", "勾号", "सही का निशान", "Marca", "Coche"),
@@ -719,3 +717,7 @@ ROWS = [
     ("Open another file", "دوسری فائل کھولیں", "فتح ملف آخر", "打开其他文件", "दूसरी फ़ाइल खोलें", "Abrir otro archivo", "Ouvrir un autre fichier"),
     ("The next and the previous tab", "اگلا اور پچھلا ٹیب", "علامة التبويب التالية والسابقة", "下一个和上一个标签页", "अगला और पिछला टैब", "La pestaña siguiente y la anterior", "L'onglet suivant et le précédent"),
 ]
+
+# Guidance shared by the tool library and editor.
+from tool_ux import ROWS as TOOL_UX_ROWS
+ROWS += TOOL_UX_ROWS

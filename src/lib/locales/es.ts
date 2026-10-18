@@ -539,7 +539,6 @@ export const es: Table = {
 	},
 	"A new PDF is made; the file you opened stays as it was.":
 		"Se crea un PDF nuevo; el archivo que abriste queda como estaba.",
-	"Add to the page from the tools": "Añade a la página con las herramientas",
 	"Add to the page": "Añadir a la página",
 	"Black ink": "Tinta negra",
 	"Blue ink": "Tinta azul",
@@ -573,7 +572,6 @@ export const es: Table = {
 		"Firma en una hoja blanca con un bolígrafo oscuro y hazle una foto. El papel se vuelve transparente.",
 	"Sign here": "Firma aquí",
 	Signature: "Firma",
-	"Tap the page where it goes": "Toca la página donde va",
 	"That picture couldn't be read": "No se pudo leer esa imagen",
 	"This PDF's password is needed to save a copy":
 		"Se necesita la contraseña de este PDF para guardar una copia",
@@ -738,4 +736,55 @@ export const es: Table = {
 	"Close {name}": "Cerrar {name}",
 	"Open another file": "Abrir otro archivo",
 	"The next and the previous tab": "La pestaña siguiente y la anterior",
+	"Get started": "Empezar",
+	"Your original files stay unchanged.":
+		"Tus archivos originales no se modifican.",
+	"Reset pages": "Restablecer páginas",
+	"A little help with your paperwork": "Una ayuda con tus documentos",
+	"What would you like to do?": "¿Qué te gustaría hacer?",
+	"Choose a tool below. We'll guide you through it.":
+		"Elige una herramienta. Te guiaremos paso a paso.",
+	"Private. On your device.": "En privado. En tu dispositivo.",
+	"Forms made simple": "Formularios sin complicaciones",
+	"Arrange your pages": "Organiza tus páginas",
+	"Convert your files": "Convierte tus archivos",
+	"Add the finishing touches": "Añade los últimos detalles",
+	"Choose your PDF, add your details and signature, then save a copy.":
+		"Elige tu PDF, añade tus datos y firma y guarda una copia.",
+	"Add at least two PDFs. Arrange them from top to bottom, then save them as one file.":
+		"Añade al menos dos PDF. Ordénalos de arriba abajo y guárdalos en un solo archivo.",
+	"Choose a PDF, select the pages you want to change, then save a copy.":
+		"Elige un PDF, selecciona las páginas que quieres cambiar y guarda una copia.",
+	"Choose a PDF and enter the page numbers you want to keep.":
+		"Elige un PDF e indica los números de las páginas que quieres conservar.",
+	"Add your pictures in the order you want them to appear in the PDF.":
+		"Añade las imágenes en el orden en que quieras que aparezcan en el PDF.",
+	"Choose a PDF to save its pages as pictures, together in a ZIP file.":
+		"Elige un PDF para guardar sus páginas como imágenes en un archivo ZIP.",
+	"Choose a PDF, then choose where and how the page numbers appear.":
+		"Elige un PDF y decide dónde y cómo aparecerán los números de página.",
+	"Choose a PDF and enter a word, such as DRAFT, to put across every page.":
+		"Elige un PDF y escribe una palabra, como DRAFT, para ponerla en cada página.",
+	"Choose a PDF and set a password for the new copy.":
+		"Elige un PDF y establece una contraseña para la nueva copia.",
+	"Choose a locked PDF and enter its current password to save an unlocked copy.":
+		"Elige un PDF protegido e introduce su contraseña actual para guardar una copia sin contraseña.",
+	"Your PDF is ready": "Tu PDF está listo",
+	"How it works": "Cómo funciona",
+	"Add text, dates or your signature": "Añade texto, fechas o tu firma",
+	"Open editor": "Abrir editor",
+	"Add at least two PDFs to continue.":
+		"Añade al menos dos PDF para continuar.",
+	"Selected files": "Archivos seleccionados",
+	"Remove {name}": "Quitar {name}",
+	"Start with your PDF": "Empieza con tu PDF",
+	"Start with your pictures": "Empieza con tus imágenes",
+	"Choose a file from your device to get started.":
+		"Elige un archivo de tu dispositivo para empezar.",
+	"{tool}: select a spot on the page to place it.":
+		"{tool}: elige un lugar en la página para colocarlo.",
+	"Choose Text or Signature above, then select a spot on the page.":
+		"Elige Texto o Firma arriba y selecciona un lugar en la página.",
+	"Changes ready to save": "Cambios listos para guardar",
+	"Add your details to get started": "Añade tus datos para empezar",
 };

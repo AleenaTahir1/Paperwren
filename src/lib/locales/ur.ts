@@ -531,7 +531,6 @@ export const ur: Table = {
 	},
 	"A new PDF is made; the file you opened stays as it was.":
 		"ایک نئی PDF بنتی ہے؛ کھولی گئی فائل جوں کی توں رہتی ہے۔",
-	"Add to the page from the tools": "اوزاروں سے صفحے پر کچھ لگائیں",
 	"Add to the page": "صفحے پر لگائیں",
 	"Black ink": "کالی سیاہی",
 	"Blue ink": "نیلی سیاہی",
@@ -564,7 +563,6 @@ export const ur: Table = {
 		"سفید کاغذ پر گہرے قلم سے دستخط کریں اور اس کی تصویر لیں۔ کاغذ شفاف کر دیا جاتا ہے۔",
 	"Sign here": "یہاں دستخط کریں",
 	Signature: "دستخط",
-	"Tap the page where it goes": "صفحے پر وہاں ٹیپ کریں جہاں اسے لگانا ہے",
 	"That picture couldn't be read": "یہ تصویر پڑھی نہیں جا سکی",
 	"This PDF's password is needed to save a copy":
 		"کاپی محفوظ کرنے کے لیے اس PDF کا پاس ورڈ درکار ہے",
@@ -728,4 +726,54 @@ export const ur: Table = {
 	"Close {name}": "{name} بند کریں",
 	"Open another file": "دوسری فائل کھولیں",
 	"The next and the previous tab": "اگلا اور پچھلا ٹیب",
+	"Get started": "شروع کریں",
+	"Your original files stay unchanged.": "آپ کی اصل فائلیں تبدیل نہیں ہوتیں۔",
+	"Reset pages": "صفحات بحال کریں",
+	"A little help with your paperwork": "آپ کے کاغذی کام میں تھوڑی مدد",
+	"What would you like to do?": "آپ کیا کرنا چاہتے ہیں؟",
+	"Choose a tool below. We'll guide you through it.":
+		"نیچے سے ایک ٹول منتخب کریں۔ ہم آپ کی رہنمائی کریں گے۔",
+	"Private. On your device.": "نجی۔ آپ کے آلے پر۔",
+	"Forms made simple": "فارم بھرنا ہوا آسان",
+	"Arrange your pages": "اپنے صفحات ترتیب دیں",
+	"Convert your files": "اپنی فائلوں کا فارمیٹ بدلیں",
+	"Add the finishing touches": "آخری تبدیلیاں کریں",
+	"Choose your PDF, add your details and signature, then save a copy.":
+		"اپنی PDF منتخب کریں، تفصیلات اور دستخط شامل کریں، پھر ایک نقل محفوظ کریں۔",
+	"Add at least two PDFs. Arrange them from top to bottom, then save them as one file.":
+		"کم از کم دو PDF شامل کریں۔ انہیں اوپر سے نیچے ترتیب دیں، پھر ایک فائل کے طور پر محفوظ کریں۔",
+	"Choose a PDF, select the pages you want to change, then save a copy.":
+		"ایک PDF منتخب کریں، بدلنے والے صفحات چنیں، پھر ایک نقل محفوظ کریں۔",
+	"Choose a PDF and enter the page numbers you want to keep.":
+		"ایک PDF منتخب کریں اور رکھنے والے صفحات کے نمبر درج کریں۔",
+	"Add your pictures in the order you want them to appear in the PDF.":
+		"تصویریں اس ترتیب میں شامل کریں جس میں آپ انہیں PDF میں دیکھنا چاہتے ہیں۔",
+	"Choose a PDF to save its pages as pictures, together in a ZIP file.":
+		"ایک PDF منتخب کریں تاکہ اس کے صفحات تصویروں کی صورت میں ایک ZIP فائل میں محفوظ ہوں۔",
+	"Choose a PDF, then choose where and how the page numbers appear.":
+		"ایک PDF منتخب کریں، پھر صفحہ نمبروں کی جگہ اور انداز چنیں۔",
+	"Choose a PDF and enter a word, such as DRAFT, to put across every page.":
+		"ایک PDF منتخب کریں اور ہر صفحے پر لگانے کے لیے کوئی لفظ، مثلاً DRAFT، درج کریں۔",
+	"Choose a PDF and set a password for the new copy.":
+		"ایک PDF منتخب کریں اور نئی نقل کے لیے پاس ورڈ مقرر کریں۔",
+	"Choose a locked PDF and enter its current password to save an unlocked copy.":
+		"پاس ورڈ والی PDF منتخب کریں اور اس کا موجودہ پاس ورڈ درج کریں تاکہ بغیر پاس ورڈ کی نقل محفوظ ہو۔",
+	"Your PDF is ready": "آپ کی PDF تیار ہے",
+	"How it works": "یہ کیسے کام کرتا ہے",
+	"Add text, dates or your signature": "متن، تاریخ یا اپنے دستخط شامل کریں",
+	"Open editor": "ایڈیٹر کھولیں",
+	"Add at least two PDFs to continue.":
+		"آگے بڑھنے کے لیے کم از کم دو PDF شامل کریں۔",
+	"Selected files": "منتخب فائلیں",
+	"Remove {name}": "{name} ہٹائیں",
+	"Start with your PDF": "اپنی PDF سے شروع کریں",
+	"Start with your pictures": "اپنی تصویروں سے شروع کریں",
+	"Choose a file from your device to get started.":
+		"شروع کرنے کے لیے اپنے آلے سے ایک فائل منتخب کریں۔",
+	"{tool}: select a spot on the page to place it.":
+		"{tool}: اسے رکھنے کے لیے صفحے پر جگہ منتخب کریں۔",
+	"Choose Text or Signature above, then select a spot on the page.":
+		"اوپر متن یا دستخط منتخب کریں، پھر صفحے پر جگہ چنیں۔",
+	"Changes ready to save": "تبدیلیاں محفوظ کرنے کے لیے تیار ہیں",
+	"Add your details to get started": "شروع کرنے کے لیے اپنی تفصیلات شامل کریں",
 };

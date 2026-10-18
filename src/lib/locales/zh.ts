@@ -495,7 +495,6 @@ export const zh: Table = {
 	"{n} pages selected": "已选择 {n} 页",
 	"A new PDF is made; the file you opened stays as it was.":
 		"将生成一个新的 PDF；你打开的文件保持不变。",
-	"Add to the page from the tools": "用工具在页面上添加内容",
 	"Add to the page": "添加到页面",
 	"Black ink": "黑色墨水",
 	"Blue ink": "蓝色墨水",
@@ -528,7 +527,6 @@ export const zh: Table = {
 		"用深色笔在白纸上签名并拍照。纸张部分会变为透明。",
 	"Sign here": "在此签名",
 	Signature: "签名",
-	"Tap the page where it goes": "点按页面上要放置的位置",
 	"That picture couldn't be read": "无法读取该图片",
 	"This PDF's password is needed to save a copy":
 		"需要此 PDF 的密码才能保存副本",
@@ -681,4 +679,53 @@ export const zh: Table = {
 	"Close {name}": "关闭 {name}",
 	"Open another file": "打开其他文件",
 	"The next and the previous tab": "下一个和上一个标签页",
+	"Get started": "开始使用",
+	"Your original files stay unchanged.": "您的原始文件保持不变。",
+	"Reset pages": "重置页面",
+	"A little help with your paperwork": "轻松处理文档",
+	"What would you like to do?": "您想做什么？",
+	"Choose a tool below. We'll guide you through it.":
+		"选择下方工具，我们会引导您完成操作。",
+	"Private. On your device.": "私密处理，仅在您的设备上。",
+	"Forms made simple": "轻松填写表单",
+	"Arrange your pages": "整理页面",
+	"Convert your files": "转换文件",
+	"Add the finishing touches": "添加最后的细节",
+	"Choose your PDF, add your details and signature, then save a copy.":
+		"选择 PDF，添加信息和签名，然后保存副本。",
+	"Add at least two PDFs. Arrange them from top to bottom, then save them as one file.":
+		"添加至少两个 PDF，从上到下排序，然后保存为一个文件。",
+	"Choose a PDF, select the pages you want to change, then save a copy.":
+		"选择 PDF，选中要更改的页面，然后保存副本。",
+	"Choose a PDF and enter the page numbers you want to keep.":
+		"选择 PDF 并输入要保留的页码。",
+	"Add your pictures in the order you want them to appear in the PDF.":
+		"按照您希望在 PDF 中显示的顺序添加图片。",
+	"Choose a PDF to save its pages as pictures, together in a ZIP file.":
+		"选择 PDF，将页面保存为图片并打包为 ZIP 文件。",
+	"Choose a PDF, then choose where and how the page numbers appear.":
+		"选择 PDF，然后选择页码的位置和样式。",
+	"Choose a PDF and enter a word, such as DRAFT, to put across every page.":
+		"选择 PDF 并输入 DRAFT 等文字，将其添加到每一页上。",
+	"Choose a PDF and set a password for the new copy.":
+		"选择 PDF 并为新副本设置密码。",
+	"Choose a locked PDF and enter its current password to save an unlocked copy.":
+		"选择受保护的 PDF，输入当前密码，然后保存无需密码的副本。",
+	"Your PDF is ready": "您的 PDF 已准备就绪",
+	"How it works": "操作步骤",
+	"Add text, dates or your signature": "添加文字、日期或签名",
+	"Open editor": "打开编辑器",
+	"Add at least two PDFs to continue.": "请添加至少两个 PDF 以继续。",
+	"Selected files": "已选文件",
+	"Remove {name}": "移除 {name}",
+	"Start with your PDF": "从您的 PDF 开始",
+	"Start with your pictures": "从您的图片开始",
+	"Choose a file from your device to get started.":
+		"从设备中选择一个文件即可开始。",
+	"{tool}: select a spot on the page to place it.":
+		"{tool}：选择页面上的位置进行放置。",
+	"Choose Text or Signature above, then select a spot on the page.":
+		"在上方选择文字或签名，然后选择页面上的位置。",
+	"Changes ready to save": "更改已就绪，可以保存",
+	"Add your details to get started": "添加您的信息以开始",
 };

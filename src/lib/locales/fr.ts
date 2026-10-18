@@ -545,7 +545,6 @@ export const fr: Table = {
 	},
 	"A new PDF is made; the file you opened stays as it was.":
 		"Un nouveau PDF est créé ; le fichier ouvert reste tel quel.",
-	"Add to the page from the tools": "Ajoutez à la page avec les outils",
 	"Add to the page": "Ajouter à la page",
 	"Black ink": "Encre noire",
 	"Blue ink": "Encre bleue",
@@ -580,7 +579,6 @@ export const fr: Table = {
 		"Signez une feuille blanche avec un stylo foncé et prenez-la en photo. Le papier devient transparent.",
 	"Sign here": "Signez ici",
 	Signature: "Signature",
-	"Tap the page where it goes": "Touchez la page à l'endroit voulu",
 	"That picture couldn't be read": "Impossible de lire cette image",
 	"This PDF's password is needed to save a copy":
 		"Le mot de passe de ce PDF est nécessaire pour enregistrer une copie",
@@ -747,4 +745,56 @@ export const fr: Table = {
 	"Close {name}": "Fermer {name}",
 	"Open another file": "Ouvrir un autre fichier",
 	"The next and the previous tab": "L'onglet suivant et le précédent",
+	"Get started": "Commencer",
+	"Your original files stay unchanged.":
+		"Vos fichiers d’origine restent inchangés.",
+	"Reset pages": "Réinitialiser les pages",
+	"A little help with your paperwork": "Un coup de main pour vos documents",
+	"What would you like to do?": "Que souhaitez-vous faire ?",
+	"Choose a tool below. We'll guide you through it.":
+		"Choisissez un outil. Nous vous guiderons pas à pas.",
+	"Private. On your device.": "En privé. Sur votre appareil.",
+	"Forms made simple": "Les formulaires en toute simplicité",
+	"Arrange your pages": "Organisez vos pages",
+	"Convert your files": "Convertissez vos fichiers",
+	"Add the finishing touches": "Ajoutez la touche finale",
+	"Choose your PDF, add your details and signature, then save a copy.":
+		"Choisissez votre PDF, ajoutez vos informations et votre signature, puis enregistrez une copie.",
+	"Add at least two PDFs. Arrange them from top to bottom, then save them as one file.":
+		"Ajoutez au moins deux PDF. Classez-les de haut en bas, puis enregistrez-les dans un seul fichier.",
+	"Choose a PDF, select the pages you want to change, then save a copy.":
+		"Choisissez un PDF, sélectionnez les pages à modifier, puis enregistrez une copie.",
+	"Choose a PDF and enter the page numbers you want to keep.":
+		"Choisissez un PDF et saisissez les numéros des pages à conserver.",
+	"Add your pictures in the order you want them to appear in the PDF.":
+		"Ajoutez vos images dans l’ordre souhaité pour le PDF.",
+	"Choose a PDF to save its pages as pictures, together in a ZIP file.":
+		"Choisissez un PDF pour enregistrer ses pages en images dans un fichier ZIP.",
+	"Choose a PDF, then choose where and how the page numbers appear.":
+		"Choisissez un PDF, puis l’emplacement et le style des numéros de page.",
+	"Choose a PDF and enter a word, such as DRAFT, to put across every page.":
+		"Choisissez un PDF et saisissez un mot, comme DRAFT, à placer sur chaque page.",
+	"Choose a PDF and set a password for the new copy.":
+		"Choisissez un PDF et définissez un mot de passe pour la nouvelle copie.",
+	"Choose a locked PDF and enter its current password to save an unlocked copy.":
+		"Choisissez un PDF protégé et saisissez son mot de passe actuel pour enregistrer une copie sans mot de passe.",
+	"Your PDF is ready": "Votre PDF est prêt",
+	"How it works": "Comment ça marche",
+	"Add text, dates or your signature":
+		"Ajoutez du texte, des dates ou votre signature",
+	"Open editor": "Ouvrir l’éditeur",
+	"Add at least two PDFs to continue.":
+		"Ajoutez au moins deux PDF pour continuer.",
+	"Selected files": "Fichiers sélectionnés",
+	"Remove {name}": "Retirer {name}",
+	"Start with your PDF": "Commencez avec votre PDF",
+	"Start with your pictures": "Commencez avec vos images",
+	"Choose a file from your device to get started.":
+		"Choisissez un fichier sur votre appareil pour commencer.",
+	"{tool}: select a spot on the page to place it.":
+		"{tool} : choisissez un endroit sur la page pour le placer.",
+	"Choose Text or Signature above, then select a spot on the page.":
+		"Choisissez Texte ou Signature ci-dessus, puis un endroit sur la page.",
+	"Changes ready to save": "Modifications prêtes à enregistrer",
+	"Add your details to get started": "Ajoutez vos informations pour commencer",
 };

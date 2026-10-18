@@ -24,9 +24,12 @@ import {
 	Spinner,
 	toast,
 } from "@/ui";
+import { useModalFocus } from "@/ui/Overlay";
 import {
+	ArrowLeft,
 	CalendarDays,
 	Check,
+	Info,
 	Minus,
 	PenLine,
 	Plus,
@@ -263,6 +266,7 @@ export function FillSign({
 	const [width, setWidth] = useState(0);
 	const [sizes, setSizes] = useState<Array<[number, number]>>([]);
 	const scroller = useRef<HTMLDivElement>(null);
+	const editor = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
 		let alive = true;
@@ -314,6 +318,13 @@ export function FillSign({
 		else onClose();
 	}, [dirty, onClose]);
 	useBackClose("fill-sign", true, close);
+	useModalFocus(editor, () => {
+		if (tool || selected) {
+			setTool(null);
+			setSelected(null);
+			setEditing(null);
+		} else close();
+	});
 
 	const update = (id: string, change: Partial<Item>) =>
 		setItems((list) =>
@@ -328,6 +339,13 @@ export function FillSign({
 	// Delete takes away what is picked; Escape lets go of it.
 	useEffect(() => {
 		const onKey = (e: KeyboardEvent) => {
+			if (!editor.current?.contains(e.target as Node)) return;
+			if (
+				(e.target as Element | null)?.closest(
+					"input, textarea, select, [contenteditable='true']",
+				)
+			)
+				return;
 			if (editing || !selected) return;
 			if (e.key === "Delete" || e.key === "Backspace") {
 				e.preventDefault();
@@ -525,6 +543,8 @@ export function FillSign({
 
 	return createPortal(
 		<div
+			ref={editor}
+			tabIndex={-1}
 			className={s.fill}
 			// biome-ignore lint/a11y/useSemanticElements: a full-screen surface, not a native dialog
 			role="dialog"
@@ -532,37 +552,14 @@ export function FillSign({
 			aria-label={t("Fill & sign")}
 			data-testid="fill-sign"
 		>
-			<header className={s.fillBar}>
+			<header className={s.fillBar} data-tauri-drag-region="deep">
 				<IconButton label={t("Close")} onClick={close} data-testid="fill-close">
-					<X size={22} />
+					<ArrowLeft size={22} className="pw-flip" />
 				</IconButton>
 				<div className={s.fillTitle}>
 					<strong>{t("Fill & sign")}</strong>
 					<span dir="auto">{name}</span>
 				</div>
-				<div className={s.zoom}>
-					<IconButton
-						label={t("Zoom out")}
-						disabled={zoom === 0}
-						onClick={() => setZoom((z) => Math.max(0, z - 1))}
-					>
-						<Minus size={18} />
-					</IconButton>
-					<IconButton
-						label={t("Zoom in")}
-						disabled={zoom === ZOOMS.length - 1}
-						onClick={() => setZoom((z) => Math.min(ZOOMS.length - 1, z + 1))}
-					>
-						<Plus size={18} />
-					</IconButton>
-				</div>
-				<Button
-					onClick={() => setSaving("ask")}
-					disabled={!dirty || saving === "busy"}
-					data-testid="fill-save"
-				>
-					{t("Save a copy")}
-				</Button>
 			</header>
 			{canMark && (
 				<div
@@ -585,17 +582,33 @@ export function FillSign({
 					))}
 				</div>
 			)}
-			<p className={s.fillHint} aria-live="polite" data-testid="fill-hint">
-				{tool
-					? t("Tap the page where it goes")
-					: fields?.length
-						? t(
-								"Type into the form's fields, or add to the page from the tools",
-							)
-						: canMark
-							? t("Add to the page from the tools")
-							: t("Type into the form's fields")}
-			</p>
+			<div className={s.fillHint}>
+				<Info size={17} aria-hidden="true" />
+				<p aria-live="polite" data-testid="fill-hint">
+					{tool
+						? t("{tool}: select a spot on the page to place it.", {
+								tool: tools.find(([kind]) => kind === tool)?.[1] ?? "",
+							})
+						: fields?.length
+							? t(
+									"Type into the form's fields, or add to the page from the tools",
+								)
+							: canMark
+								? t(
+										"Choose Text or Signature above, then select a spot on the page.",
+									)
+								: t("Type into the form's fields")}
+				</p>
+				{tool && (
+					<button
+						type="button"
+						className={s.cancelTool}
+						onClick={() => setTool(null)}
+					>
+						{t("Cancel")}
+					</button>
+				)}
+			</div>
 			<div ref={scroller} className={s.fillPages} data-tool={tool ?? undefined}>
 				{!sizes.length && <Spinner label={t("Opening")} />}
 				{sizes.map(([pw, ph], page) => (
@@ -663,6 +676,38 @@ export function FillSign({
 					</FillPage>
 				))}
 			</div>
+
+			<footer className={s.fillFooter}>
+				<div className={s.zoom}>
+					<IconButton
+						label={t("Zoom out")}
+						disabled={zoom === 0}
+						onClick={() => setZoom((z) => Math.max(0, z - 1))}
+					>
+						<Minus size={18} />
+					</IconButton>
+					<span>{Math.round(ZOOMS[zoom] * 100)}%</span>
+					<IconButton
+						label={t("Zoom in")}
+						disabled={zoom === ZOOMS.length - 1}
+						onClick={() => setZoom((z) => Math.min(ZOOMS.length - 1, z + 1))}
+					>
+						<Plus size={18} />
+					</IconButton>
+				</div>
+				<p className={s.saveStatus} aria-live="polite">
+					{dirty
+						? t("Changes ready to save")
+						: t("Add your details to get started")}
+				</p>
+				<Button
+					onClick={() => setSaving("ask")}
+					disabled={!dirty || saving === "busy"}
+					data-testid="fill-save"
+				>
+					{t("Save a copy")}
+				</Button>
+			</footer>
 
 			{chooser && (
 				<Sheet

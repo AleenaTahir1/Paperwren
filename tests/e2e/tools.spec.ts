@@ -314,7 +314,9 @@ test.describe("PDF tools", () => {
 		expect(pages).toHaveLength(6);
 		expect(pages[0].text).toContain("Paperwren test page 1 of 3");
 		expect(pages[3].text).not.toContain("Paperwren test page");
-		await expect(page.getByText("Saved as sample (merged).pdf")).toBeVisible();
+		await expect(page.getByTestId("tools").getByRole("status")).toContainText(
+			"Saved as sample (merged).pdf",
+		);
 	});
 
 	test("pages are organized from inside a PDF", async ({ page }) => {
@@ -350,6 +352,32 @@ test.describe("PDF tools", () => {
 		await page.getByTestId("tools-back").click();
 		await expect(page.getByTestId("tools")).toHaveCount(0);
 		await expect(page.getByTestId("pdf-scroll")).toBeVisible();
+	});
+
+	test("replacing an organized PDF clears the old page order and selection", async ({
+		page,
+	}) => {
+		await boot(page);
+		await openTool(page, "organize");
+		await addFile(page, "sample.pdf");
+		await expect(page.getByTestId("tool-page")).toHaveCount(3);
+		await page.getByTestId("tool-page").nth(2).click();
+		await page.getByTestId("tool-delete").click();
+		await expect(page.getByTestId("tool-page")).toHaveCount(2);
+		await page.getByRole("button", { name: "Reset pages" }).click();
+		await expect(page.getByTestId("tool-page")).toHaveCount(3);
+		await expect(page.getByTestId("tool-go")).toBeDisabled();
+		await page.getByTestId("tool-page").nth(2).click();
+		await page.getByTestId("tool-turn-right").click();
+		await page.getByTestId("tool-file-remove").click();
+		await addFile(page, "features/form.pdf");
+		await expect(page.getByTestId("tool-page")).toHaveCount(2);
+		await expect(page.getByTestId("tool-page").first()).toHaveAttribute(
+			"aria-pressed",
+			"false",
+		);
+		await expect(page.getByTestId("tool-turn-right")).toBeDisabled();
+		await expect(page.getByTestId("tool-go")).toBeDisabled();
 	});
 
 	test("pages are extracted, or split one to a file", async ({ page }) => {
@@ -411,6 +439,7 @@ test.describe("PDF tools", () => {
 		await boot(page);
 		await openTool(page, "numbers");
 		await addFile(page, "sample.pdf");
+		await expect(page.getByTestId("tool-style-of")).toHaveText("Page 1 of 9");
 		await page.getByTestId("tool-style-of").click();
 		const numbered = await texts((await runTool(page)).bytes);
 		expect(numbered[2].text).toContain("Page 3 of 3");
@@ -456,7 +485,7 @@ test.describe("PDF tools", () => {
 test("fill & sign starts from the tools too", async ({ page }) => {
 	await boot(page);
 	await openTool(page, "sign");
-	await expect(page.getByTestId("tool-go")).toBeDisabled();
+	await expect(page.getByTestId("tool-go")).toHaveCount(0);
 	await addFile(page, "features/form.pdf");
 	await page.getByTestId("tool-go").click();
 	const editor = page.getByTestId("fill-sign");
@@ -470,6 +499,33 @@ test("fill & sign starts from the tools too", async ({ page }) => {
 			.getTextField("fullname")
 			.getText(),
 	).toBe("Lena");
+});
+
+test("editor keeps window controls separate and nested dialogs keep keyboard focus", async ({
+	page,
+}) => {
+	await page.setViewportSize({ width: 1280, height: 800 });
+	await boot(page, {}, "?desktop&frame");
+	await openTool(page, "sign");
+	await addFile(page, "features/form.pdf");
+	await page.getByTestId("tool-go").click();
+	const editor = page.getByTestId("fill-sign");
+	await expect(editor.getByTestId("fill-field")).toHaveCount(5);
+	const save = await page.getByTestId("fill-save").boundingBox();
+	const controls = await page.getByTestId("window-controls").boundingBox();
+	expect(save && controls && save.y > controls.y + controls.height).toBe(true);
+	await expect(page.locator("#root")).toHaveAttribute("inert", "");
+	await editor.getByLabel("fullname").fill("Ayesha");
+	await page.getByTestId("fill-save").click();
+	await expect(page.getByTestId("fill-save-ask")).toBeVisible();
+	await page.keyboard.press("Escape");
+	await expect(page.getByTestId("fill-save-ask")).toHaveCount(0);
+	await expect(page.getByTestId("fill-leave")).toHaveCount(0);
+	await expect(editor).toBeVisible();
+	await expect(page.locator("#root")).toHaveAttribute("inert", "");
+	await expect(page.getByTestId("fill-save")).toBeFocused();
+	await page.keyboard.press("Tab");
+	await expect(page.getByTestId("fill-close")).toBeFocused();
 });
 
 test("kept signatures can be forgotten in Settings", async ({ page }) => {

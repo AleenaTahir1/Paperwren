@@ -95,7 +95,7 @@ export function placeMenu(
 /** Trap Tab inside `root`, close on Escape, restore focus on unmount.
  * A dialog that asks for something (a password, a page number) starts
  * in its field, so typing works at once and a phone shows its keyboard. */
-function useModalFocus(
+export function useModalFocus(
 	root: React.RefObject<HTMLElement | null>,
 	onClose: () => void,
 ) {
@@ -108,15 +108,17 @@ function useModalFocus(
 		// Overlays are portalled beside the app, so the app itself can be
 		// taken out of reach of Tab and assistive tech while one is open.
 		const app = document.getElementById("root");
-		modals++;
+		const depth = ++modals;
 		app?.setAttribute("inert", "");
 		const onKey = (e: KeyboardEvent) => {
+			// Only the top dialog handles keys (for example Save over the editor).
+			if (modals !== depth) return;
 			if (e.key === "Escape") {
 				e.stopPropagation();
 				closeRef.current();
 			} else if (e.key === "Tab" && root.current) {
 				const items = root.current.querySelectorAll<HTMLElement>(
-					"button:not(:disabled), input, [href], [tabindex]:not([tabindex='-1'])",
+					"button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), [href], [tabindex]:not([tabindex='-1'])",
 				);
 				if (!items.length) return;
 				const first = items[0];

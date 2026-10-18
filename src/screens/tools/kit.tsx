@@ -1,4 +1,4 @@
-import { type SavedFile, backend } from "@/lib/backend";
+import { type SavedFile, backend, requestForSaved } from "@/lib/backend";
 import { t, tn } from "@/lib/i18n";
 import { openPdf } from "@/lib/pdfEngine";
 import { ToolError, pageCount } from "@/lib/pdfTools";
@@ -6,7 +6,15 @@ import { sniffFormat } from "@/lib/sniff";
 import type { OpenRequest } from "@/lib/types";
 import { PasswordDialog } from "@/screens/viewer/Dialogs";
 import { Button, IconButton, toast } from "@/ui";
-import { ArrowDown, ArrowUp, FilePlus2, X } from "lucide-react";
+import {
+	ArrowDown,
+	ArrowUp,
+	Check,
+	FilePlus2,
+	FileText,
+	Image,
+	X,
+} from "lucide-react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { useCallback, useEffect, useRef, useState } from "react";
 import s from "./Tools.module.css";
@@ -68,6 +76,7 @@ function usePassword() {
 export function useToolFiles(takes: Takes, initial?: OpenRequest) {
 	const [files, setFiles] = useState<ToolFile[]>([]);
 	const [busy, setBusy] = useState(false);
+	const picking = useRef(false);
 	const password = usePassword();
 
 	const adopt = useCallback(
@@ -124,8 +133,16 @@ export function useToolFiles(takes: Takes, initial?: OpenRequest) {
 	}, [initial, adopt]);
 
 	const add = async () => {
-		const picked = await backend.pickFile().catch(() => null);
-		if (picked) await adopt(picked);
+		if (picking.current || busy) return;
+		picking.current = true;
+		try {
+			const picked = await backend.pickFile();
+			if (picked) await adopt(picked);
+		} catch {
+			toast(t("Couldn't open the file picker"));
+		} finally {
+			picking.current = false;
+		}
 	};
 	const move = (key: number, by: -1 | 1) =>
 		setFiles((list) => {
@@ -138,7 +155,7 @@ export function useToolFiles(takes: Takes, initial?: OpenRequest) {
 		});
 	const remove = (key: number) =>
 		setFiles((list) => list.filter((f) => f.key !== key));
-	return { files, busy, add, move, remove, dialog: password.dialog };
+	return { files, busy, takes, add, move, remove, dialog: password.dialog };
 }
 
 /** The files, in order, with a button to add one. */
@@ -154,9 +171,18 @@ export function FileList({
 }) {
 	const { files, busy, add, move, remove } = kit;
 	return (
-		<div className={s.files}>
+		<div className={s.files} aria-busy={busy}>
+			{files.length > 0 && (
+				<div className={s.fileHeading}>
+					<Check size={16} />
+					<span>{t("Selected files")}</span>
+				</div>
+			)}
 			{files.map((file, i) => (
 				<div key={file.key} className={s.fileRow} data-testid="tool-file">
+					<span className={s.fileBadge} aria-hidden="true">
+						{several ? i + 1 : <FileText size={20} />}
+					</span>
 					<span className={s.fileName} dir="auto">
 						{file.name}
 					</span>
@@ -185,7 +211,7 @@ export function FileList({
 						</>
 					)}
 					<IconButton
-						label={t("Remove")}
+						label={t("Remove {name}", { name: file.name })}
 						onClick={() => remove(file.key)}
 						data-testid="tool-file-remove"
 					>
@@ -194,14 +220,33 @@ export function FileList({
 				</div>
 			))}
 			{(several || !files.length) && (
-				<Button
-					variant="secondary"
-					onClick={add}
-					disabled={busy}
-					data-testid="tool-add"
-				>
-					<FilePlus2 size={18} /> {busy ? t("Opening…") : addLabel}
-				</Button>
+				<div className={!files.length ? s.pickZone : s.addMore}>
+					{!files.length && (
+						<>
+							<span className={s.pickIcon}>
+								{kit.takes === "pdf" ? (
+									<FilePlus2 size={30} />
+								) : (
+									<Image size={30} />
+								)}
+							</span>
+							<h3>
+								{kit.takes === "pdf"
+									? t("Start with your PDF")
+									: t("Start with your pictures")}
+							</h3>
+							<p>{t("Choose a file from your device to get started.")}</p>
+						</>
+					)}
+					<Button
+						variant={files.length ? "secondary" : "primary"}
+						onClick={add}
+						disabled={busy}
+						data-testid="tool-add"
+					>
+						<FilePlus2 size={18} /> {busy ? t("Opening…") : addLabel}
+					</Button>
+				</div>
 			)}
 		</div>
 	);
@@ -210,35 +255,63 @@ export function FileList({
 /** Run a tool and save what it made, saying how it went. */
 export function useRun(onOpen?: (request: OpenRequest) => void) {
 	const [running, setRunning] = useState(false);
+	const inFlight = useRef(false);
+	const [result, setResult] = useState<(SavedFile & { size: number }) | null>(
+		null,
+	);
+	const [error, setError] = useState("");
 	const run = async (
 		make: () => Promise<{ name: string; bytes: Uint8Array; mime: string }>,
 	): Promise<SavedFile | null> => {
+		if (inFlight.current) return null;
+		inFlight.current = true;
 		setRunning(true);
+		setResult(null);
+		setError("");
 		try {
 			const made = await make();
 			const saved = await backend.saveFile(made.name, made.bytes, made.mime);
+			setResult(saved ? { ...saved, size: made.bytes.length } : null);
 			if (saved) announceSaved(saved, onOpen, made.bytes.length);
 			return saved;
 		} catch (err) {
-			toast(
+			const message =
 				err instanceof ToolError && err.reason === "password"
 					? t("This PDF's password is needed to save a copy")
-					: t("Couldn't save a copy"),
-			);
+					: t("Couldn't save a copy");
+			setError(message);
+			toast(message);
 			return null;
 		} finally {
+			inFlight.current = false;
 			setRunning(false);
 		}
 	};
-	return { running, run };
+	const request = result ? requestForSaved(result, result.size) : null;
+	const feedback = result ? (
+		<output className={s.result}>
+			<Check size={20} />
+			<span>{t("Saved as {name}", { name: result.name })}</span>
+			{request && onOpen && (
+				<Button variant="secondary" onClick={() => onOpen(request)}>
+					{t("Open")}
+				</Button>
+			)}
+		</output>
+	) : error ? (
+		<p className={s.error} role="alert">
+			{error}
+		</p>
+	) : null;
+	return { running, run, feedback };
 }
 
 /** A PDF opened for drawing its pages, while it is in use. */
 export function usePdf(file: ToolFile | undefined) {
 	const [doc, setDoc] = useState<PDFDocumentProxy | null>(null);
 	useEffect(() => {
+		setDoc(null);
 		if (!file) {
-			setDoc(null);
 			return;
 		}
 		let alive = true;
@@ -249,7 +322,9 @@ export function usePdf(file: ToolFile | undefined) {
 				if (alive) setDoc(d);
 				else d.destroy();
 			})
-			.catch(() => {});
+			.catch(() => {
+				if (alive) toast(t("{name} couldn't be read", { name: file.name }));
+			});
 		return () => {
 			alive = false;
 			opened?.destroy();

@@ -523,7 +523,6 @@ export const hi: Table = {
 	},
 	"A new PDF is made; the file you opened stays as it was.":
 		"एक नई PDF बनती है; खोली गई फ़ाइल जैसी थी वैसी रहती है।",
-	"Add to the page from the tools": "औज़ारों से पृष्ठ पर कुछ जोड़ें",
 	"Add to the page": "पृष्ठ पर जोड़ें",
 	"Black ink": "काली स्याही",
 	"Blue ink": "नीली स्याही",
@@ -556,7 +555,6 @@ export const hi: Table = {
 		"सफ़ेद कागज़ पर गहरे पेन से हस्ताक्षर करें और उसकी फ़ोटो लें। कागज़ पारदर्शी कर दिया जाता है।",
 	"Sign here": "यहाँ हस्ताक्षर करें",
 	Signature: "हस्ताक्षर",
-	"Tap the page where it goes": "पृष्ठ पर वहाँ टैप करें जहाँ इसे लगाना है",
 	"That picture couldn't be read": "वह चित्र पढ़ा नहीं जा सका",
 	"This PDF's password is needed to save a copy":
 		"कॉपी सहेजने के लिए इस PDF का पासवर्ड चाहिए",
@@ -719,4 +717,53 @@ export const hi: Table = {
 	"Close {name}": "{name} बंद करें",
 	"Open another file": "दूसरी फ़ाइल खोलें",
 	"The next and the previous tab": "अगला और पिछला टैब",
+	"Get started": "शुरू करें",
+	"Your original files stay unchanged.": "आपकी मूल फ़ाइलें नहीं बदलेंगी।",
+	"Reset pages": "पृष्ठ रीसेट करें",
+	"A little help with your paperwork": "आपके कागज़ी काम में थोड़ी मदद",
+	"What would you like to do?": "आप क्या करना चाहेंगे?",
+	"Choose a tool below. We'll guide you through it.":
+		"नीचे एक टूल चुनें। हम हर चरण में मदद करेंगे।",
+	"Private. On your device.": "निजी। आपके डिवाइस पर।",
+	"Forms made simple": "फ़ॉर्म भरना हुआ आसान",
+	"Arrange your pages": "अपने पृष्ठ व्यवस्थित करें",
+	"Convert your files": "अपनी फ़ाइलों का फ़ॉर्मैट बदलें",
+	"Add the finishing touches": "अंतिम बदलाव करें",
+	"Choose your PDF, add your details and signature, then save a copy.":
+		"अपनी PDF चुनें, जानकारी और हस्ताक्षर जोड़ें, फिर एक प्रति सहेजें।",
+	"Add at least two PDFs. Arrange them from top to bottom, then save them as one file.":
+		"कम से कम दो PDF जोड़ें। ऊपर से नीचे क्रम में लगाएँ, फिर एक फ़ाइल में सहेजें।",
+	"Choose a PDF, select the pages you want to change, then save a copy.":
+		"PDF चुनें, बदलने वाले पृष्ठ चुनें, फिर एक प्रति सहेजें।",
+	"Choose a PDF and enter the page numbers you want to keep.":
+		"PDF चुनें और रखने वाले पृष्ठों की संख्याएँ दर्ज करें।",
+	"Add your pictures in the order you want them to appear in the PDF.":
+		"तस्वीरें उसी क्रम में जोड़ें जिस क्रम में आप उन्हें PDF में चाहते हैं।",
+	"Choose a PDF to save its pages as pictures, together in a ZIP file.":
+		"PDF चुनें और उसके पृष्ठों को तस्वीरों के रूप में एक ZIP फ़ाइल में सहेजें।",
+	"Choose a PDF, then choose where and how the page numbers appear.":
+		"PDF चुनें, फिर पृष्ठ संख्याओं की जगह और शैली चुनें।",
+	"Choose a PDF and enter a word, such as DRAFT, to put across every page.":
+		"PDF चुनें और हर पृष्ठ पर लगाने के लिए DRAFT जैसा शब्द दर्ज करें।",
+	"Choose a PDF and set a password for the new copy.":
+		"PDF चुनें और नई प्रति के लिए पासवर्ड तय करें।",
+	"Choose a locked PDF and enter its current password to save an unlocked copy.":
+		"लॉक की गई PDF चुनें और बिना पासवर्ड वाली प्रति सहेजने के लिए उसका मौजूदा पासवर्ड दर्ज करें।",
+	"Your PDF is ready": "आपकी PDF तैयार है",
+	"How it works": "यह कैसे काम करता है",
+	"Add text, dates or your signature": "टेक्स्ट, तारीख या अपने हस्ताक्षर जोड़ें",
+	"Open editor": "एडिटर खोलें",
+	"Add at least two PDFs to continue.": "आगे बढ़ने के लिए कम से कम दो PDF जोड़ें।",
+	"Selected files": "चुनी गई फ़ाइलें",
+	"Remove {name}": "{name} हटाएँ",
+	"Start with your PDF": "अपनी PDF से शुरू करें",
+	"Start with your pictures": "अपनी तस्वीरों से शुरू करें",
+	"Choose a file from your device to get started.":
+		"शुरू करने के लिए अपने डिवाइस से फ़ाइल चुनें।",
+	"{tool}: select a spot on the page to place it.":
+		"{tool}: इसे रखने के लिए पृष्ठ पर जगह चुनें।",
+	"Choose Text or Signature above, then select a spot on the page.":
+		"ऊपर टेक्स्ट या हस्ताक्षर चुनें, फिर पृष्ठ पर जगह चुनें।",
+	"Changes ready to save": "बदलाव सहेजने के लिए तैयार हैं",
+	"Add your details to get started": "शुरू करने के लिए अपनी जानकारी जोड़ें",
 };

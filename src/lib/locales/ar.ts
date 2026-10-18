@@ -544,7 +544,6 @@ export const ar: Table = {
 	},
 	"A new PDF is made; the file you opened stays as it was.":
 		"يُنشأ ملف PDF جديد، ويبقى الملف الذي فتحته كما هو.",
-	"Add to the page from the tools": "أضف إلى الصفحة من الأدوات",
 	"Add to the page": "إضافة إلى الصفحة",
 	"Black ink": "حبر أسود",
 	"Blue ink": "حبر أزرق",
@@ -578,7 +577,6 @@ export const ar: Table = {
 		"وقّع على ورقة بيضاء بقلم داكن والتقط لها صورة. تُجعل الورقة شفافة.",
 	"Sign here": "وقّع هنا",
 	Signature: "التوقيع",
-	"Tap the page where it goes": "انقر على الصفحة حيث تريد وضعه",
 	"That picture couldn't be read": "تعذّرت قراءة تلك الصورة",
 	"This PDF's password is needed to save a copy":
 		"يلزم كلمة مرور ملف PDF هذا لحفظ نسخة",
@@ -749,4 +747,52 @@ export const ar: Table = {
 	"Close {name}": "إغلاق {name}",
 	"Open another file": "فتح ملف آخر",
 	"The next and the previous tab": "علامة التبويب التالية والسابقة",
+	"Get started": "ابدأ الآن",
+	"Your original files stay unchanged.": "تبقى ملفاتك الأصلية دون تغيير.",
+	"Reset pages": "إعادة ضبط الصفحات",
+	"A little help with your paperwork": "مساعدة بسيطة في مستنداتك",
+	"What would you like to do?": "ماذا تريد أن تفعل؟",
+	"Choose a tool below. We'll guide you through it.":
+		"اختر أداة أدناه. سنرشدك خطوة بخطوة.",
+	"Private. On your device.": "بخصوصية. على جهازك.",
+	"Forms made simple": "النماذج بكل سهولة",
+	"Arrange your pages": "رتّب صفحاتك",
+	"Convert your files": "حوّل ملفاتك",
+	"Add the finishing touches": "أضف اللمسات الأخيرة",
+	"Choose your PDF, add your details and signature, then save a copy.":
+		"اختر ملف PDF وأضف بياناتك وتوقيعك، ثم احفظ نسخة.",
+	"Add at least two PDFs. Arrange them from top to bottom, then save them as one file.":
+		"أضف ملفي PDF على الأقل. رتّبهما من الأعلى إلى الأسفل، ثم احفظهما كملف واحد.",
+	"Choose a PDF, select the pages you want to change, then save a copy.":
+		"اختر ملف PDF، وحدد الصفحات التي تريد تعديلها، ثم احفظ نسخة.",
+	"Choose a PDF and enter the page numbers you want to keep.":
+		"اختر ملف PDF وأدخل أرقام الصفحات التي تريد الاحتفاظ بها.",
+	"Add your pictures in the order you want them to appear in the PDF.":
+		"أضف صورك بالترتيب الذي تريد ظهورها به في ملف PDF.",
+	"Choose a PDF to save its pages as pictures, together in a ZIP file.":
+		"اختر ملف PDF لحفظ صفحاته كصور مجمّعة في ملف ZIP.",
+	"Choose a PDF, then choose where and how the page numbers appear.":
+		"اختر ملف PDF، ثم اختر موضع أرقام الصفحات وشكلها.",
+	"Choose a PDF and enter a word, such as DRAFT, to put across every page.":
+		"اختر ملف PDF وأدخل كلمة مثل DRAFT لوضعها على كل صفحة.",
+	"Choose a PDF and set a password for the new copy.":
+		"اختر ملف PDF وعيّن كلمة مرور للنسخة الجديدة.",
+	"Choose a locked PDF and enter its current password to save an unlocked copy.":
+		"اختر ملف PDF محميًا وأدخل كلمة مروره الحالية لحفظ نسخة دون كلمة مرور.",
+	"Your PDF is ready": "ملف PDF جاهز",
+	"How it works": "كيف تعمل",
+	"Add text, dates or your signature": "أضف نصًا أو تاريخًا أو توقيعك",
+	"Open editor": "افتح المحرر",
+	"Add at least two PDFs to continue.": "أضف ملفي PDF على الأقل للمتابعة.",
+	"Selected files": "الملفات المحددة",
+	"Remove {name}": "إزالة {name}",
+	"Start with your PDF": "ابدأ بملف PDF",
+	"Start with your pictures": "ابدأ بصورك",
+	"Choose a file from your device to get started.": "اختر ملفًا من جهازك للبدء.",
+	"{tool}: select a spot on the page to place it.":
+		"{tool}: اختر موضعًا على الصفحة لوضعه.",
+	"Choose Text or Signature above, then select a spot on the page.":
+		"اختر نصًا أو توقيعًا أعلاه، ثم حدد موضعًا على الصفحة.",
+	"Changes ready to save": "التغييرات جاهزة للحفظ",
+	"Add your details to get started": "أضف بياناتك للبدء",
 };

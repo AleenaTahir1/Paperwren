@@ -19,6 +19,8 @@ import { Button, IconButton } from "@/ui";
 import { zipSync } from "fflate";
 import {
 	ArrowLeft,
+	ArrowRight,
+	Check,
 	Combine,
 	Droplet,
 	FileImage,
@@ -31,10 +33,11 @@ import {
 	RotateCcw,
 	RotateCw,
 	Scissors,
+	ShieldCheck,
 	Trash2,
 } from "lucide-react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { FillSign } from "./FillSign";
 import s from "./Tools.module.css";
 import {
@@ -130,6 +133,44 @@ const TOOLS: Array<{
 	},
 ];
 
+const GROUPS = [
+	{ title: msg("Arrange your pages"), ids: ["merge", "organize", "extract"] },
+	{ title: msg("Convert your files"), ids: ["images", "pictures"] },
+	{
+		title: msg("Add the finishing touches"),
+		ids: ["numbers", "watermark", "protect", "unlock"],
+	},
+];
+
+const GUIDANCE: Record<ToolId, string> = {
+	sign: msg(
+		"Choose your PDF, add your details and signature, then save a copy.",
+	),
+	merge: msg(
+		"Add at least two PDFs. Arrange them from top to bottom, then save them as one file.",
+	),
+	organize: msg(
+		"Choose a PDF, select the pages you want to change, then save a copy.",
+	),
+	extract: msg("Choose a PDF and enter the page numbers you want to keep."),
+	images: msg(
+		"Add your pictures in the order you want them to appear in the PDF.",
+	),
+	pictures: msg(
+		"Choose a PDF to save its pages as pictures, together in a ZIP file.",
+	),
+	numbers: msg(
+		"Choose a PDF, then choose where and how the page numbers appear.",
+	),
+	watermark: msg(
+		"Choose a PDF and enter a word, such as DRAFT, to put across every page.",
+	),
+	protect: msg("Choose a PDF and set a password for the new copy."),
+	unlock: msg(
+		"Choose a locked PDF and enter its current password to save an unlocked copy.",
+	),
+};
+
 /**
  * The tools people otherwise find a website or another app for, on the
  * device: fill in and sign a form, put PDFs together and apart, turn
@@ -153,6 +194,52 @@ export function ToolsScreen({
 	// Back from a tool opened from the list returns to the list.
 	useBackClose("tool", !!tool && !start, () => setTool(null));
 	const shown = TOOLS.find((x) => x.id === tool);
+	const heading = useRef<HTMLHeadingElement>(null);
+	const previousTool = useRef(tool);
+	useEffect(() => {
+		if (previousTool.current === tool) return;
+		if (tool) heading.current?.focus();
+		else
+			document
+				.querySelector<HTMLButtonElement>(
+					`[data-testid="tool-${previousTool.current}"]`,
+				)
+				?.focus();
+		previousTool.current = tool;
+	}, [tool]);
+	const card = (x: (typeof TOOLS)[number], featured = false) => (
+		<button
+			key={x.id}
+			type="button"
+			className={featured ? s.featured : s.toolCard}
+			onClick={() => setTool(x.id)}
+			data-testid={`tool-${x.id}`}
+		>
+			<span className={s.toolIcon}>{x.icon}</span>
+			<span className={s.toolText}>
+				{featured && (
+					<span className={s.eyebrow}>{t("Forms made simple")}</span>
+				)}
+				<strong>{t(x.title)}</strong>
+				<span>{t(x.hint)}</span>
+				{featured && (
+					<span className={s.featuredAction}>
+						{t("Get started")} <ArrowRight size={16} className="pw-flip" />
+					</span>
+				)}
+			</span>
+			{featured ? (
+				<span className={s.paperArt} aria-hidden="true">
+					<span />
+					<span />
+					<PenLine size={28} />
+					<Check size={18} />
+				</span>
+			) : (
+				<ArrowRight className={`${s.cardArrow} pw-flip`} size={18} />
+			)}
+		</button>
+	);
 
 	return (
 		<div className={s.screen} data-testid="tools">
@@ -164,48 +251,85 @@ export function ToolsScreen({
 				>
 					<ArrowLeft size={22} className="pw-flip" />
 				</IconButton>
-				<h1 className={s.screenTitle}>{shown ? t(shown.title) : t("Tools")}</h1>
+				<h1 ref={heading} tabIndex={-1} className={s.screenTitle}>
+					{shown ? t(shown.title) : t("Tools")}
+				</h1>
 			</header>
 			<main className={s.screenScroll}>
-				<div className={s.column}>
+				<div className={`${s.column} ${tool ? s.workspace : ""}`}>
 					{!tool && (
 						<>
-							<p className={s.lead}>
+							<div className={s.intro}>
+								<div>
+									<p className={s.eyebrow}>
+										{t("A little help with your paperwork")}
+									</p>
+									<h2>{t("What would you like to do?")}</h2>
+									<p className={s.lead}>
+										{t("Choose a tool below. We'll guide you through it.")}
+									</p>
+								</div>
+								<span className={s.privacy}>
+									<ShieldCheck size={18} />
+									{t("Private. On your device.")}
+								</span>
+							</div>
+							{card(TOOLS[0], true)}
+							{GROUPS.map((group) => (
+								<section
+									className={s.toolGroup}
+									key={group.title}
+									aria-label={t(group.title)}
+								>
+									<h3>{t(group.title)}</h3>
+									<div className={s.toolList}>
+										{TOOLS.filter((x) => group.ids.includes(x.id)).map((x) =>
+											card(x),
+										)}
+									</div>
+								</section>
+							))}
+							<p className={s.safetyNote}>
+								<ShieldCheck size={16} />
 								{t(
 									"Everything happens on this device. The files you pick stay as they are: each tool saves a new one.",
 								)}
 							</p>
-							<div className={s.toolList}>
-								{TOOLS.map((x) => (
-									<button
-										key={x.id}
-										type="button"
-										className={s.toolCard}
-										onClick={() => setTool(x.id)}
-										data-testid={`tool-${x.id}`}
-									>
-										<span className={s.toolIcon}>{x.icon}</span>
-										<span className={s.toolText}>
-											<strong>{t(x.title)}</strong>
-											<span>{t(x.hint)}</span>
-										</span>
-									</button>
-								))}
-							</div>
 						</>
 					)}
-					{tool === "sign" && <SignTool file={file} onOpen={onOpen} />}
-					{tool === "merge" && <MergeTool file={file} onOpen={onOpen} />}
-					{tool === "organize" && <OrganizeTool file={file} onOpen={onOpen} />}
-					{tool === "extract" && <ExtractTool file={file} onOpen={onOpen} />}
-					{tool === "images" && <ImagesTool file={file} onOpen={onOpen} />}
-					{tool === "pictures" && <PicturesTool file={file} onOpen={onOpen} />}
-					{tool === "numbers" && <NumbersTool file={file} onOpen={onOpen} />}
-					{tool === "watermark" && (
-						<WatermarkTool file={file} onOpen={onOpen} />
+					{tool && shown && (
+						<div className={s.taskIntro}>
+							<span className={s.toolIcon}>{shown.icon}</span>
+							<div>
+								<h2>{t(shown.hint)}</h2>
+								<p>{t(GUIDANCE[tool])}</p>
+							</div>
+						</div>
 					)}
-					{tool === "protect" && <ProtectTool file={file} onOpen={onOpen} />}
-					{tool === "unlock" && <UnlockTool file={file} onOpen={onOpen} />}
+					<div className={tool ? s.taskPanel : undefined}>
+						{tool === "sign" && <SignTool file={file} onOpen={onOpen} />}
+						{tool === "merge" && <MergeTool file={file} onOpen={onOpen} />}
+						{tool === "organize" && (
+							<OrganizeTool file={file} onOpen={onOpen} />
+						)}
+						{tool === "extract" && <ExtractTool file={file} onOpen={onOpen} />}
+						{tool === "images" && <ImagesTool file={file} onOpen={onOpen} />}
+						{tool === "pictures" && (
+							<PicturesTool file={file} onOpen={onOpen} />
+						)}
+						{tool === "numbers" && <NumbersTool file={file} onOpen={onOpen} />}
+						{tool === "watermark" && (
+							<WatermarkTool file={file} onOpen={onOpen} />
+						)}
+						{tool === "protect" && <ProtectTool file={file} onOpen={onOpen} />}
+						{tool === "unlock" && <UnlockTool file={file} onOpen={onOpen} />}
+					</div>
+					{tool && (
+						<p className={s.safetyNote}>
+							<ShieldCheck size={16} />
+							{t("Your original files stay unchanged.")}
+						</p>
+					)}
 				</div>
 			</main>
 		</div>
@@ -263,12 +387,39 @@ function SignTool({ file, onOpen }: ToolProps) {
 	return (
 		<>
 			<OnePdf kit={kit} />
-			<Go
-				label={t("Fill & sign")}
-				disabled={!doc}
-				running={false}
-				onClick={() => setOpen(true)}
-			/>
+			<div className={s.signGuide}>
+				{doc && (
+					<div className={s.previewPage}>
+						<PageThumb doc={doc} page={0} width={100} />
+						<span>{t("Page {n}", { n: 1 })}</span>
+					</div>
+				)}
+				<div>
+					<h3>{picked ? t("Your PDF is ready") : t("How it works")}</h3>
+					<ol className={s.steps}>
+						<li data-current={!picked || undefined}>
+							<span>{picked ? <Check size={13} /> : 1}</span>
+							{t("Choose a PDF")}
+						</li>
+						<li data-current={!!picked || undefined}>
+							<span>2</span>
+							{t("Add text, dates or your signature")}
+						</li>
+						<li>
+							<span>3</span>
+							{t("Save a copy")}
+						</li>
+					</ol>
+				</div>
+			</div>
+			{picked && (
+				<Go
+					label={picked && !doc ? t("Opening…") : t("Open editor")}
+					disabled={!doc}
+					running={false}
+					onClick={() => setOpen(true)}
+				/>
+			)}
 			{open && doc && picked && (
 				<FillSign
 					doc={doc}
@@ -285,17 +436,21 @@ function SignTool({ file, onOpen }: ToolProps) {
 
 function MergeTool({ file, onOpen }: ToolProps) {
 	const kit = useToolFiles("pdf", file);
-	const { running, run } = useRun(onOpen);
+	const { running, run, feedback } = useRun(onOpen);
 	const total = kit.files.reduce((n, f) => n + (f.pages ?? 0), 0);
 	return (
 		<>
 			<FileList kit={kit} several addLabel={t("Add a PDF")} />
 			{kit.dialog}
+			{kit.files.length < 2 && (
+				<p className={s.hint}>{t("Add at least two PDFs to continue.")}</p>
+			)}
 			{kit.files.length > 0 && (
 				<p className={s.hint}>
 					{tn(total, "{n} page in all", "{n} pages in all")}
 				</p>
 			)}
+			{feedback}
 			<Go
 				label={t("Merge")}
 				disabled={kit.files.length < 2}
@@ -356,12 +511,19 @@ function OrganizeTool({ file, onOpen }: ToolProps) {
 	const kit = useToolFiles("pdf", file);
 	const picked = kit.files[0];
 	const doc = usePdf(picked);
-	const { running, run } = useRun(onOpen);
+	const { running, run, feedback } = useRun(onOpen);
 	const [order, setOrder] = useState<Array<{
 		page: number;
 		turn: number;
 	}> | null>(null);
 	const [selected, setSelected] = useState<Set<number>>(new Set());
+	const fileKey = picked?.key;
+	// A replacement file starts with its own pages, never the old selection.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reset when the selected file changes
+	useEffect(() => {
+		setOrder(null);
+		setSelected(new Set());
+	}, [fileKey]);
 	const pages =
 		order ??
 		Array.from({ length: picked?.pages ?? 0 }, (_, page) => ({
@@ -412,24 +574,26 @@ function OrganizeTool({ file, onOpen }: ToolProps) {
 								? t("Select none")
 								: t("Select all")}
 						</Button>
-						<IconButton
-							label={t("Turn left")}
+						<Button
+							variant="secondary"
 							disabled={!selected.size}
 							onClick={() => turn(-90)}
 						>
 							<RotateCcw size={18} />
-						</IconButton>
-						<IconButton
-							label={t("Turn right")}
+							{t("Turn left")}
+						</Button>
+						<Button
+							variant="secondary"
 							disabled={!selected.size}
 							onClick={() => turn(90)}
 							data-testid="tool-turn-right"
 						>
 							<RotateCw size={18} />
-						</IconButton>
+							{t("Turn right")}
+						</Button>
 						<Button
 							variant="ghost"
-							disabled={!selected.size}
+							disabled={!selected.size || sel[0] === 0}
 							onClick={() => shift(-1)}
 							data-testid="tool-earlier"
 						>
@@ -437,13 +601,15 @@ function OrganizeTool({ file, onOpen }: ToolProps) {
 						</Button>
 						<Button
 							variant="ghost"
-							disabled={!selected.size}
+							disabled={
+								!selected.size || sel[sel.length - 1] === pages.length - 1
+							}
 							onClick={() => shift(1)}
 						>
 							{t("Later")}
 						</Button>
-						<IconButton
-							label={t("Take out")}
+						<Button
+							variant="danger"
 							disabled={!selected.size || selected.size === pages.length}
 							onClick={() => {
 								change(pages.filter((_, i) => !selected.has(i)));
@@ -452,7 +618,19 @@ function OrganizeTool({ file, onOpen }: ToolProps) {
 							data-testid="tool-delete"
 						>
 							<Trash2 size={18} />
-						</IconButton>
+							{t("Take out")}
+						</Button>
+						{changed && (
+							<Button
+								variant="ghost"
+								onClick={() => {
+									setOrder(null);
+									setSelected(new Set());
+								}}
+							>
+								{t("Reset pages")}
+							</Button>
+						)}
 					</div>
 					<p className={s.hint}>
 						{selected.size
@@ -474,6 +652,7 @@ function OrganizeTool({ file, onOpen }: ToolProps) {
 					/>
 				</>
 			)}
+			{feedback}
 			<Go
 				label={t("Save a copy")}
 				disabled={!changed}
@@ -496,7 +675,7 @@ function OrganizeTool({ file, onOpen }: ToolProps) {
 function ExtractTool({ file, onOpen }: ToolProps) {
 	const kit = useToolFiles("pdf", file);
 	const picked = kit.files[0];
-	const { running, run } = useRun(onOpen);
+	const { running, run, feedback } = useRun(onOpen);
 	const [which, setWhich] = useState("");
 	const [each, setEach] = useState(false);
 	const pages = picked?.pages ?? 0;
@@ -517,7 +696,6 @@ function ExtractTool({ file, onOpen }: ToolProps) {
 						value={which}
 						onChange={(e) => setWhich(e.target.value)}
 						placeholder={t("For example 1-3, 5")}
-						inputMode="numeric"
 						dir="ltr"
 						data-testid="tool-pages-field"
 					/>
@@ -543,6 +721,7 @@ function ExtractTool({ file, onOpen }: ToolProps) {
 					</label>
 				</>
 			)}
+			{feedback}
 			<Go
 				label={each ? t("Split") : t("Extract")}
 				disabled={!list}
@@ -602,7 +781,7 @@ async function asPageImage(
 
 function ImagesTool({ file, onOpen }: ToolProps) {
 	const kit = useToolFiles("image", file);
-	const { running, run } = useRun(onOpen);
+	const { running, run, feedback } = useRun(onOpen);
 	const [paper, setPaper] = useState<"fit" | "a4" | "letter">("a4");
 	return (
 		<>
@@ -618,6 +797,7 @@ function ImagesTool({ file, onOpen }: ToolProps) {
 				]}
 				testId="tool-paper"
 			/>
+			{feedback}
 			<Go
 				label={t("Make a PDF")}
 				disabled={!kit.files.length}
@@ -641,7 +821,7 @@ function PicturesTool({ file, onOpen }: ToolProps) {
 	const kit = useToolFiles("pdf", file);
 	const picked = kit.files[0];
 	const doc = usePdf(picked);
-	const { running, run } = useRun(onOpen);
+	const { running, run, feedback } = useRun(onOpen);
 	const [which, setWhich] = useState("");
 	const pages = picked?.pages ?? 0;
 	const list = picked ? parsePages(which || `1-${pages}`, pages) : null;
@@ -659,7 +839,6 @@ function PicturesTool({ file, onOpen }: ToolProps) {
 						value={which}
 						onChange={(e) => setWhich(e.target.value)}
 						placeholder={t("All of them")}
-						inputMode="numeric"
 						dir="ltr"
 						data-testid="tool-pages-field"
 					/>
@@ -670,6 +849,7 @@ function PicturesTool({ file, onOpen }: ToolProps) {
 					</p>
 				</>
 			)}
+			{feedback}
 			<Go
 				label={t("Make pictures")}
 				disabled={!doc || !list}
@@ -757,13 +937,13 @@ function Choice<T extends string>({
 function NumbersTool({ file, onOpen }: ToolProps) {
 	const kit = useToolFiles("pdf", file);
 	const picked = kit.files[0];
-	const { running, run } = useRun(onOpen);
+	const { running, run, feedback } = useRun(onOpen);
 	const [spot, setSpot] = useState<NumberSpot>("bottom-center");
 	const [style, setStyle] = useState<"n" | "of">("n");
 	// "Page 1 of 9" in the reader's language, where Helvetica can write it.
 	const words = t("Page {n} of {total}");
-	const pattern =
-		style === "n" ? "{n}" : standardText(words) ? words : "{n} / {total}";
+	const fullPattern = standardText(words) ? words : "{n} / {total}";
+	const pattern = style === "n" ? "{n}" : fullPattern;
 	return (
 		<>
 			<OnePdf kit={kit} />
@@ -784,10 +964,11 @@ function NumbersTool({ file, onOpen }: ToolProps) {
 				onChange={setStyle}
 				options={[
 					["n", "1, 2, 3"],
-					["of", pattern.replace("{n}", "1").replace("{total}", "9")],
+					["of", fullPattern.replace("{n}", "1").replace("{total}", "9")],
 				]}
 				testId="tool-style"
 			/>
+			{feedback}
 			<Go
 				label={t("Number the pages")}
 				disabled={!picked}
@@ -811,7 +992,7 @@ function NumbersTool({ file, onOpen }: ToolProps) {
 function WatermarkTool({ file, onOpen }: ToolProps) {
 	const kit = useToolFiles("pdf", file);
 	const picked = kit.files[0];
-	const { running, run } = useRun(onOpen);
+	const { running, run, feedback } = useRun(onOpen);
 	const [text, setText] = useState(t("DRAFT"));
 	const usable = !!text.trim() && standardText(text);
 	return (
@@ -833,6 +1014,7 @@ function WatermarkTool({ file, onOpen }: ToolProps) {
 					{t("Use Latin letters: a PDF's standard fonts have no others.")}
 				</p>
 			)}
+			{feedback}
 			<Go
 				label={t("Add the watermark")}
 				disabled={!picked || !usable}
@@ -855,7 +1037,7 @@ function WatermarkTool({ file, onOpen }: ToolProps) {
 function ProtectTool({ file, onOpen }: ToolProps) {
 	const kit = useToolFiles("pdf", file);
 	const picked = kit.files[0];
-	const { running, run } = useRun(onOpen);
+	const { running, run, feedback } = useRun(onOpen);
 	const [one, setOne] = useState("");
 	const [two, setTwo] = useState("");
 	const same = one === two;
@@ -893,6 +1075,7 @@ function ProtectTool({ file, onOpen }: ToolProps) {
 							"Keep it somewhere safe: without it the copy cannot be opened. Paperwren does not keep it.",
 						)}
 			</p>
+			{feedback}
 			<Go
 				label={t("Save a locked copy")}
 				disabled={!picked || !one || !same}
@@ -914,7 +1097,7 @@ function ProtectTool({ file, onOpen }: ToolProps) {
 function UnlockTool({ file, onOpen }: ToolProps) {
 	const kit = useToolFiles("pdf", file);
 	const picked = kit.files[0];
-	const { running, run } = useRun(onOpen);
+	const { running, run, feedback } = useRun(onOpen);
 	return (
 		<>
 			<OnePdf kit={kit} />
@@ -923,6 +1106,7 @@ function UnlockTool({ file, onOpen }: ToolProps) {
 					? t("This PDF has no password to remove.")
 					: t("Pick the PDF and type its password; the copy opens without it.")}
 			</p>
+			{feedback}
 			<Go
 				label={t("Save an unlocked copy")}
 				disabled={!picked?.password}
