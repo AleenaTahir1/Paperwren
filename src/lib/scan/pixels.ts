@@ -285,17 +285,23 @@ export function toGray(p: Pixels): Pixels {
  * letters do not come out jagged. */
 export function toBlackWhite(p: Pixels): Pixels {
 	const d = p.data;
-	// Where ink ends and paper starts: Otsu's split of the grey levels,
-	// kept to a sensible range (a nearly blank page has no real split).
+	// Where ink ends and paper starts: Otsu's split of the grey levels.
+	// Near-black (a strip of desk at the page's edge, a black box) is
+	// left out of the count: it would drag the split down until faint
+	// pencil reads as paper. The split is kept to a sensible range, as a
+	// nearly blank page has no real one.
 	const hist = new Float64Array(256);
-	for (let i = 0; i < d.length; i += 4) hist[d[i]]++;
-	const total = d.length / 4;
+	for (let i = 0; i < d.length; i += 4) if (d[i] >= 40) hist[d[i]]++;
+	let total = 0;
 	let sum = 0;
-	for (let v = 0; v < 256; v++) sum += v * hist[v];
+	for (let v = 0; v < 256; v++) {
+		total += hist[v];
+		sum += v * hist[v];
+	}
 	let below = 0;
 	let belowSum = 0;
 	let best = 0;
-	let split = 170;
+	let split = 185;
 	for (let v = 0; v < 256; v++) {
 		below += hist[v];
 		if (!below) continue;
@@ -310,7 +316,7 @@ export function toBlackWhite(p: Pixels): Pixels {
 			split = v;
 		}
 	}
-	split = Math.min(205, Math.max(140, split + 10));
+	split = Math.min(215, Math.max(165, split + 15));
 	const curve = new Uint8ClampedArray(256);
 	for (let v = 0; v < 256; v++) curve[v] = (v - (split - 14)) * (255 / 28);
 	for (let i = 0; i < d.length; i += 4) {

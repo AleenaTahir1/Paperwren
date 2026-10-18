@@ -197,6 +197,18 @@ describe("scan pixels", () => {
 			expect(bw.data[i]).toBe(bw.data[i + 2]);
 	});
 
+	it("keeps faint pencil in black & white beside a strip of dark desk", () => {
+		const photo = picture(300, 300, (x, y) => {
+			if (y < 30) return [15, 12, 10];
+			if (y >= 150 && y <= 152 && x > 40 && x < 260) return [150, 150, 150];
+			return [235, 233, 228];
+		});
+		const bw = toBlackWhite(toGray(clean(photo)));
+		expect(at(bw, 150, 151)[0]).toBe(0);
+		expect(at(bw, 150, 100)[0]).toBe(255);
+		expect(at(bw, 150, 10)[0]).toBe(0);
+	});
+
 	it("gives every look, the original untouched", () => {
 		const photo = picture(40, 40, () => [180, 170, 150]);
 		const before = new Uint8ClampedArray(photo.data);
