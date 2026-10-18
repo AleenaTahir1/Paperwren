@@ -119,13 +119,17 @@ export function ScanEditor({
 
 	/** The glide under way; a hand on a corner stops it. */
 	const gliding = useRef(0);
+	/** Where the outline is gliding to, until it gets there. */
+	const target = useRef<Quad | null>(null);
 	/** Ease the outline from where it is to where it should be. */
 	const glide = useCallback((from: Quad, to: Quad) => {
 		const run = ++gliding.current;
 		if (reduced()) {
+			target.current = null;
 			setQuad(to);
 			return;
 		}
+		target.current = to;
 		const start = performance.now();
 		const step = (now: number) => {
 			if (!alive.current || gliding.current !== run) return;
@@ -138,9 +142,19 @@ export function ScanEditor({
 				})) as Quad,
 			);
 			if (k < 1) requestAnimationFrame(step);
+			else target.current = null;
 		};
 		requestAnimationFrame(step);
 	}, []);
+	/** Stop any glide where it was going: the outline as it will be. */
+	const settle = (): Quad | null => {
+		const to = target.current;
+		if (!to) return quad;
+		gliding.current++;
+		target.current = null;
+		setQuad(to);
+		return to;
+	};
 
 	const find = useCallback(
 		async (p: Photo, from: Quad) => {
@@ -210,9 +224,12 @@ export function ScanEditor({
 	const good = !!quad && isConvex(quad);
 
 	const toLooks = async () => {
-		if (!photo || !quad || !scale || !job.current || !good) return;
+		// A tap on Next mid-glide means the outline where it was going.
+		const outline = settle();
+		if (!photo || !outline || !scale || !job.current || !isConvex(outline))
+			return;
 		// The same outline as last time: its looks are ready.
-		if (looks && looksFor.current && quadGap(looksFor.current, quad) < 0.5) {
+		if (looks && looksFor.current && quadGap(looksFor.current, outline) < 0.5) {
 			setPhase("look");
 			return;
 		}
@@ -220,7 +237,7 @@ export function ScanEditor({
 		try {
 			const started = performance.now();
 			const made = await job.current.looks(
-				scaleQuad(quad, scale.view),
+				scaleQuad(outline, scale.view),
 				0,
 				PREVIEW,
 			);
@@ -230,7 +247,7 @@ export function ScanEditor({
 				for (const b of Object.values(made)) b.close();
 				return;
 			}
-			looksFor.current = quad;
+			looksFor.current = outline;
 			setLooks(made);
 			setPhase("look");
 		} catch {
@@ -241,12 +258,19 @@ export function ScanEditor({
 		}
 	};
 
+	const [finishing, setFinishing] = useState(false);
+	const finished = useRef(false);
 	const finish = async () => {
-		if (!looks || !quad || !scale || !job.current) return;
+		// The page is the one the looks were made from, made once.
+		const outline = looksFor.current;
+		if (finished.current || !looks || !outline || !scale || !job.current)
+			return;
+		finished.current = true;
+		setFinishing(true);
 		const thumb = await thumbOf(looks[look], quarters).catch(() => null);
 		handedOver.current = true;
 		onDone({
-			quad: scaleQuad(quad, scale.view),
+			quad: scaleQuad(outline, scale.view),
 			quarters,
 			look,
 			job: job.current,
@@ -340,6 +364,7 @@ export function ScanEditor({
 					quad={quad}
 					onChange={(q) => {
 						gliding.current++;
+						target.current = null;
 						setQuad(q);
 					}}
 					showHandles={phase === "edges"}
@@ -422,7 +447,7 @@ export function ScanEditor({
 							</Button>
 							<Button
 								onClick={finish}
-								disabled={phase !== "look"}
+								disabled={phase !== "look" || finishing}
 								data-testid="scan-done"
 							>
 								<Check size={18} />
