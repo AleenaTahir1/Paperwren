@@ -383,3 +383,66 @@ export function PageThumb({
 		/>
 	);
 }
+
+/** The button that runs a tool, at the foot of its panel. */
+export function Go({
+	label,
+	disabled,
+	running,
+	onClick,
+}: {
+	label: string;
+	disabled: boolean;
+	running: boolean;
+	onClick: () => void;
+}) {
+	return (
+		<div className={s.go}>
+			<Button
+				onClick={onClick}
+				disabled={disabled || running}
+				data-testid="tool-go"
+			>
+				{running ? t("Working…") : label}
+			</Button>
+		</div>
+	);
+}
+
+/** A choice of a few, as a row of buttons. */
+export function Choice<T extends string>({
+	label,
+	value,
+	onChange,
+	options,
+	testId,
+}: {
+	label: string;
+	value: T;
+	onChange: (value: T) => void;
+	options: Array<[T, string]>;
+	testId: string;
+}) {
+	return (
+		<>
+			<span className={s.label}>{label}</span>
+			<div className={s.ways} role="radiogroup" aria-label={label}>
+				{options.map(([v, text]) => (
+					<button
+						key={v}
+						type="button"
+						// biome-ignore lint/a11y/useSemanticElements: a row of buttons with radio semantics
+						role="radio"
+						aria-checked={value === v}
+						aria-selected={value === v}
+						className={s.way}
+						onClick={() => onChange(v)}
+						data-testid={`${testId}-${v}`}
+					>
+						{text}
+					</button>
+				))}
+			</div>
+		</>
+	);
+}

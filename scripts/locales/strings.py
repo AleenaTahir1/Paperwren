@@ -721,3 +721,7 @@ ROWS = [
 # Guidance shared by the tool library and editor.
 from tool_ux import ROWS as TOOL_UX_ROWS
 ROWS += TOOL_UX_ROWS
+
+# The scanner.
+from scan_ux import ROWS as SCAN_UX_ROWS
+ROWS += SCAN_UX_ROWS

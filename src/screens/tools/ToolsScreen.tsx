@@ -20,6 +20,7 @@ import { zipSync } from "fflate";
 import {
 	ArrowLeft,
 	ArrowRight,
+	Camera,
 	Check,
 	Combine,
 	Droplet,
@@ -32,8 +33,10 @@ import {
 	PenLine,
 	RotateCcw,
 	RotateCw,
+	ScanLine,
 	Scissors,
 	ShieldCheck,
+	Sparkles,
 	Trash2,
 } from "lucide-react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
@@ -41,7 +44,9 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { FillSign } from "./FillSign";
 import s from "./Tools.module.css";
 import {
+	Choice,
 	FileList,
+	Go,
 	PageThumb,
 	type ToolFile,
 	usePdf,
@@ -49,9 +54,11 @@ import {
 	useToolFiles,
 } from "./kit";
 import { announceSaved } from "./saved";
+import { ScanTool } from "./scan/ScanTool";
 
 export type ToolId =
 	| "sign"
+	| "scan"
 	| "merge"
 	| "organize"
 	| "extract"
@@ -76,6 +83,12 @@ const TOOLS: Array<{
 		icon: <PenLine size={22} />,
 		title: msg("Fill & sign"),
 		hint: msg("Fill in a form and sign it"),
+	},
+	{
+		id: "scan",
+		icon: <ScanLine size={22} />,
+		title: msg("Scan a document"),
+		hint: msg("Photos of paper as a clean, straight PDF"),
 	},
 	{
 		id: "merge",
@@ -145,6 +158,9 @@ const GROUPS = [
 const GUIDANCE: Record<ToolId, string> = {
 	sign: msg(
 		"Choose your PDF, add your details and signature, then save a copy.",
+	),
+	scan: msg(
+		"Photograph each page, check its edges and pick a look, then save them all as one PDF.",
 	),
 	merge: msg(
 		"Add at least two PDFs. Arrange them from top to bottom, then save them as one file.",
@@ -218,7 +234,9 @@ export function ToolsScreen({
 			<span className={s.toolIcon}>{x.icon}</span>
 			<span className={s.toolText}>
 				{featured && (
-					<span className={s.eyebrow}>{t("Forms made simple")}</span>
+					<span className={s.eyebrow}>
+						{x.id === "scan" ? t("Paper to PDF") : t("Forms made simple")}
+					</span>
 				)}
 				<strong>{t(x.title)}</strong>
 				<span>{t(x.hint)}</span>
@@ -229,11 +247,15 @@ export function ToolsScreen({
 				)}
 			</span>
 			{featured ? (
-				<span className={s.paperArt} aria-hidden="true">
+				<span
+					className={s.paperArt}
+					data-art={x.id === "scan" ? "scan" : undefined}
+					aria-hidden="true"
+				>
 					<span />
 					<span />
-					<PenLine size={28} />
-					<Check size={18} />
+					{x.id === "scan" ? <Camera size={26} /> : <PenLine size={28} />}
+					{x.id === "scan" ? <Sparkles size={18} /> : <Check size={18} />}
 				</span>
 			) : (
 				<ArrowRight className={`${s.cardArrow} pw-flip`} size={18} />
@@ -274,7 +296,10 @@ export function ToolsScreen({
 									{t("Private. On your device.")}
 								</span>
 							</div>
-							{card(TOOLS[0], true)}
+							<div className={s.featuredRow}>
+								{card(TOOLS[0], true)}
+								{card(TOOLS[1], true)}
+							</div>
 							{GROUPS.map((group) => (
 								<section
 									className={s.toolGroup}
@@ -308,6 +333,7 @@ export function ToolsScreen({
 					)}
 					<div className={tool ? s.taskPanel : undefined}>
 						{tool === "sign" && <SignTool file={file} onOpen={onOpen} />}
+						{tool === "scan" && <ScanTool file={file} onOpen={onOpen} />}
 						{tool === "merge" && <MergeTool file={file} onOpen={onOpen} />}
 						{tool === "organize" && (
 							<OrganizeTool file={file} onOpen={onOpen} />
@@ -339,31 +365,6 @@ export function ToolsScreen({
 interface ToolProps {
 	file?: OpenRequest;
 	onOpen: (request: OpenRequest) => void;
-}
-
-/** The button that runs a tool, at the foot of its panel. */
-function Go({
-	label,
-	disabled,
-	running,
-	onClick,
-}: {
-	label: string;
-	disabled: boolean;
-	running: boolean;
-	onClick: () => void;
-}) {
-	return (
-		<div className={s.go}>
-			<Button
-				onClick={onClick}
-				disabled={disabled || running}
-				data-testid="tool-go"
-			>
-				{running ? t("Working…") : label}
-			</Button>
-		</div>
-	);
 }
 
 function OnePdf({
@@ -892,44 +893,6 @@ function PicturesTool({ file, onOpen }: ToolProps) {
 					})
 				}
 			/>
-		</>
-	);
-}
-
-/** A choice of a few, as a row of buttons. */
-function Choice<T extends string>({
-	label,
-	value,
-	onChange,
-	options,
-	testId,
-}: {
-	label: string;
-	value: T;
-	onChange: (value: T) => void;
-	options: Array<[T, string]>;
-	testId: string;
-}) {
-	return (
-		<>
-			<span className={s.label}>{label}</span>
-			<div className={s.ways} role="radiogroup" aria-label={label}>
-				{options.map(([v, text]) => (
-					<button
-						key={v}
-						type="button"
-						// biome-ignore lint/a11y/useSemanticElements: a row of buttons with radio semantics
-						role="radio"
-						aria-checked={value === v}
-						aria-selected={value === v}
-						className={s.way}
-						onClick={() => onChange(v)}
-						data-testid={`${testId}-${v}`}
-					>
-						{text}
-					</button>
-				))}
-			</div>
 		</>
 	);
 }

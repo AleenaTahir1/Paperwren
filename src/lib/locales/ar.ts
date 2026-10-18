@@ -795,4 +795,84 @@ export const ar: Table = {
 		"اختر نصًا أو توقيعًا أعلاه، ثم حدد موضعًا على الصفحة.",
 	"Changes ready to save": "التغييرات جاهزة للحفظ",
 	"Add your details to get started": "أضف بياناتك للبدء",
+	"Scan a document": "مسح مستند ضوئيًا",
+	"Photos of paper as a clean, straight PDF":
+		"صور الأوراق كملف PDF نظيف ومستقيم",
+	"Photograph each page, check its edges and pick a look, then save them all as one PDF.":
+		"صوّر كل صفحة، وتحقق من حوافها واختر مظهرها، ثم احفظها جميعًا في ملف PDF واحد.",
+	"Paper to PDF": "من الورق إلى PDF",
+	"Turn paper into a PDF": "حوّل الورق إلى ملف PDF",
+	"Take a photo of the page, or choose photos you already have. Paperwren finds the edges, straightens the page and cleans it up.":
+		"التقط صورة للصفحة، أو اختر صورًا لديك. يجد Paperwren الحواف ويقوّم الصفحة وينظّفها.",
+	"Choose photos of your pages. Paperwren finds the edges, straightens each page and cleans it up.":
+		"اختر صور صفحاتك. يجد Paperwren الحواف ويقوّم كل صفحة وينظّفها.",
+	"Take a photo": "التقط صورة",
+	"Choose photos": "اختر صورًا",
+	"We find the page's edges; drag them if you need to":
+		"نجد حواف الصفحة؛ اسحبها إن احتجت",
+	"Pick a look: clean, grey or black & white":
+		"اختر مظهرًا: نظيف أو رمادي أو أبيض وأسود",
+	"Save every page together as one PDF": "احفظ كل الصفحات معًا في ملف PDF واحد",
+	"Choose a photo or a picture": "اختر صورة",
+	"Your pages": "صفحاتك",
+	"Change page {n}": "تغيير الصفحة {n}",
+	"Remove page {n}": "إزالة الصفحة {n}",
+	"Move earlier": "انقل إلى الأمام",
+	"Move later": "انقل إلى الخلف",
+	"Add a page": "أضف صفحة",
+	Photos: "الصور",
+	"Couldn't make this page. Tap to try again.":
+		"تعذّر إنشاء هذه الصفحة. انقر للمحاولة مجددًا.",
+	"A page couldn't be made. Tap it to try again, or remove it.":
+		"تعذّر إنشاء إحدى الصفحات. انقر عليها للمحاولة مجددًا، أو أزلها.",
+	"Tap a page to change its edges or its look.":
+		"انقر على صفحة لتغيير حوافها أو مظهرها.",
+	"As scanned": "كما مُسحت",
+	"Add “Scanned with Paperwren”": "إضافة «Scanned with Paperwren»",
+	"A small grey line at the foot of each page. Turn it off for a clean page.":
+		"سطر رمادي صغير أسفل كل صفحة. أوقفه للحصول على صفحة نظيفة.",
+	"Save PDF": "حفظ PDF",
+	"Finishing {n} pages…": {
+		one: "جارٍ إنهاء صفحة واحدة…",
+		two: "جارٍ إنهاء صفحتين…",
+		few: "جارٍ إنهاء {n} صفحات…",
+		many: "جارٍ إنهاء {n} صفحة…",
+		other: "جارٍ إنهاء {n} صفحة…",
+	},
+	Scan: "مسح",
+	"Check the edges": "تحقق من الحواف",
+	"Choose a look": "اختر مظهرًا",
+	Edges: "الحواف",
+	Look: "المظهر",
+	Looks: "المظاهر",
+	Clean: "نظيف",
+	Grey: "رمادي",
+	"Black & white": "أبيض وأسود",
+	"Whole photo": "الصورة كاملة",
+	"Find edges": "اعثر على الحواف",
+	"Add page": "أضف الصفحة",
+	"Top left corner": "الزاوية العلوية اليسرى",
+	"Top right corner": "الزاوية العلوية اليمنى",
+	"Bottom right corner": "الزاوية السفلية اليمنى",
+	"Bottom left corner": "الزاوية السفلية اليسرى",
+	"Top edge": "الحافة العلوية",
+	"Right edge": "الحافة اليمنى",
+	"Bottom edge": "الحافة السفلية",
+	"Left edge": "الحافة اليسرى",
+	"The page's outline": "حدود الصفحة",
+	"Opening your photo…": "جارٍ فتح صورتك…",
+	"Finding the page…": "جارٍ البحث عن الصفحة…",
+	"Straightening the page…": "جارٍ تقويم الصفحة…",
+	"Getting your photo ready.": "جارٍ تجهيز صورتك.",
+	"Looking for the edges of the page.": "جارٍ البحث عن حواف الصفحة.",
+	"Drag the circles onto the corners of the page if they are not quite there.":
+		"اسحب الدوائر إلى زوايا الصفحة إن لم تكن في مكانها تمامًا.",
+	"We couldn't find the page by ourselves. Drag the circles onto its corners.":
+		"لم نتمكن من إيجاد الصفحة تلقائيًا. اسحب الدوائر إلى زواياها.",
+	"The corners cross over. Move them back into the shape of the page.":
+		"الزوايا متقاطعة. أعدها إلى شكل الصفحة.",
+	"Pick the look you like. Turn the page if it is on its side.":
+		"اختر المظهر الذي يعجبك. أدر الصفحة إن كانت على جانبها.",
+	"This photo couldn't be opened.": "تعذّر فتح هذه الصورة.",
+	"Something went wrong with this photo.": "حدث خطأ ما في هذه الصورة.",
 };

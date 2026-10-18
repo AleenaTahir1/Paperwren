@@ -1,0 +1,641 @@
+/* The scanner: a page photographed, straightened and cleaned. Motion
+ * here is transform-only on entry (an opacity entrance can freeze at 0
+ * when the Android WebView pauses around the camera or file picker);
+ * the loops are loading indicators only, and stop for reduced motion. */
+
+/* ---------- The panel ---------- */
+.start {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12px;
+	padding: 30px 16px 26px;
+	border: 1px dashed var(--line-strong);
+	border-radius: var(--r-l);
+	background: var(--bg);
+	text-align: center;
+}
+.start h3 {
+	font-size: 18px;
+	letter-spacing: -0.02em;
+}
+.start p {
+	max-width: 360px;
+	color: var(--text-2);
+	font-size: 13px;
+	line-height: 1.55;
+}
+.startArt {
+	width: 92px;
+	height: 92px;
+	color: var(--accent);
+}
+.buttons {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 10px;
+	margin-top: 4px;
+}
+.howTo {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 10px;
+	margin: 6px 0 2px;
+	padding: 0;
+	list-style: none;
+}
+.howTo li {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 12px;
+	border-radius: var(--r-m);
+	background: var(--surface-2);
+	color: var(--text-2);
+	font-size: 12px;
+	line-height: 1.35;
+}
+.howTo li > span {
+	display: grid;
+	place-items: center;
+	flex-shrink: 0;
+	width: 32px;
+	height: 32px;
+	border-radius: 10px;
+	background: var(--surface);
+	color: var(--accent);
+}
+
+.pagesHead {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+}
+.pagesHead h3 {
+	font-size: 15px;
+}
+.pagesHead span {
+	color: var(--text-2);
+	font-size: 13px;
+}
+.pages {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+	gap: 12px;
+}
+.page {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	min-width: 0;
+	animation: tileIn var(--t-slow) var(--ease);
+}
+@keyframes tileIn {
+	from {
+		transform: scale(0.92);
+	}
+}
+.pageOpen {
+	position: relative;
+	display: grid;
+	place-items: center;
+	aspect-ratio: 3 / 4;
+	padding: 10px;
+	overflow: hidden;
+	border: 1px solid var(--line);
+	border-radius: var(--r-m);
+	background: var(--surface-2);
+	transition: border-color var(--t-fast);
+}
+.pageOpen:hover {
+	border-color: var(--accent);
+}
+.pageOpen:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+.pageOpen img {
+	display: block;
+	max-width: 100%;
+	max-height: 100%;
+	background: #fff;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+.pageOpen[data-state="failed"] {
+	border-color: var(--danger);
+	color: var(--danger);
+	font-size: 12px;
+	font-weight: 650;
+	text-align: center;
+}
+.pageNumber {
+	position: absolute;
+	top: 8px;
+	inset-inline-start: 8px;
+	display: grid;
+	place-items: center;
+	min-width: 24px;
+	height: 24px;
+	padding: 0 7px;
+	border-radius: 999px;
+	background: var(--surface);
+	border: 1px solid var(--line);
+	font-size: 12px;
+	font-weight: 750;
+	font-variant-numeric: tabular-nums;
+}
+.pageEdit {
+	position: absolute;
+	bottom: 8px;
+	inset-inline-end: 8px;
+	display: grid;
+	place-items: center;
+	width: 28px;
+	height: 28px;
+	border-radius: 50%;
+	background: var(--surface);
+	border: 1px solid var(--line);
+	color: var(--accent);
+}
+/* A page still being made: a bar runs along its foot. */
+.working {
+	position: absolute;
+	inset-inline: 12px;
+	bottom: 12px;
+	height: 4px;
+	overflow: hidden;
+	border-radius: 2px;
+	background: var(--surface-3);
+}
+.working::after {
+	content: "";
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	width: 40%;
+	border-radius: 2px;
+	background: var(--accent);
+	animation: run 1.1s var(--ease) infinite;
+}
+@keyframes run {
+	from {
+		transform: translateX(-100%);
+	}
+	to {
+		transform: translateX(260%);
+	}
+}
+.placeholder {
+	width: 70%;
+	aspect-ratio: 1 / 1.3;
+	border-radius: 4px;
+	background: var(--surface-3);
+}
+.pageTools {
+	display: flex;
+	justify-content: center;
+	gap: 2px;
+}
+.addTile {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	aspect-ratio: 3 / 4;
+	padding: 10px;
+	border: 1.5px dashed var(--line-strong);
+	border-radius: var(--r-m);
+	color: var(--accent);
+	font-size: 13px;
+	font-weight: 700;
+}
+.addTile > span {
+	color: var(--text-2);
+	font-size: 12px;
+	font-weight: 650;
+}
+.addTile button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	width: 100%;
+	min-height: 38px;
+	padding: 6px 8px;
+	border-radius: var(--r-s);
+	background: var(--accent-soft);
+	color: var(--accent);
+	font-size: 13px;
+	font-weight: 700;
+}
+.addTile button:hover {
+	background: color-mix(in srgb, var(--accent) 16%, var(--accent-soft));
+}
+.tapHint {
+	color: var(--text-2);
+	font-size: 13px;
+}
+.options {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding-top: 14px;
+	border-top: 1px solid var(--line);
+}
+.markRow {
+	margin-top: 4px;
+	border-radius: var(--r-m);
+	background: var(--bg);
+}
+
+/* ---------- The editor ---------- */
+.editor {
+	position: fixed;
+	inset: 0;
+	z-index: 55;
+	display: flex;
+	flex-direction: column;
+	background: var(--canvas);
+	color: var(--text);
+	animation: editorIn var(--t-slow) var(--ease);
+}
+@keyframes editorIn {
+	from {
+		transform: translateY(18px);
+	}
+}
+.bar {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-height: var(--bar-h);
+	flex-shrink: 0;
+	padding: calc(8px + var(--safe-top))
+		calc(16px + var(--safe-right) + var(--win-controls)) 8px
+		calc(8px + var(--safe-left) + var(--win-lights));
+	background: var(--surface);
+	border-bottom: 1px solid var(--line);
+}
+.title {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-width: 0;
+	line-height: 1.25;
+}
+.title strong {
+	font-size: 15px;
+}
+.title span {
+	color: var(--text-2);
+	font-size: 12px;
+}
+.stepper {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+.stepper li {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 5px 10px;
+	border-radius: 999px;
+	color: var(--text-3);
+	font-size: 12px;
+	font-weight: 700;
+}
+.stepper li > span {
+	display: grid;
+	place-items: center;
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
+	border: 1px solid currentColor;
+	font-size: 10px;
+}
+.stepper li[aria-current="step"] {
+	background: var(--accent-soft);
+	color: var(--accent);
+}
+.stepper li[data-done] {
+	color: var(--accent);
+}
+.hint {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	flex-shrink: 0;
+	margin: 0;
+	padding: 10px 16px;
+	background: var(--accent-soft);
+	color: var(--accent);
+	font-size: 13px;
+	line-height: 1.4;
+	text-align: center;
+}
+.hint > svg {
+	flex-shrink: 0;
+}
+.hint[data-tone="warn"] {
+	background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+	color: var(--danger);
+}
+.stage {
+	position: relative;
+	flex: 1;
+	min-height: 0;
+	overflow: hidden;
+}
+.frame {
+	position: absolute;
+	touch-action: none;
+	user-select: none;
+	-webkit-user-select: none;
+}
+.frame > canvas {
+	display: block;
+	width: 100%;
+	height: 100%;
+	border-radius: 3px;
+}
+.frame[data-settle] > canvas {
+	animation: settle var(--t-slow) var(--ease);
+}
+@keyframes settle {
+	from {
+		transform: scale(0.97);
+	}
+}
+.overlay {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	overflow: visible;
+}
+.mask {
+	fill: rgba(18, 18, 16, 0.5);
+	fill-rule: evenodd;
+	transition: fill var(--t-med);
+}
+.outline {
+	fill: none;
+	stroke: var(--accent);
+	stroke-width: 2.5;
+	stroke-linejoin: round;
+	vector-effect: non-scaling-stroke;
+}
+.outline[data-bad] {
+	stroke: var(--danger);
+}
+.handle {
+	fill: #fff;
+	stroke: var(--accent);
+	stroke-width: 3;
+	vector-effect: non-scaling-stroke;
+	pointer-events: none;
+	transition: r var(--t-fast);
+}
+.edgeHandle {
+	fill: var(--accent);
+	stroke: #fff;
+	stroke-width: 2;
+	vector-effect: non-scaling-stroke;
+	pointer-events: none;
+}
+.hit {
+	fill: transparent;
+	cursor: grab;
+	outline: none;
+}
+.hit:active {
+	cursor: grabbing;
+}
+.hit:focus-visible + .handle,
+.hit:focus-visible + .edgeHandle {
+	stroke: var(--text);
+	stroke-width: 4;
+}
+.handles {
+	animation: handlesIn var(--t-slow) var(--ease);
+	transform-box: fill-box;
+}
+@keyframes handlesIn {
+	from {
+		transform: scale(0.96);
+	}
+}
+.loupe {
+	position: absolute;
+	z-index: 2;
+	width: 128px;
+	height: 128px;
+	overflow: hidden;
+	border: 3px solid var(--surface);
+	border-radius: 50%;
+	background: #000;
+	box-shadow: 0 0 0 1px var(--line-strong);
+	pointer-events: none;
+}
+.loupe canvas {
+	display: block;
+	width: 100%;
+	height: 100%;
+}
+
+/* Working: the photo dims, a line passes over it, a pill says what is
+ * happening. */
+.busy {
+	position: absolute;
+	inset: 0;
+	display: grid;
+	place-items: center;
+	pointer-events: none;
+}
+.veil {
+	position: absolute;
+	inset: 0;
+	background: color-mix(in srgb, var(--canvas) 40%, transparent);
+}
+.sweep {
+	position: absolute;
+	inset-inline: 0;
+	top: 0;
+	height: 26%;
+	border-bottom: 2px solid var(--accent);
+	background: color-mix(in srgb, var(--accent) 16%, transparent);
+	animation: sweep 1.6s var(--ease) infinite alternate;
+}
+@keyframes sweep {
+	from {
+		transform: translateY(-100%);
+	}
+	to {
+		transform: translateY(385%);
+	}
+}
+.pill {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+	padding: 10px 16px;
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	background: var(--surface);
+	color: var(--text);
+	font-size: 13px;
+	font-weight: 700;
+	animation: pillIn var(--t-med) var(--ease);
+}
+@keyframes pillIn {
+	from {
+		transform: translateY(6px);
+	}
+}
+.spinner {
+	width: 16px;
+	height: 16px;
+	border: 2.5px solid var(--accent-soft);
+	border-top-color: var(--accent);
+	border-radius: 50%;
+	animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+	to {
+		transform: rotate(1turn);
+	}
+}
+.opening {
+	position: absolute;
+	inset: 0;
+	display: grid;
+	place-items: center;
+}
+.failed {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 12px;
+	padding: 24px;
+	color: var(--text-2);
+	text-align: center;
+}
+
+.tools {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 8px;
+	padding: 10px 12px;
+	flex-shrink: 0;
+	background: var(--surface);
+	border-top: 1px solid var(--line);
+}
+.looks {
+	display: flex;
+	gap: 8px;
+	flex-shrink: 0;
+	padding: 10px 12px;
+	overflow-x: auto;
+	background: var(--surface);
+	border-top: 1px solid var(--line);
+	scrollbar-width: none;
+}
+.look {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 6px;
+	flex: 0 0 auto;
+	min-width: 76px;
+	padding: 6px 6px 8px;
+	border: 2px solid transparent;
+	border-radius: var(--r-m);
+	color: var(--text-2);
+	font-size: 12px;
+	font-weight: 700;
+}
+/* Centred while they fit, scrollable from the first when they do not. */
+.look:first-child {
+	margin-inline-start: auto;
+}
+.look:last-child {
+	margin-inline-end: auto;
+}
+.look:hover {
+	background: var(--surface-2);
+}
+.look[aria-pressed="true"] {
+	border-color: var(--accent);
+	background: var(--accent-soft);
+	color: var(--accent);
+}
+.look canvas {
+	display: block;
+	width: 56px;
+	height: 72px;
+	object-fit: contain;
+}
+.turns {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+}
+.footer {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	flex-shrink: 0;
+	padding: 12px calc(20px + var(--safe-right)) calc(12px + var(--safe-bottom))
+		calc(20px + var(--safe-left));
+	background: var(--surface);
+	border-top: 1px solid var(--line);
+}
+.footer > :last-child {
+	margin-inline-start: auto;
+}
+
+@media (max-width: 640px) {
+	.stepper {
+		display: none;
+	}
+	.howTo {
+		grid-template-columns: minmax(0, 1fr);
+	}
+	.look {
+		min-width: 0;
+		padding-inline: 4px;
+	}
+	.footer > button {
+		flex: 1;
+	}
+	.buttons > button {
+		flex: 1 1 100%;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.sweep,
+	.working::after,
+	.spinner,
+	.page,
+	.editor,
+	.pill,
+	.handles,
+	.frame[data-settle] > canvas {
+		animation: none;
+	}
+}

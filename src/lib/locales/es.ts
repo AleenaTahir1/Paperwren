@@ -787,4 +787,82 @@ export const es: Table = {
 		"Elige Texto o Firma arriba y selecciona un lugar en la página.",
 	"Changes ready to save": "Cambios listos para guardar",
 	"Add your details to get started": "Añade tus datos para empezar",
+	"Scan a document": "Escanear un documento",
+	"Photos of paper as a clean, straight PDF":
+		"Fotos de papel convertidas en un PDF limpio y recto",
+	"Photograph each page, check its edges and pick a look, then save them all as one PDF.":
+		"Fotografía cada página, revisa sus bordes y elige un aspecto; luego guárdalas todas en un solo PDF.",
+	"Paper to PDF": "Del papel al PDF",
+	"Turn paper into a PDF": "Convierte papel en PDF",
+	"Take a photo of the page, or choose photos you already have. Paperwren finds the edges, straightens the page and cleans it up.":
+		"Haz una foto de la página o elige fotos que ya tengas. Paperwren encuentra los bordes, endereza la página y la limpia.",
+	"Choose photos of your pages. Paperwren finds the edges, straightens each page and cleans it up.":
+		"Elige fotos de tus páginas. Paperwren encuentra los bordes, endereza cada página y la limpia.",
+	"Take a photo": "Hacer una foto",
+	"Choose photos": "Elegir fotos",
+	"We find the page's edges; drag them if you need to":
+		"Encontramos los bordes de la página; arrástralos si hace falta",
+	"Pick a look: clean, grey or black & white":
+		"Elige un aspecto: limpio, gris o blanco y negro",
+	"Save every page together as one PDF":
+		"Guarda todas las páginas juntas en un solo PDF",
+	"Choose a photo or a picture": "Elige una foto o una imagen",
+	"Your pages": "Tus páginas",
+	"Change page {n}": "Cambiar la página {n}",
+	"Remove page {n}": "Quitar la página {n}",
+	"Move earlier": "Mover antes",
+	"Move later": "Mover después",
+	"Add a page": "Añadir una página",
+	Photos: "Fotos",
+	"Couldn't make this page. Tap to try again.":
+		"No se pudo crear esta página. Toca para volver a intentarlo.",
+	"A page couldn't be made. Tap it to try again, or remove it.":
+		"No se pudo crear una página. Tócala para volver a intentarlo o quítala.",
+	"Tap a page to change its edges or its look.":
+		"Toca una página para cambiar sus bordes o su aspecto.",
+	"As scanned": "Como se escaneó",
+	"Add “Scanned with Paperwren”": "Añadir «Scanned with Paperwren»",
+	"A small grey line at the foot of each page. Turn it off for a clean page.":
+		"Una pequeña línea gris al pie de cada página. Desactívala para una página limpia.",
+	"Save PDF": "Guardar PDF",
+	"Finishing {n} pages…": {
+		one: "Terminando {n} página…",
+		other: "Terminando {n} páginas…",
+	},
+	Scan: "Escaneo",
+	"Check the edges": "Revisa los bordes",
+	"Choose a look": "Elige un aspecto",
+	Edges: "Bordes",
+	Look: "Aspecto",
+	Looks: "Aspectos",
+	Clean: "Limpio",
+	Grey: "Gris",
+	"Black & white": "Blanco y negro",
+	"Whole photo": "Foto entera",
+	"Find edges": "Buscar bordes",
+	"Add page": "Añadir página",
+	"Top left corner": "Esquina superior izquierda",
+	"Top right corner": "Esquina superior derecha",
+	"Bottom right corner": "Esquina inferior derecha",
+	"Bottom left corner": "Esquina inferior izquierda",
+	"Top edge": "Borde superior",
+	"Right edge": "Borde derecho",
+	"Bottom edge": "Borde inferior",
+	"Left edge": "Borde izquierdo",
+	"The page's outline": "El contorno de la página",
+	"Opening your photo…": "Abriendo tu foto…",
+	"Finding the page…": "Buscando la página…",
+	"Straightening the page…": "Enderezando la página…",
+	"Getting your photo ready.": "Preparando tu foto.",
+	"Looking for the edges of the page.": "Buscando los bordes de la página.",
+	"Drag the circles onto the corners of the page if they are not quite there.":
+		"Arrastra los círculos a las esquinas de la página si no están bien colocados.",
+	"We couldn't find the page by ourselves. Drag the circles onto its corners.":
+		"No hemos podido encontrar la página. Arrastra los círculos a sus esquinas.",
+	"The corners cross over. Move them back into the shape of the page.":
+		"Las esquinas se cruzan. Vuelve a colocarlas con la forma de la página.",
+	"Pick the look you like. Turn the page if it is on its side.":
+		"Elige el aspecto que prefieras. Gira la página si está de lado.",
+	"This photo couldn't be opened.": "No se pudo abrir esta foto.",
+	"Something went wrong with this photo.": "Algo ha fallado con esta foto.",
 };

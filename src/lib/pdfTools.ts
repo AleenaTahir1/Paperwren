@@ -358,6 +358,69 @@ export async function imagesToPdf(
 	return doc.save();
 }
 
+/** The words a scan carries at its foot, unless the reader takes them off. */
+export const SCAN_MARK = "Scanned with Paperwren";
+
+/**
+ * Scanned pages as a PDF: each page filled by its picture. "fit" gives
+ * a page the picture's own shape, as wide as A4 (or as tall, lying
+ * down); A4 and Letter fit the picture inside the sheet, turned to suit.
+ * `mark` adds a small line of grey words at the foot of each page.
+ */
+export async function scansToPdf(
+	pages: Array<{ bytes: Uint8Array; width: number; height: number }>,
+	{
+		paper = "fit",
+		mark,
+	}: { paper?: "fit" | keyof typeof PAPER; mark?: string } = {},
+): Promise<Uint8Array> {
+	if (!pages.length) throw new ToolError("empty");
+	const { PDFDocument, StandardFonts } = await lib();
+	const doc = await PDFDocument.create();
+	doc.setCreator("Paperwren");
+	doc.setProducer("Paperwren");
+	const font = mark ? await doc.embedFont(StandardFonts.Helvetica) : null;
+	const grey = await rgbOf("#6f6c66");
+	for (const scan of pages) {
+		const image = await doc.embedJpg(scan.bytes);
+		const wide = scan.width > scan.height;
+		const short = PAPER.a4[0];
+		let pw: number;
+		let ph: number;
+		if (paper === "fit") {
+			const ratio =
+				Math.max(scan.width, scan.height) / Math.min(scan.width, scan.height);
+			[pw, ph] = wide ? [short * ratio, short] : [short, short * ratio];
+		} else {
+			const [a, b] = PAPER[paper];
+			[pw, ph] = wide ? [b, a] : [a, b];
+		}
+		const scale = Math.min(pw / scan.width, ph / scan.height);
+		const w = scan.width * scale;
+		const h = scan.height * scale;
+		const page = doc.addPage([pw, ph]);
+		page.drawImage(image, {
+			x: (pw - w) / 2,
+			y: (ph - h) / 2,
+			width: w,
+			height: h,
+		});
+		if (font && mark) {
+			const size = 7;
+			const text = font.widthOfTextAtSize(mark, size);
+			page.drawText(mark, {
+				x: pw - 10 - text,
+				y: 8,
+				size,
+				font,
+				color: grey,
+				opacity: 0.85,
+			});
+		}
+	}
+	return doc.save();
+}
+
 /** Where page numbers go. */
 export type NumberSpot = "bottom-center" | "bottom-right" | "top-right";
 

@@ -797,4 +797,83 @@ export const fr: Table = {
 		"Choisissez Texte ou Signature ci-dessus, puis un endroit sur la page.",
 	"Changes ready to save": "Modifications prêtes à enregistrer",
 	"Add your details to get started": "Ajoutez vos informations pour commencer",
+	"Scan a document": "Numériser un document",
+	"Photos of paper as a clean, straight PDF":
+		"Des photos de papier en un PDF net et droit",
+	"Photograph each page, check its edges and pick a look, then save them all as one PDF.":
+		"Photographiez chaque page, vérifiez ses bords et choisissez un rendu, puis enregistrez-les toutes dans un seul PDF.",
+	"Paper to PDF": "Du papier au PDF",
+	"Turn paper into a PDF": "Transformez du papier en PDF",
+	"Take a photo of the page, or choose photos you already have. Paperwren finds the edges, straightens the page and cleans it up.":
+		"Prenez la page en photo ou choisissez des photos existantes. Paperwren trouve les bords, redresse la page et la nettoie.",
+	"Choose photos of your pages. Paperwren finds the edges, straightens each page and cleans it up.":
+		"Choisissez des photos de vos pages. Paperwren trouve les bords, redresse chaque page et la nettoie.",
+	"Take a photo": "Prendre une photo",
+	"Choose photos": "Choisir des photos",
+	"We find the page's edges; drag them if you need to":
+		"Nous trouvons les bords de la page ; faites-les glisser si besoin",
+	"Pick a look: clean, grey or black & white":
+		"Choisissez un rendu : net, gris ou noir et blanc",
+	"Save every page together as one PDF":
+		"Enregistrez toutes les pages ensemble dans un seul PDF",
+	"Choose a photo or a picture": "Choisissez une photo ou une image",
+	"Your pages": "Vos pages",
+	"Change page {n}": "Modifier la page {n}",
+	"Remove page {n}": "Retirer la page {n}",
+	"Move earlier": "Placer avant",
+	"Move later": "Placer après",
+	"Add a page": "Ajouter une page",
+	Photos: "Photos",
+	"Couldn't make this page. Tap to try again.":
+		"Impossible de créer cette page. Touchez pour réessayer.",
+	"A page couldn't be made. Tap it to try again, or remove it.":
+		"Une page n'a pas pu être créée. Touchez-la pour réessayer, ou retirez-la.",
+	"Tap a page to change its edges or its look.":
+		"Touchez une page pour modifier ses bords ou son rendu.",
+	"As scanned": "Telle quelle",
+	"Add “Scanned with Paperwren”": "Ajouter « Scanned with Paperwren »",
+	"A small grey line at the foot of each page. Turn it off for a clean page.":
+		"Une petite ligne grise au bas de chaque page. Désactivez-la pour une page vierge de toute mention.",
+	"Save PDF": "Enregistrer le PDF",
+	"Finishing {n} pages…": {
+		one: "Finalisation de {n} page…",
+		other: "Finalisation de {n} pages…",
+	},
+	Scan: "Numérisation",
+	"Check the edges": "Vérifiez les bords",
+	"Choose a look": "Choisissez un rendu",
+	Edges: "Bords",
+	Look: "Rendu",
+	Looks: "Rendus",
+	Clean: "Net",
+	Grey: "Gris",
+	"Black & white": "Noir et blanc",
+	"Whole photo": "Photo entière",
+	"Find edges": "Trouver les bords",
+	"Add page": "Ajouter la page",
+	"Top left corner": "Coin supérieur gauche",
+	"Top right corner": "Coin supérieur droit",
+	"Bottom right corner": "Coin inférieur droit",
+	"Bottom left corner": "Coin inférieur gauche",
+	"Top edge": "Bord supérieur",
+	"Right edge": "Bord droit",
+	"Bottom edge": "Bord inférieur",
+	"Left edge": "Bord gauche",
+	"The page's outline": "Le contour de la page",
+	"Opening your photo…": "Ouverture de votre photo…",
+	"Finding the page…": "Recherche de la page…",
+	"Straightening the page…": "Redressement de la page…",
+	"Getting your photo ready.": "Préparation de votre photo.",
+	"Looking for the edges of the page.": "Recherche des bords de la page.",
+	"Drag the circles onto the corners of the page if they are not quite there.":
+		"Faites glisser les cercles sur les coins de la page s'ils n'y sont pas tout à fait.",
+	"We couldn't find the page by ourselves. Drag the circles onto its corners.":
+		"Nous n'avons pas pu trouver la page seuls. Faites glisser les cercles sur ses coins.",
+	"The corners cross over. Move them back into the shape of the page.":
+		"Les coins se croisent. Replacez-les selon la forme de la page.",
+	"Pick the look you like. Turn the page if it is on its side.":
+		"Choisissez le rendu qui vous plaît. Tournez la page si elle est de côté.",
+	"This photo couldn't be opened.": "Impossible d'ouvrir cette photo.",
+	"Something went wrong with this photo.":
+		"Un problème est survenu avec cette photo.",
 };

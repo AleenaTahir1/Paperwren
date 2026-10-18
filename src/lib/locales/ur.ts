@@ -776,4 +776,82 @@ export const ur: Table = {
 		"اوپر متن یا دستخط منتخب کریں، پھر صفحے پر جگہ چنیں۔",
 	"Changes ready to save": "تبدیلیاں محفوظ کرنے کے لیے تیار ہیں",
 	"Add your details to get started": "شروع کرنے کے لیے اپنی تفصیلات شامل کریں",
+	"Scan a document": "دستاویز اسکین کریں",
+	"Photos of paper as a clean, straight PDF":
+		"کاغذ کی تصاویر سے صاف اور سیدھی PDF",
+	"Photograph each page, check its edges and pick a look, then save them all as one PDF.":
+		"ہر صفحے کی تصویر لیں، اس کے کنارے دیکھیں اور انداز چنیں، پھر سب کو ایک PDF کے طور پر محفوظ کریں۔",
+	"Paper to PDF": "کاغذ سے PDF",
+	"Turn paper into a PDF": "کاغذ کو PDF میں بدلیں",
+	"Take a photo of the page, or choose photos you already have. Paperwren finds the edges, straightens the page and cleans it up.":
+		"صفحے کی تصویر لیں، یا پہلے سے موجود تصاویر چنیں۔ Paperwren کنارے ڈھونڈتا ہے، صفحہ سیدھا کرتا ہے اور اسے صاف کر دیتا ہے۔",
+	"Choose photos of your pages. Paperwren finds the edges, straightens each page and cleans it up.":
+		"اپنے صفحات کی تصاویر چنیں۔ Paperwren کنارے ڈھونڈتا ہے، ہر صفحہ سیدھا کرتا ہے اور اسے صاف کر دیتا ہے۔",
+	"Take a photo": "تصویر لیں",
+	"Choose photos": "تصاویر چنیں",
+	"We find the page's edges; drag them if you need to":
+		"ہم صفحے کے کنارے ڈھونڈتے ہیں؛ ضرورت ہو تو انہیں کھینچیں",
+	"Pick a look: clean, grey or black & white":
+		"انداز چنیں: صاف، سرمئی یا سیاہ و سفید",
+	"Save every page together as one PDF":
+		"تمام صفحات ایک PDF میں اکٹھے محفوظ کریں",
+	"Choose a photo or a picture": "کوئی تصویر چنیں",
+	"Your pages": "آپ کے صفحات",
+	"Change page {n}": "صفحہ {n} بدلیں",
+	"Remove page {n}": "صفحہ {n} ہٹائیں",
+	"Move earlier": "پہلے لے جائیں",
+	"Move later": "بعد میں لے جائیں",
+	"Add a page": "صفحہ شامل کریں",
+	Photos: "تصاویر",
+	"Couldn't make this page. Tap to try again.":
+		"یہ صفحہ نہیں بن سکا۔ دوبارہ کوشش کے لیے ٹیپ کریں۔",
+	"A page couldn't be made. Tap it to try again, or remove it.":
+		"ایک صفحہ نہیں بن سکا۔ دوبارہ کوشش کے لیے اسے ٹیپ کریں، یا ہٹا دیں۔",
+	"Tap a page to change its edges or its look.":
+		"کسی صفحے کے کنارے یا انداز بدلنے کے لیے اسے ٹیپ کریں۔",
+	"As scanned": "جیسا اسکین ہوا",
+	"Add “Scanned with Paperwren”": "«Scanned with Paperwren» شامل کریں",
+	"A small grey line at the foot of each page. Turn it off for a clean page.":
+		"ہر صفحے کے نیچے ایک چھوٹی سرمئی سطر۔ صاف صفحے کے لیے اسے بند کریں۔",
+	"Save PDF": "PDF محفوظ کریں",
+	"Finishing {n} pages…": {
+		one: "{n} صفحہ مکمل ہو رہا ہے…",
+		other: "{n} صفحات مکمل ہو رہے ہیں…",
+	},
+	Scan: "اسکین",
+	"Check the edges": "کنارے دیکھیں",
+	"Choose a look": "انداز چنیں",
+	Edges: "کنارے",
+	Look: "انداز",
+	Looks: "انداز",
+	Clean: "صاف",
+	Grey: "سرمئی",
+	"Black & white": "سیاہ و سفید",
+	"Whole photo": "پوری تصویر",
+	"Find edges": "کنارے ڈھونڈیں",
+	"Add page": "صفحہ شامل کریں",
+	"Top left corner": "اوپر بایاں کونا",
+	"Top right corner": "اوپر دایاں کونا",
+	"Bottom right corner": "نیچے دایاں کونا",
+	"Bottom left corner": "نیچے بایاں کونا",
+	"Top edge": "اوپری کنارہ",
+	"Right edge": "دایاں کنارہ",
+	"Bottom edge": "نچلا کنارہ",
+	"Left edge": "بایاں کنارہ",
+	"The page's outline": "صفحے کا خاکہ",
+	"Opening your photo…": "آپ کی تصویر کھل رہی ہے…",
+	"Finding the page…": "صفحہ ڈھونڈا جا رہا ہے…",
+	"Straightening the page…": "صفحہ سیدھا کیا جا رہا ہے…",
+	"Getting your photo ready.": "آپ کی تصویر تیار کی جا رہی ہے۔",
+	"Looking for the edges of the page.": "صفحے کے کنارے تلاش کیے جا رہے ہیں۔",
+	"Drag the circles onto the corners of the page if they are not quite there.":
+		"اگر دائرے صفحے کے کونوں پر ٹھیک نہیں ہیں تو انہیں کھینچ کر وہاں لے جائیں۔",
+	"We couldn't find the page by ourselves. Drag the circles onto its corners.":
+		"ہم خود صفحہ نہیں ڈھونڈ سکے۔ دائروں کو کھینچ کر اس کے کونوں پر لے جائیں۔",
+	"The corners cross over. Move them back into the shape of the page.":
+		"کونے ایک دوسرے کو کاٹ رہے ہیں۔ انہیں واپس صفحے کی شکل میں لائیں۔",
+	"Pick the look you like. Turn the page if it is on its side.":
+		"اپنی پسند کا انداز چنیں۔ اگر صفحہ ترچھا ہے تو اسے گھمائیں۔",
+	"This photo couldn't be opened.": "یہ تصویر نہیں کھل سکی۔",
+	"Something went wrong with this photo.": "اس تصویر میں کچھ گڑبڑ ہو گئی۔",
 };

@@ -766,4 +766,80 @@ export const hi: Table = {
 		"ऊपर टेक्स्ट या हस्ताक्षर चुनें, फिर पृष्ठ पर जगह चुनें।",
 	"Changes ready to save": "बदलाव सहेजने के लिए तैयार हैं",
 	"Add your details to get started": "शुरू करने के लिए अपनी जानकारी जोड़ें",
+	"Scan a document": "दस्तावेज़ स्कैन करें",
+	"Photos of paper as a clean, straight PDF":
+		"काग़ज़ की तस्वीरों से साफ़ और सीधी PDF",
+	"Photograph each page, check its edges and pick a look, then save them all as one PDF.":
+		"हर पृष्ठ की फ़ोटो लें, उसके किनारे जाँचें और रूप चुनें, फिर सबको एक PDF के रूप में सहेजें।",
+	"Paper to PDF": "काग़ज़ से PDF",
+	"Turn paper into a PDF": "काग़ज़ को PDF में बदलें",
+	"Take a photo of the page, or choose photos you already have. Paperwren finds the edges, straightens the page and cleans it up.":
+		"पृष्ठ की फ़ोटो लें, या पहले से मौजूद फ़ोटो चुनें। Paperwren किनारे ढूँढता है, पृष्ठ सीधा करता है और उसे साफ़ कर देता है।",
+	"Choose photos of your pages. Paperwren finds the edges, straightens each page and cleans it up.":
+		"अपने पृष्ठों की फ़ोटो चुनें। Paperwren किनारे ढूँढता है, हर पृष्ठ सीधा करता है और उसे साफ़ कर देता है।",
+	"Take a photo": "फ़ोटो लें",
+	"Choose photos": "फ़ोटो चुनें",
+	"We find the page's edges; drag them if you need to":
+		"हम पृष्ठ के किनारे ढूँढते हैं; ज़रूरत हो तो उन्हें खींचें",
+	"Pick a look: clean, grey or black & white": "रूप चुनें: साफ़, धूसर या श्वेत-श्याम",
+	"Save every page together as one PDF": "सभी पृष्ठ एक साथ एक PDF में सहेजें",
+	"Choose a photo or a picture": "कोई फ़ोटो या चित्र चुनें",
+	"Your pages": "आपके पृष्ठ",
+	"Change page {n}": "पृष्ठ {n} बदलें",
+	"Remove page {n}": "पृष्ठ {n} हटाएँ",
+	"Move earlier": "पहले ले जाएँ",
+	"Move later": "बाद में ले जाएँ",
+	"Add a page": "पृष्ठ जोड़ें",
+	Photos: "फ़ोटो",
+	"Couldn't make this page. Tap to try again.":
+		"यह पृष्ठ नहीं बन सका। फिर से कोशिश करने के लिए टैप करें।",
+	"A page couldn't be made. Tap it to try again, or remove it.":
+		"एक पृष्ठ नहीं बन सका। फिर से कोशिश के लिए उसे टैप करें, या हटा दें।",
+	"Tap a page to change its edges or its look.":
+		"किसी पृष्ठ के किनारे या रूप बदलने के लिए उसे टैप करें।",
+	"As scanned": "जैसा स्कैन हुआ",
+	"Add “Scanned with Paperwren”": "“Scanned with Paperwren” जोड़ें",
+	"A small grey line at the foot of each page. Turn it off for a clean page.":
+		"हर पृष्ठ के नीचे एक छोटी धूसर पंक्ति। साफ़ पृष्ठ के लिए इसे बंद करें।",
+	"Save PDF": "PDF सहेजें",
+	"Finishing {n} pages…": {
+		one: "{n} पृष्ठ पूरा हो रहा है…",
+		other: "{n} पृष्ठ पूरे हो रहे हैं…",
+	},
+	Scan: "स्कैन",
+	"Check the edges": "किनारे जाँचें",
+	"Choose a look": "रूप चुनें",
+	Edges: "किनारे",
+	Look: "रूप",
+	Looks: "रूप",
+	Clean: "साफ़",
+	Grey: "धूसर",
+	"Black & white": "श्वेत-श्याम",
+	"Whole photo": "पूरी फ़ोटो",
+	"Find edges": "किनारे ढूँढें",
+	"Add page": "पृष्ठ जोड़ें",
+	"Top left corner": "ऊपरी बायाँ कोना",
+	"Top right corner": "ऊपरी दायाँ कोना",
+	"Bottom right corner": "निचला दायाँ कोना",
+	"Bottom left corner": "निचला बायाँ कोना",
+	"Top edge": "ऊपरी किनारा",
+	"Right edge": "दायाँ किनारा",
+	"Bottom edge": "निचला किनारा",
+	"Left edge": "बायाँ किनारा",
+	"The page's outline": "पृष्ठ की रूपरेखा",
+	"Opening your photo…": "आपकी फ़ोटो खुल रही है…",
+	"Finding the page…": "पृष्ठ ढूँढा जा रहा है…",
+	"Straightening the page…": "पृष्ठ सीधा किया जा रहा है…",
+	"Getting your photo ready.": "आपकी फ़ोटो तैयार की जा रही है।",
+	"Looking for the edges of the page.": "पृष्ठ के किनारे खोजे जा रहे हैं।",
+	"Drag the circles onto the corners of the page if they are not quite there.":
+		"अगर गोले पृष्ठ के कोनों पर ठीक से नहीं हैं, तो उन्हें खींचकर वहाँ ले जाएँ।",
+	"We couldn't find the page by ourselves. Drag the circles onto its corners.":
+		"हम ख़ुद पृष्ठ नहीं ढूँढ सके। गोलों को खींचकर उसके कोनों पर ले जाएँ।",
+	"The corners cross over. Move them back into the shape of the page.":
+		"कोने आपस में कट रहे हैं। उन्हें वापस पृष्ठ के आकार में लाएँ।",
+	"Pick the look you like. Turn the page if it is on its side.":
+		"अपनी पसंद का रूप चुनें। अगर पृष्ठ बगल में मुड़ा है तो उसे घुमाएँ।",
+	"This photo couldn't be opened.": "यह फ़ोटो नहीं खुल सकी।",
+	"Something went wrong with this photo.": "इस फ़ोटो में कुछ गड़बड़ हो गई।",
 };
