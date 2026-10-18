@@ -17,7 +17,7 @@ Every claim here must stay literally true. Any future feature that would break o
 |------------|--------|-----|
 | Storage / media permissions | **Not requested** | SAF picker + "open with" intents make them unnecessary |
 | Internet | **Not requested** | The release manifest strips the template-injected INTERNET permission; nothing to fetch |
-| Camera, location, contacts, microphone | **Not requested** | Obviously |
+| Camera, location, contacts, microphone | **Not requested** | Obviously. The scanner's "Take a photo" hands the job to the phone's camera app (an intent, through the WebView's file chooser); the app itself never opens the camera |
 | POST_NOTIFICATIONS | Not requested | No notifications exist |
 
 **Verifiable claim:** the merged manifest requests no Android permissions. The single `uses-permission` entry present is `app.paperwren.docs.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`, a permission the app defines itself (added automatically by AndroidX to protect receiver registration) — it guards nothing the user would recognize and grants no access. The system "App info" screen shows "no permissions." Platform backup is disabled, so nothing rides along with Google auto-backup either.
@@ -31,6 +31,7 @@ Every claim here must stay literally true. Any future feature that would break o
 | Cached copy of opened files | Let parsers re-read; speed | App-private **cache** dir | Auto-purged (LRU 250 MB / 30 days); one-tap "Clear cache" |
 | PDF passwords | Unlock in-session only | **Memory only** | Never written anywhere; gone when file closes |
 | Kept signatures and initials (pictures, only when the user ticks "Keep it on this device") | Sign the next form in a tap | App-private storage | Forget each one from the signature list; cleared on uninstall |
+| Photos taken or chosen for a scan | Straighten and clean the pages | Memory, while the scan is open; the camera app's own copy lands in the app's Pictures folder (app-specific, no permission) | That copy is deleted the next time the app starts |
 | Copies the tools save (a signed form, merged pages) | The user's own files | Where the user picks in the system save screen (Android: Storage Access Framework, no permission) | The user's files, not the app's |
 
 Nothing else. No cookies, no identifiers, no advertising ID reads, no fingerprinting surfaces.

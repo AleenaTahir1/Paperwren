@@ -107,16 +107,69 @@ ${data}
 ${data}
             </intent-filter>`;
 
-/** Android 11 and later only let an app see the services it names: the
- * system's text-to-speech, for read aloud. This is not a permission. */
+/** Android 11 and later only let an app see the apps and services it
+ * names: the system's text-to-speech, for read aloud, and the camera
+ * app the scanner hands "Take a photo" to. This is not a permission. */
 const QUERIES = `
-    <!-- paperwren:tts -->
+    <!-- paperwren:queries -->
     <queries>
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE" />
         </intent>
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
     </queries>
 `;
+
+/**
+ * The scanner's "Take a photo": the WebView's file chooser (wry) hands
+ * the job to the phone's camera app, which writes the photo through a
+ * FileProvider with the authority "<package>.fileprovider" into the
+ * app's own Pictures folder (no storage permission: the folder is the
+ * app's). The Tauri template declares that provider; where it does not,
+ * this one does. MainActivity clears the photos out again.
+ */
+const CAMERA_PROVIDER = `
+        <!-- paperwren:camera -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="\${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/paperwren_camera" />
+        </provider>
+`;
+const CAMERA_PATH =
+	'<external-files-path name="paperwren_camera" path="Pictures/" />';
+const CAMERA_PATHS_XML = `<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    ${CAMERA_PATH}
+</paths>
+`;
+
+/** The paths file the camera's FileProvider reads, as the manifest names it. */
+function cameraPathsResource(manifest) {
+	const at = manifest.search(
+		/android:authorities="\$\{applicationId\}\.fileprovider"/,
+	);
+	if (at === -1) return null;
+	const end = manifest.indexOf("</provider>", at);
+	const block = manifest.slice(at, end === -1 ? undefined : end);
+	return block.match(/android:resource="@xml\/([\w.]+)"/)?.[1] ?? null;
+}
+
+/** Make sure the camera's provider can hand out the app's Pictures folder. */
+export function reachCameraFolder(paths) {
+	const reaches =
+		/<external-files-path\b[^>]*path="(\.|Pictures\/?)"/.test(paths) ||
+		/<external-path\b[^>]*path="\."/.test(paths);
+	if (reaches) return paths;
+	if (!paths.includes("</paths>")) return CAMERA_PATHS_XML;
+	return paths.replace("</paths>", `    ${CAMERA_PATH}\n</paths>`);
+}
 
 function fail(message, content = "") {
 	console.error(message + (content ? `\n---- content ----\n${content}` : ""));
@@ -190,10 +243,15 @@ export function hardenManifest(original) {
 		if (end === -1) fail("No </application> in manifest.", src);
 		src = `${src.slice(0, end).trimEnd()}\n${PROVIDER}    ${src.slice(end)}`;
 	}
-	if (!src.includes("paperwren:tts")) {
+	if (!src.includes("paperwren:queries")) {
 		const at = src.search(/<application\b/);
 		if (at === -1) fail("No <application> tag.", src);
 		src = `${src.slice(0, at).trimEnd()}\n${QUERIES}    ${src.slice(at)}`;
+	}
+	if (!src.includes('.fileprovider"')) {
+		const end = src.lastIndexOf("</application>");
+		if (end === -1) fail("No </application> in manifest.", src);
+		src = `${src.slice(0, end).trimEnd()}\n${CAMERA_PROVIDER}    ${src.slice(end)}`;
 	}
 	if (!/launchMode="singleTask"/.test(src)) {
 		src = src.replace(
@@ -247,6 +305,26 @@ if (mode === "check") {
 		fail("FileProvider missing.", once);
 	if (!once.includes("android.intent.action.TTS_SERVICE"))
 		fail("Text-to-speech query missing.", once);
+	if (!once.includes("android.media.action.IMAGE_CAPTURE"))
+		fail("Camera query missing.", once);
+	if (cameraPathsResource(once) !== "paperwren_camera")
+		fail("Camera FileProvider missing.", once);
+	// A template that declares the camera's provider keeps its own.
+	const withProvider = hardenManifest(
+		sample.replace(
+			"</application>",
+			'<provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.fileprovider"><meta-data android:resource="@xml/file_paths" /></provider></application>',
+		),
+	);
+	if (withProvider.split('.fileprovider"').length !== 2)
+		fail("Camera FileProvider declared twice.", withProvider);
+	if (cameraPathsResource(withProvider) !== "file_paths")
+		fail("Template's camera paths not found.", withProvider);
+	const root = '<paths><external-path name="my_images" path="." /></paths>';
+	if (reachCameraFolder(root) !== root)
+		fail("Camera paths changed needlessly.");
+	if (!reachCameraFolder("<paths>\n</paths>").includes("Pictures/"))
+		fail("Camera paths not extended.");
 	if (once.indexOf("<queries>") > once.indexOf("<application"))
 		fail("<queries> must come before <application>.", once);
 	// Each type appears once per filter (open-with, share), exactly.
@@ -276,6 +354,16 @@ writeFileSync(ACTIVITY_DEST, activity);
 writeFileSync(MANIFEST, hardenManifest(readFileSync(MANIFEST, "utf8")));
 mkdirSync(`${GEN}/res/xml`, { recursive: true });
 writeFileSync(PROVIDER_PATHS, PROVIDER_PATHS_XML);
+const manifest = readFileSync(MANIFEST, "utf8");
+const cameraResource = cameraPathsResource(manifest);
+if (!cameraResource) fail("No camera FileProvider in the manifest.", manifest);
+const cameraFile = `${GEN}/res/xml/${cameraResource}.xml`;
+writeFileSync(
+	cameraFile,
+	existsSync(cameraFile)
+		? reachCameraFolder(readFileSync(cameraFile, "utf8"))
+		: CAMERA_PATHS_XML,
+);
 console.log(
-	"Installed MainActivity.kt, hardened AndroidManifest.xml, declared the share FileProvider.",
+	"Installed MainActivity.kt, hardened AndroidManifest.xml, declared the share and camera FileProviders.",
 );

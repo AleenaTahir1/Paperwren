@@ -66,6 +66,10 @@ const LICENSES: Array<[string, string]> = [
 	["UTIF.js", "MIT"],
 	["KaTeX", "MIT"],
 	["pdf-lib (Cantoo fork)", "MIT"],
+	// The scanner's page finders and the runtime its network runs on.
+	["scanic", "MIT"],
+	["DocCornerNet (scanic-ml)", "MIT"],
+	["ONNX Runtime", "MIT"],
 	["pako", "MIT / Zlib"],
 	["React", "MIT"],
 	["Lucide icons", "ISC"],

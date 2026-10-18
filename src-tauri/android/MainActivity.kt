@@ -78,6 +78,10 @@ import java.util.concurrent.TimeUnit
  *    the volume keys turning pages while the reader asks for that.
  * 7. Pictures the WebView cannot draw (HEIC, from an iPhone): the
  *    system decodes them and hands back a JPEG.
+ * 8. The scanner's photos: "Take a photo" is the WebView's own file
+ *    chooser handing the job to the camera app (no permission), which
+ *    leaves the photo in the app's own Pictures folder. They are only
+ *    needed while the page reads them, so each start clears them out.
  *
  * This file is copied verbatim over the generated activity by
  * scripts/install-android.mjs. Keep it self-contained.
@@ -190,6 +194,22 @@ class MainActivity : TauriActivity() {
     super.onCreate(savedInstanceState)
     installBackBridge()
     handleIntent(intent)
+    clearCameraPhotos()
+  }
+
+  /** Photos the camera app wrote for an earlier scan ("JPEG_<time>_….jpg",
+   * named by the WebView's file chooser). The scan itself keeps nothing. */
+  private fun clearCameraPhotos() {
+    scanExecutor.execute {
+      try {
+        val dir = getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
+        dir?.listFiles()
+          ?.filter { it.isFile && it.name.startsWith("JPEG_") && it.name.endsWith(".jpg") }
+          ?.forEach { it.delete() }
+      } catch (e: Exception) {
+        // No such folder, or no storage there: nothing to clear.
+      }
+    }
   }
 
   override fun onNewIntent(intent: Intent) {
