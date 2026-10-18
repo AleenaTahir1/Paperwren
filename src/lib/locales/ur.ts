@@ -857,4 +857,6 @@ export const ur: Table = {
 		"اپنی پسند کا انداز چنیں۔ اگر صفحہ ترچھا ہے تو اسے گھمائیں۔",
 	"This photo couldn't be opened.": "یہ تصویر نہیں کھل سکی۔",
 	"Something went wrong with this photo.": "اس تصویر میں کچھ گڑبڑ ہو گئی۔",
+	"All tools": "تمام ٹولز",
+	"Exit full screen": "پوری اسکرین سے نکلیں",
 };

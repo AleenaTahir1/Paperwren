@@ -283,7 +283,42 @@
 	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
 }
 .padBox {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+}
+.padHeading {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	font-size: 13px;
+	text-align: start;
+}
+.expandPad {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	min-height: 44px;
+	color: var(--accent);
+	font-weight: 750;
+}
+.expandPad svg {
+	flex-shrink: 0;
+}
+.padSurface {
 	position: relative;
+	min-height: 0;
+}
+.expandedPad,
+.expandedPad .padSurface {
+	flex: 1;
+}
+.expandedPad .pad {
+	position: absolute;
+	height: 100%;
+	aspect-ratio: auto;
 }
 .pad {
 	display: block;
@@ -304,23 +339,38 @@
 	pointer-events: none;
 }
 .padTools {
-	display: flex;
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	flex-shrink: 0;
 	align-items: center;
 	gap: 8px;
 	margin-top: 8px;
 }
+.inkChoices {
+	display: flex;
+	gap: 8px;
+	flex-shrink: 0;
+}
 .inkDot {
-	width: 26px;
-	height: 26px;
-	border: 3px solid var(--surface);
+	width: 36px;
+	height: 44px;
+	border: 8px solid var(--surface);
 	border-radius: 50%;
 	box-shadow: 0 0 0 1px var(--line-strong);
 }
 .inkDot[aria-pressed="true"] {
 	box-shadow: 0 0 0 2px var(--accent);
 }
-.padTools > :nth-child(3) {
-	margin-inline-start: auto;
+.padTools > button {
+	min-height: 44px;
+	padding: 4px;
+	gap: 4px;
+	font-size: 13px;
+	white-space: normal;
+	overflow-wrap: anywhere;
+}
+.padTools svg {
+	flex-shrink: 0;
 }
 .typed {
 	display: flex;

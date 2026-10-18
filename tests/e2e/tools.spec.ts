@@ -82,6 +82,163 @@ async function saveCopy(page: Page) {
 }
 
 test.describe("fill & sign", () => {
+	test("initials accept touch strokes and the compact dialog stays reachable in landscape", async ({
+		page,
+	}) => {
+		await page.setViewportSize({ width: 320, height: 568 });
+		await boot(page);
+		await page.getByTestId("home-tool-sign").click();
+		await addFile(page, "features/form.pdf");
+		await page.getByTestId("tool-go").click();
+		await page.getByTestId("fill-tool-initials").click();
+		await page.getByTestId("signature-fullscreen").click();
+		const canvas = page.getByTestId("signature-canvas");
+		const box = await canvas.boundingBox();
+		if (!box) throw new Error("No signature canvas");
+		const touch = await page.context().newCDPSession(page);
+		await touch.send("Emulation.setTouchEmulationEnabled", { enabled: true });
+		await touch.send("Input.dispatchTouchEvent", {
+			type: "touchStart",
+			touchPoints: [{ x: box.x + 40, y: box.y + 40 }],
+		});
+		for (let n = 1; n <= 12; n++) {
+			await touch.send("Input.dispatchTouchEvent", {
+				type: "touchMove",
+				touchPoints: [{ x: box.x + 40 + n * 12, y: box.y + 40 + n * 16 }],
+			});
+		}
+		await touch.send("Input.dispatchTouchEvent", {
+			type: "touchEnd",
+			touchPoints: [],
+		});
+		await touch.detach();
+		await expect(page.getByTestId("signature-undo")).toBeEnabled();
+		const before = await canvas.evaluate((el: HTMLCanvasElement) =>
+			el.toDataURL(),
+		);
+		await page.getByTestId("signature-undo").click();
+		await page.getByTestId("signature-redo").click();
+		expect(
+			await canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL()),
+		).toBe(before);
+		await page.setViewportSize({ width: 568, height: 320 });
+		await page.getByTestId("signature-fullscreen-done").click();
+		await page.getByTestId("signature-done").click();
+		await expect(page.getByTestId("signature-pad")).toHaveCount(0);
+		const kept = await page.evaluate(
+			() =>
+				JSON.parse(localStorage.getItem("paperwren.signatures_v1") ?? "[]")[0],
+		);
+		expect(kept.initials).toBe(true);
+		expect(Math.max(kept.w, kept.h)).toBeGreaterThan(1000);
+	});
+
+	test("a phone signature expands, keeps its shape on rotation, and supports redo", async ({
+		page,
+	}) => {
+		await page.setViewportSize({ width: 360, height: 800 });
+		await boot(page);
+		await page.getByTestId("home-tool-sign").click();
+		await addFile(page, "features/form.pdf");
+		await page.getByTestId("tool-go").click();
+		await page.getByTestId("fill-sign-here").click();
+		const canvas = page.getByTestId("signature-canvas");
+		const pixels = () =>
+			canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL());
+		const inkShape = () =>
+			canvas.evaluate((el: HTMLCanvasElement) => {
+				const ctx = el.getContext("2d");
+				if (!ctx) throw new Error("No canvas context");
+				const data = ctx.getImageData(0, 0, el.width, el.height).data;
+				let left = el.width;
+				let right = -1;
+				let top = el.height;
+				let bottom = -1;
+				for (let y = 0; y < el.height; y++)
+					for (let x = 0; x < el.width; x++) {
+						if (data[(y * el.width + x) * 4 + 3] < 32) continue;
+						left = Math.min(left, x);
+						right = Math.max(right, x);
+						top = Math.min(top, y);
+						bottom = Math.max(bottom, y);
+					}
+				return {
+					width: right - left + 1,
+					ratio: (right - left + 1) / (bottom - top + 1),
+				};
+			});
+		const compact = await canvas.boundingBox();
+		if (!compact) throw new Error("No compact canvas");
+		await page.getByTestId("signature-fullscreen").click();
+		await expect
+			.poll(async () => (await canvas.boundingBox())?.height)
+			.toBeGreaterThan(500);
+		await sign(page);
+		const portrait = await inkShape();
+		const drawn = await pixels();
+		await page.getByTestId("signature-undo").click();
+		await expect(page.getByTestId("signature-undo")).toBeDisabled();
+		await page.getByTestId("signature-redo").click();
+		expect(await pixels()).toBe(drawn);
+		await page.setViewportSize({ width: 800, height: 360 });
+		await expect
+			.poll(async () => (await canvas.boundingBox())?.width)
+			.toBeGreaterThan(700);
+		await expect
+			.poll(async () => (await inkShape()).ratio)
+			.toBeCloseTo(portrait.ratio, 1);
+		await expect(
+			page.getByTestId("signature-fullscreen-done"),
+		).toBeInViewport();
+		await page.setViewportSize({ width: 360, height: 800 });
+		await expect
+			.poll(async () => (await canvas.boundingBox())?.height)
+			.toBeGreaterThan(500);
+		await page.getByTestId("signature-fullscreen-done").click();
+		await expect(page.getByTestId("signature-fullscreen")).toBeFocused();
+		await expect
+			.poll(async () => (await canvas.boundingBox())?.height)
+			.toBeCloseTo(compact.height, 0);
+		await expect
+			.poll(async () => (await inkShape()).ratio)
+			.toBeCloseTo(portrait.ratio, 1);
+		const small = await inkShape();
+		// Repeated expansion cannot progressively shrink the signature.
+		await page.getByTestId("signature-fullscreen").click();
+		await page.keyboard.press("Escape");
+		await expect(page.getByTestId("signature-pad")).toBeVisible();
+		await expect
+			.poll(async () => (await inkShape()).width)
+			.toBeCloseTo(small.width, 0);
+		await page.getByTestId("signature-undo").click();
+		await expect(page.getByTestId("signature-done")).toBeDisabled();
+		await sign(page);
+		await expect(page.getByTestId("signature-redo")).toBeDisabled();
+		await page.getByTestId("signature-clear").click();
+		await expect(page.getByTestId("signature-done")).toBeDisabled();
+		await expect(page.getByTestId("signature-redo")).toBeDisabled();
+		await page.getByTestId("signature-fullscreen").click();
+		await sign(page);
+		await page.evaluate(() => window.__paperwrenHandleBack?.());
+		await expect(page.getByTestId("signature-done")).toBeVisible();
+		await page.getByTestId("signature-done").click();
+		await expect(page.getByTestId("fill-item")).toHaveCount(1);
+		const kept = await page.evaluate(
+			() =>
+				JSON.parse(localStorage.getItem("paperwren.signatures_v1") ?? "[]")[0],
+		);
+		expect(Math.max(kept.w, kept.h)).toBeGreaterThan(1000);
+		const saved = await saveCopy(page);
+		const doc = await pdfjs.getDocument({
+			data: saved.bytes.slice(),
+			verbosity: 0,
+		}).promise;
+		expect((await (await doc.getPage(1)).getOperatorList()).fnArray).toContain(
+			pdfjs.OPS.paintImageXObject,
+		);
+		await doc.destroy();
+	});
+
 	test("a form is filled in and signed, and saved as a copy", async ({
 		page,
 	}) => {
@@ -295,6 +452,44 @@ async function openTool(page: Page, id: string) {
 	await expect(page.getByTestId("tools")).toBeVisible();
 	await page.getByTestId(`tool-${id}`).click();
 }
+
+test("home exposes labeled shortcuts and the complete tools collection on a small phone", async ({
+	page,
+}) => {
+	await page.setViewportSize({ width: 320, height: 568 });
+	await boot(page);
+	for (const id of ["scan", "sign", "merge", "organize"] as const) {
+		const shortcut = page.getByTestId(`home-tool-${id}`);
+		await expect(shortcut).toBeInViewport();
+		await shortcut.click();
+		await expect(page.getByTestId("tools")).toBeVisible();
+		await expect(page.getByTestId("tools").locator("h1")).toHaveText(
+			{
+				scan: "Scan a document",
+				sign: "Fill & sign",
+				merge: "Merge PDFs",
+				organize: "Organize pages",
+			}[id],
+		);
+		await page.getByTestId("tools-back").click();
+		await expect(page.getByTestId("home")).toBeVisible();
+	}
+	await page.getByRole("button", { name: "All tools" }).click();
+	for (const id of [
+		"sign",
+		"scan",
+		"merge",
+		"organize",
+		"extract",
+		"images",
+		"pictures",
+		"numbers",
+		"watermark",
+		"protect",
+		"unlock",
+	])
+		await expect(page.getByTestId(`tool-${id}`)).toBeAttached();
+});
 
 test.describe("PDF tools", () => {
 	test("merge puts PDFs together in the order set", async ({ page }) => {

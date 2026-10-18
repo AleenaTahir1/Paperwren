@@ -441,7 +441,7 @@ function Root() {
 				onOpenRecent={openRecent}
 				onOpenRequest={open}
 				onSettings={() => push({ kind: "settings" })}
-				onTools={() => push({ kind: "tools" })}
+				onTools={(tool) => push({ kind: "tools", tool })}
 			/>
 			{state.screens.map((screen, i) => {
 				const atTop = i === state.screens.length - 1;

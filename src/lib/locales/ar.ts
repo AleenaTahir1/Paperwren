@@ -877,4 +877,6 @@ export const ar: Table = {
 		"اختر المظهر الذي يعجبك. أدر الصفحة إن كانت على جانبها.",
 	"This photo couldn't be opened.": "تعذّر فتح هذه الصورة.",
 	"Something went wrong with this photo.": "حدث خطأ ما في هذه الصورة.",
+	"All tools": "كل الأدوات",
+	"Exit full screen": "الخروج من ملء الشاشة",
 };

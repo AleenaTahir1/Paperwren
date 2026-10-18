@@ -4,6 +4,7 @@ import { type FormatKind, kindOf } from "@/lib/formats";
 import { isolate, locale, msg, t } from "@/lib/i18n";
 import { keys } from "@/lib/keys";
 import type { OpenRequest, RecentEntry } from "@/lib/types";
+import type { ToolId } from "@/screens/tools/ToolsScreen";
 import { FileDetails, HandOffItems } from "@/screens/viewer/FileMenu";
 import { RenameDialog } from "@/screens/viewer/RenameDialog";
 import { MAX_FOLDERS, useFolders } from "@/state/folders";
@@ -19,21 +20,24 @@ import {
 	toast,
 } from "@/ui";
 import {
+	ArrowRight,
 	ArrowUpDown,
 	Check,
+	Combine,
 	Folder as FolderIcon,
 	FolderPlus,
 	Info,
+	LayoutGrid,
 	MoreVertical,
 	PencilLine,
 	Pin,
 	PinOff,
 	Plus,
+	ScanLine,
 	SearchX,
 	Settings as SettingsIcon,
 	ShieldCheck,
 	Trash2,
-	Wrench,
 } from "lucide-react";
 import { type CSSProperties, useMemo, useState } from "react";
 import { FolderList } from "./FolderList";
@@ -124,7 +128,7 @@ export function Home({
 	/** Open a file found in a browsed folder. */
 	onOpenRequest: (request: OpenRequest) => void;
 	onSettings: () => void;
-	onTools: () => void;
+	onTools: (tool?: ToolId) => void;
 }) {
 	const { entries, ready, togglePin, remove, restore } = useRecents();
 	const [query, setQuery] = useState("");
@@ -275,13 +279,6 @@ export function Home({
 					</button>
 				)}
 				<IconButton
-					label={t("Tools")}
-					onClick={onTools}
-					data-testid="open-tools"
-				>
-					<Wrench size={22} />
-				</IconButton>
-				<IconButton
 					label={t("Settings")}
 					onClick={onSettings}
 					data-testid="open-settings"
@@ -292,6 +289,42 @@ export function Home({
 
 			<main className={s.scroll}>
 				<div className={s.column}>
+					<section className={s.tools} aria-labelledby="home-tools-title">
+						<div className={s.toolsHeading}>
+							<h2 id="home-tools-title">{t("Tools")}</h2>
+							<button
+								type="button"
+								className={s.allTools}
+								onClick={() => onTools()}
+								data-testid="open-tools"
+							>
+								{t("All tools")} <ArrowRight size={16} />
+							</button>
+						</div>
+						<div className={s.toolGrid}>
+							{(
+								[
+									["scan", ScanLine, t("Scan a document")],
+									["sign", PencilLine, t("Fill & sign")],
+									["merge", Combine, t("Merge PDFs")],
+									["organize", LayoutGrid, t("Organize pages")],
+								] as const
+							).map(([id, Icon, label]) => (
+								<button
+									key={id}
+									type="button"
+									className={s.toolShortcut}
+									onClick={() => onTools(id)}
+									data-testid={`home-tool-${id}`}
+								>
+									<span className={s.toolIcon}>
+										<Icon size={20} />
+									</span>
+									<span>{label}</span>
+								</button>
+							))}
+						</div>
+					</section>
 					{canBrowse && (hasAny || folders.length > 0) && (
 						<div
 							className={s.places}

@@ -844,4 +844,6 @@ export const hi: Table = {
 		"अपनी पसंद का रूप चुनें। अगर पृष्ठ बगल में मुड़ा है तो उसे घुमाएँ।",
 	"This photo couldn't be opened.": "यह फ़ोटो नहीं खुल सकी।",
 	"Something went wrong with this photo.": "इस फ़ोटो में कुछ गड़बड़ हो गई।",
+	"All tools": "सभी टूल",
+	"Exit full screen": "पूरी स्क्रीन से बाहर निकलें",
 };

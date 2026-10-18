@@ -867,4 +867,6 @@ export const es: Table = {
 		"Elige el aspecto que prefieras. Gira la página si está de lado.",
 	"This photo couldn't be opened.": "No se pudo abrir esta foto.",
 	"Something went wrong with this photo.": "Algo ha fallado con esta foto.",
+	"All tools": "Todas las herramientas",
+	"Exit full screen": "Salir de pantalla completa",
 };

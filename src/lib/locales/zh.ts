@@ -800,4 +800,6 @@ export const zh: Table = {
 		"选择你喜欢的效果。如果页面是横着的，请旋转它。",
 	"This photo couldn't be opened.": "无法打开这张照片。",
 	"Something went wrong with this photo.": "这张照片处理出错了。",
+	"All tools": "全部工具",
+	"Exit full screen": "退出全屏",
 };

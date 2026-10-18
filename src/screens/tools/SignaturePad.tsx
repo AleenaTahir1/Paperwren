@@ -7,7 +7,7 @@ import {
 	keepSignature,
 } from "@/lib/signatures";
 import { Button, Dialog, toast } from "@/ui";
-import { ImageUp, Undo2 } from "lucide-react";
+import { Check, ImageUp, Maximize, Minimize, Redo2, Undo2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import s from "./Tools.module.css";
 
@@ -25,6 +25,46 @@ const INKS = ["#111111", "#1a3c8c"];
 const DENSITY = 2;
 /** The widest a kept signature is, in pixels. */
 const MAX_WIDTH = 1200;
+
+type Stroke = { points: Array<[number, number]>; width: number };
+type View = { scale: number; x: number; y: number };
+
+/** Draw from the original points, so previews and exports keep the same ink. */
+function paint(
+	canvas: HTMLCanvasElement,
+	strokes: Stroke[],
+	ink: string,
+	view: View,
+) {
+	const ctx = canvas.getContext("2d");
+	if (!ctx) return;
+	ctx.clearRect(0, 0, canvas.width, canvas.height);
+	ctx.strokeStyle = ink;
+	ctx.lineCap = "round";
+	ctx.lineJoin = "round";
+	for (const { points: line, width } of strokes) {
+		ctx.lineWidth = width * view.scale;
+		const at = (i: number) =>
+			[
+				line[i][0] * view.scale + view.x,
+				line[i][1] * view.scale + view.y,
+			] as const;
+		ctx.beginPath();
+		const [x0, y0] = at(0);
+		ctx.moveTo(x0, y0);
+		if (line.length === 1) ctx.lineTo(x0 + 0.01 * view.scale, y0);
+		for (let i = 1; i < line.length - 1; i++) {
+			const [x, y] = at(i);
+			const [nx, ny] = at(i + 1);
+			ctx.quadraticCurveTo(x, y, (x + nx) / 2, (y + ny) / 2);
+		}
+		if (line.length > 1) {
+			const [x, y] = at(line.length - 1);
+			ctx.lineTo(x, y);
+		}
+		ctx.stroke();
+	}
+}
 
 /** What is drawn on `canvas`, cut to its ink, as a signature. */
 function cut(canvas: HTMLCanvasElement, initials: boolean): Signature | null {
@@ -80,9 +120,20 @@ export function SignaturePad({
 	const [hand, setHand] = useState(0);
 	const [keep, setKeep] = useState(true);
 	const [drawn, setDrawn] = useState(false);
+	const [canRedo, setCanRedo] = useState(false);
+	const [fullScreen, setFullScreen] = useState(false);
 	const [photo, setPhoto] = useState<HTMLCanvasElement | null>(null);
 	const pad = useRef<HTMLCanvasElement>(null);
-	const strokes = useRef<Array<Array<[number, number]>>>([]);
+	const strokes = useRef<Stroke[]>([]);
+	const undone = useRef<Stroke[]>([]);
+	const activePointer = useRef<number | null>(null);
+	const baseSize = useRef<{ w: number; h: number } | null>(null);
+	const view = useRef({ scale: 1, x: 0, y: 0 });
+	const expandButton = useRef<HTMLButtonElement>(null);
+	const finishDrawing = () => {
+		setFullScreen(false);
+		requestAnimationFrame(() => expandButton.current?.focus());
+	};
 
 	// The pad draws at a density of its own, whatever its size on screen.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: redrawn when the ink changes
@@ -91,6 +142,32 @@ export function SignaturePad({
 		if (!canvas || way !== "draw") return;
 		const fit = () => {
 			const box = canvas.getBoundingClientRect();
+			if (!box.width || !box.height) return;
+			baseSize.current ??= { w: box.width, h: box.height };
+			// Fit a stable drawing plane uniformly. Points outside its original
+			// bounds (drawn on the expanded pad) also fit when returning to it.
+			let left = 0;
+			let top = 0;
+			let right = baseSize.current.w;
+			let bottom = baseSize.current.h;
+			for (const line of [...strokes.current, ...undone.current]) {
+				const margin = line.width / 2 + 2;
+				for (const [x, y] of line.points) {
+					left = Math.min(left, x - margin);
+					top = Math.min(top, y - margin);
+					right = Math.max(right, x + margin);
+					bottom = Math.max(bottom, y + margin);
+				}
+			}
+			const scale = Math.min(
+				box.width / (right - left),
+				box.height / (bottom - top),
+			);
+			view.current = {
+				scale,
+				x: (box.width - (right - left) * scale) / 2 - left * scale,
+				y: (box.height - (bottom - top) * scale) / 2 - top * scale,
+			};
 			canvas.width = Math.round(box.width * DENSITY);
 			canvas.height = Math.round(box.height * DENSITY);
 			redraw();
@@ -103,39 +180,23 @@ export function SignaturePad({
 
 	const redraw = () => {
 		const canvas = pad.current;
-		const ctx = canvas?.getContext("2d");
-		if (!canvas || !ctx) return;
-		ctx.clearRect(0, 0, canvas.width, canvas.height);
-		ctx.strokeStyle = ink;
-		ctx.lineCap = "round";
-		ctx.lineJoin = "round";
-		ctx.lineWidth = 2.6 * DENSITY;
-		for (const line of strokes.current) {
-			const at = (i: number) =>
-				[line[i][0] * canvas.width, line[i][1] * canvas.height] as const;
-			ctx.beginPath();
-			const [x0, y0] = at(0);
-			ctx.moveTo(x0, y0);
-			if (line.length === 1) ctx.lineTo(x0 + 0.1, y0);
-			// Through the middle of each step: a smooth line, not a chain.
-			for (let i = 1; i < line.length - 1; i++) {
-				const [x, y] = at(i);
-				const [nx, ny] = at(i + 1);
-				ctx.quadraticCurveTo(x, y, (x + nx) / 2, (y + ny) / 2);
-			}
-			if (line.length > 1) {
-				const [x, y] = at(line.length - 1);
-				ctx.lineTo(x, y);
-			}
-			ctx.stroke();
-		}
+		if (canvas)
+			paint(canvas, strokes.current, ink, {
+				scale: view.current.scale * DENSITY,
+				x: view.current.x * DENSITY,
+				y: view.current.y * DENSITY,
+			});
 	};
 
 	const point = (e: React.PointerEvent<HTMLCanvasElement>) => {
 		const box = e.currentTarget.getBoundingClientRect();
 		return [
-			(e.clientX - box.left) / box.width,
-			(e.clientY - box.top) / box.height,
+			(Math.max(0, Math.min(box.width, e.clientX - box.left)) -
+				view.current.x) /
+				view.current.scale,
+			(Math.max(0, Math.min(box.height, e.clientY - box.top)) -
+				view.current.y) /
+				view.current.scale,
 		] as [number, number];
 	};
 
@@ -163,7 +224,33 @@ export function SignaturePad({
 
 	/** The signature as made, drawn on a canvas of its own. */
 	const made = (): HTMLCanvasElement | null => {
-		if (way === "draw") return drawn ? pad.current : null;
+		if (way === "draw") {
+			if (!drawn) return null;
+			let left = Number.POSITIVE_INFINITY;
+			let top = Number.POSITIVE_INFINITY;
+			let right = Number.NEGATIVE_INFINITY;
+			let bottom = Number.NEGATIVE_INFINITY;
+			for (const { points, width } of strokes.current) {
+				for (const [x, y] of points) {
+					left = Math.min(left, x - width);
+					top = Math.min(top, y - width);
+					right = Math.max(right, x + width);
+					bottom = Math.max(bottom, y + width);
+				}
+			}
+			// Render the original strokes at export resolution, never enlarge
+			// a small preview bitmap. Bound both dimensions for tall initials.
+			const scale = MAX_WIDTH / Math.max(right - left, bottom - top);
+			const canvas = document.createElement("canvas");
+			canvas.width = Math.max(1, Math.ceil((right - left) * scale));
+			canvas.height = Math.max(1, Math.ceil((bottom - top) * scale));
+			paint(canvas, strokes.current, ink, {
+				scale,
+				x: -left * scale,
+				y: -top * scale,
+			});
+			return canvas;
+		}
 		if (way === "photo") return photo;
 		if (!typed.trim()) return null;
 		const canvas = document.createElement("canvas");
@@ -195,89 +282,158 @@ export function SignaturePad({
 		<Dialog
 			open
 			title={initials ? t("Your initials") : t("Your signature")}
-			onClose={onClose}
+			onClose={fullScreen ? finishDrawing : onClose}
+			fullScreen={fullScreen}
 			testId="signature-pad"
 			actions={
-				<>
-					<Button variant="ghost" onClick={onClose}>
-						{t("Cancel")}
+				fullScreen ? (
+					<Button
+						onClick={finishDrawing}
+						data-testid="signature-fullscreen-done"
+					>
+						<Check size={18} /> {t("Done")}
 					</Button>
-					<Button onClick={done} disabled={!ready} data-testid="signature-done">
-						{t("Use it")}
-					</Button>
-				</>
+				) : (
+					<>
+						<Button variant="ghost" onClick={onClose}>
+							{t("Cancel")}
+						</Button>
+						<Button
+							onClick={done}
+							disabled={!ready}
+							data-testid="signature-done"
+						>
+							{t("Use it")}
+						</Button>
+					</>
+				)
 			}
 		>
-			<div className={s.ways} role="tablist">
-				{(
-					[
-						["draw", t("Draw")],
-						["type", t("Type")],
-						["photo", t("Photo")],
-					] as const
-				).map(([value, label]) => (
-					<button
-						key={value}
-						type="button"
-						role="tab"
-						aria-selected={way === value}
-						className={s.way}
-						onClick={() => setWay(value)}
-						data-testid={`signature-${value}`}
-					>
-						{label}
-					</button>
-				))}
-			</div>
+			{!fullScreen && (
+				<div className={s.ways} role="tablist">
+					{(
+						[
+							["draw", t("Draw")],
+							["type", t("Type")],
+							["photo", t("Photo")],
+						] as const
+					).map(([value, label]) => (
+						<button
+							key={value}
+							type="button"
+							role="tab"
+							aria-selected={way === value}
+							className={s.way}
+							onClick={() => setWay(value)}
+							data-testid={`signature-${value}`}
+						>
+							{label}
+						</button>
+					))}
+				</div>
+			)}
 
 			{way === "draw" && (
-				<div className={s.padBox}>
-					<canvas
-						ref={pad}
-						className={s.pad}
-						aria-label={t("Sign here")}
-						onPointerDown={(e) => {
-							e.currentTarget.setPointerCapture(e.pointerId);
-							strokes.current.push([point(e)]);
-							setDrawn(true);
-							redraw();
-						}}
-						onPointerMove={(e) => {
-							if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
-							strokes.current[strokes.current.length - 1]?.push(point(e));
-							redraw();
-						}}
-						data-testid="signature-canvas"
-					/>
-					<span className={s.padLine} aria-hidden="true" />
+				<div className={`${s.padBox} ${fullScreen ? s.expandedPad : ""}`}>
+					<div className={s.padHeading}>
+						<div className={s.inkChoices}>
+							{INKS.map((colour) => (
+								<button
+									key={colour}
+									type="button"
+									className={s.inkDot}
+									style={{ background: colour }}
+									aria-pressed={ink === colour}
+									aria-label={
+										colour === INKS[0] ? t("Black ink") : t("Blue ink")
+									}
+									onClick={() => setInk(colour)}
+								/>
+							))}
+						</div>
+						<button
+							ref={expandButton}
+							type="button"
+							className={s.expandPad}
+							onClick={() =>
+								fullScreen ? finishDrawing() : setFullScreen(true)
+							}
+							data-testid="signature-fullscreen"
+							aria-expanded={fullScreen}
+						>
+							{fullScreen ? <Minimize size={16} /> : <Maximize size={16} />}
+							{fullScreen ? t("Exit full screen") : t("Full screen")}
+						</button>
+					</div>
+					<div className={s.padSurface}>
+						<canvas
+							ref={pad}
+							className={s.pad}
+							aria-label={t("Sign here")}
+							onPointerDown={(e) => {
+								if (activePointer.current !== null || e.button !== 0) return;
+								activePointer.current = e.pointerId;
+								e.currentTarget.setPointerCapture(e.pointerId);
+								undone.current = [];
+								setCanRedo(false);
+								strokes.current.push({
+									points: [point(e)],
+									width: 2.6 / view.current.scale,
+								});
+								setDrawn(true);
+								redraw();
+							}}
+							onPointerMove={(e) => {
+								if (activePointer.current !== e.pointerId) return;
+								strokes.current[strokes.current.length - 1]?.points.push(
+									point(e),
+								);
+								redraw();
+							}}
+							onLostPointerCapture={(e) => {
+								if (activePointer.current === e.pointerId)
+									activePointer.current = null;
+							}}
+							data-testid="signature-canvas"
+						/>
+						<span className={s.padLine} aria-hidden="true" />
+					</div>
 					<div className={s.padTools}>
-						{INKS.map((colour) => (
-							<button
-								key={colour}
-								type="button"
-								className={s.inkDot}
-								style={{ background: colour }}
-								aria-pressed={ink === colour}
-								aria-label={colour === INKS[0] ? t("Black ink") : t("Blue ink")}
-								onClick={() => setInk(colour)}
-							/>
-						))}
 						<Button
 							variant="ghost"
 							disabled={!drawn}
 							onClick={() => {
-								strokes.current.pop();
+								const line = strokes.current.pop();
+								if (line) undone.current.push(line);
+								setCanRedo(undone.current.length > 0);
+								setDrawn(strokes.current.length > 0);
+								redraw();
+							}}
+							data-testid="signature-undo"
+						>
+							<Undo2 size={16} /> {t("Undo")}
+						</Button>
+						<Button
+							variant="ghost"
+							disabled={!canRedo}
+							data-testid="signature-redo"
+							onClick={() => {
+								const line = undone.current.pop();
+								if (line) strokes.current.push(line);
+								setCanRedo(undone.current.length > 0);
 								setDrawn(strokes.current.length > 0);
 								redraw();
 							}}
 						>
-							<Undo2 size={16} /> {t("Undo")}
+							<Redo2 size={16} /> {t("Redo")}
 						</Button>
 						<Button
 							variant="ghost"
 							disabled={!drawn}
 							onClick={() => {
 								strokes.current = [];
+								undone.current = [];
+								setCanRedo(false);
 								setDrawn(false);
 								redraw();
 							}}
@@ -345,15 +501,17 @@ export function SignaturePad({
 				</div>
 			)}
 
-			<label className={s.keep}>
-				<input
-					type="checkbox"
-					checked={keep}
-					onChange={(e) => setKeep(e.target.checked)}
-					data-testid="signature-keep"
-				/>
-				{t("Keep it on this device for next time")}
-			</label>
+			{!fullScreen && (
+				<label className={s.keep}>
+					<input
+						type="checkbox"
+						checked={keep}
+						onChange={(e) => setKeep(e.target.checked)}
+						data-testid="signature-keep"
+					/>
+					{t("Keep it on this device for next time")}
+				</label>
+			)}
 		</Dialog>
 	);
 }

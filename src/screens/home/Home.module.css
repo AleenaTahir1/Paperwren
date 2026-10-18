@@ -96,6 +96,76 @@
 	color: var(--text-3);
 	transition: border-color var(--t-fast) var(--ease);
 }
+
+.tools {
+	margin-bottom: 20px;
+}
+.toolsHeading {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin-bottom: 4px;
+}
+.toolsHeading h2 {
+	font-size: 15px;
+	font-weight: 800;
+}
+.allTools {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	min-height: 44px;
+	color: var(--accent);
+	font-size: 13px;
+	font-weight: 750;
+}
+:global([dir="rtl"]) .allTools svg {
+	transform: scaleX(-1);
+}
+.toolGrid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 8px;
+}
+.toolShortcut {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	min-height: 64px;
+	padding: 10px;
+	border: 1px solid var(--line);
+	border-radius: var(--r-m);
+	background: var(--surface);
+	text-align: start;
+	font-size: 13px;
+	font-weight: 750;
+	overflow-wrap: anywhere;
+}
+.toolShortcut:hover {
+	background: var(--surface-2);
+	border-color: var(--accent);
+}
+.toolIcon {
+	display: grid;
+	place-items: center;
+	flex-shrink: 0;
+	width: 34px;
+	height: 34px;
+	border-radius: 10px;
+	background: var(--accent-soft);
+	color: var(--accent);
+}
+@media (min-width: 600px) {
+	.toolGrid {
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+	}
+	.toolShortcut {
+		flex-direction: column;
+		align-items: flex-start;
+		padding: 14px;
+	}
+}
 .search:focus-within {
 	border-color: var(--accent);
 	color: var(--accent);

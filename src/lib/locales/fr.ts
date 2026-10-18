@@ -879,4 +879,6 @@ export const fr: Table = {
 	"This photo couldn't be opened.": "Impossible d'ouvrir cette photo.",
 	"Something went wrong with this photo.":
 		"Un problème est survenu avec cette photo.",
+	"All tools": "Tous les outils",
+	"Exit full screen": "Quitter le plein écran",
 };
