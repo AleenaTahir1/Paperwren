@@ -298,7 +298,7 @@ A push to `main` runs CI (lint, type check, unit tests, Rust tests). It does **n
 For an installable test build, open [Actions → Test builds](https://github.com/Razee4315/Paperwren/actions/workflows/validate.yml), choose **Run workflow**, select `main` (or the branch to test), and run it. The workflow runs the checks and browser tests, and uploads these downloads under the run's **Artifacts** section:
 
 - `Paperwren-windows-test`: Windows `.exe` and `.msi` installers. Extract the downloaded ZIP and run either installer.
-- `Paperwren-debug-android-arm64`: an APK for an ARM64 Android device. It uses a debug signing key; installing over an app signed with a different key requires uninstalling that app first, which removes its saved data.
+- `Paperwren-test-android-arm64`: a size-optimized APK for an ARM64 Android device, built with the release compiler profile and signed with the cached test key. It can update a previous test APK signed with that key. Installing over an app signed with a different key requires uninstalling that app first, which removes its saved data. CI checks its signature, architecture and a 60 MiB size limit.
 - `Paperwren-macos-universal`: a universal macOS `.dmg`.
 
 Test builds keep the current version and never publish a release or upload to Google Play. The same workflow also runs on pull requests. From the CLI: `gh workflow run validate.yml --ref main`.

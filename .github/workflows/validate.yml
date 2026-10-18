@@ -187,7 +187,7 @@ jobs:
           if-no-files-found: error
 
   android:
-    name: Android APK (debug, arm64)
+    name: Android APK (optimized test build, arm64)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -249,27 +249,57 @@ jobs:
 
       - name: Patch generated Android project
         run: |
+          node scripts/patch-android-signing.mjs
           node scripts/patch-android-icons.mjs
           node scripts/install-android.mjs
 
-      - name: Build debug APK (arm64)
-        run: npx tauri android build --target aarch64 --debug
+      # Release-mode optimization does not publish a release. The signing
+      # patch falls back to the cached debug key; no publishing secrets are used.
+      - name: Build optimized test APK (arm64)
+        run: npx tauri android build --apk --target aarch64
 
       - name: Collect APK
         run: |
           set -eo pipefail
-          APK=$(find src-tauri/gen/android/app/build/outputs/apk -name "*debug*.apk" | head -1 || true)
+          APK=$(find src-tauri/gen/android/app/build/outputs/apk -name "*release.apk" | head -1 || true)
           if [ -z "$APK" ]; then
-            echo "No debug APK found"
+            echo "No optimized APK found"
             find src-tauri/gen/android/app/build/outputs -type f || true
             exit 1
           fi
           mkdir -p artifacts
-          cp "$APK" artifacts/Paperwren-debug-android-arm64.apk
+          cp "$APK" artifacts/Paperwren-test-android-arm64.apk
+
+      - name: Verify APK signature, architecture and size
+        run: |
+          set -eo pipefail
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
+          "$APKSIGNER" verify --verbose artifacts/Paperwren-test-android-arm64.apk
+          python3 - <<'PY'
+          import os
+          import zipfile
+          from pathlib import Path
+
+          apk = Path("artifacts/Paperwren-test-android-arm64.apk")
+          size = apk.stat().st_size / 1024 / 1024
+          with zipfile.ZipFile(apk) as archive:
+              libraries = [entry for entry in archive.infolist()
+                           if entry.filename.startswith("lib/") and entry.filename.endswith(".so")]
+          abis = {entry.filename.split("/")[1] for entry in libraries}
+          if abis != {"arm64-v8a"}:
+              raise SystemExit(f"Expected only ARM64 libraries, found {sorted(abis)}")
+          for entry in libraries:
+              print(f"{entry.filename}: {entry.file_size / 1024 / 1024:.1f} MiB")
+          print(f"Optimized test APK: {size:.1f} MiB")
+          if size > 60:
+              raise SystemExit("APK exceeds 60 MiB; check for debug code or bundled test assets")
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
+              summary.write(f"### Android test APK\n\n{size:.1f} MiB · ARM64 · optimized · test-key signed\n")
+          PY
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Paperwren-debug-android-arm64
-          path: artifacts/Paperwren-debug-android-arm64.apk
+          name: Paperwren-test-android-arm64
+          path: artifacts/Paperwren-test-android-arm64.apk
           if-no-files-found: error

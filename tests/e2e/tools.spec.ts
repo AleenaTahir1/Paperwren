@@ -892,7 +892,8 @@ test("editor keeps window controls separate and nested dialogs keep keyboard foc
 	await expect(editor.getByTestId("fill-field")).toHaveCount(5);
 	const save = await page.getByTestId("fill-save").boundingBox();
 	const controls = await page.getByTestId("window-controls").boundingBox();
-	expect(save && controls && save.y > controls.y + controls.height).toBe(true);
+	if (!save || !controls) throw new Error("Missing Save or window controls");
+	expect(save.x + save.width).toBeLessThanOrEqual(controls.x);
 	await expect(page.locator("#root")).toHaveAttribute("inert", "");
 	await editor.getByLabel("fullname").fill("Ayesha");
 	await page.getByTestId("fill-save").click();
@@ -903,6 +904,11 @@ test("editor keeps window controls separate and nested dialogs keep keyboard foc
 	await expect(editor).toBeVisible();
 	await expect(page.locator("#root")).toHaveAttribute("inert", "");
 	await expect(page.getByTestId("fill-save")).toBeFocused();
+	await page.keyboard.press("Tab");
+	await expect(editor.getByLabel("fullname")).toBeFocused();
+	await page.getByTestId("fill-close").focus();
+	await page.keyboard.press("Shift+Tab");
+	await expect(editor.getByTestId("fill-sign-here")).toBeFocused();
 	await page.keyboard.press("Tab");
 	await expect(page.getByTestId("fill-close")).toBeFocused();
 });
