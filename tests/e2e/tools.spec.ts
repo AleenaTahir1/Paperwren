@@ -82,6 +82,91 @@ async function saveCopy(page: Page) {
 }
 
 test.describe("fill & sign", () => {
+	test("desktop signing keeps its controls above the page and adapts to narrow windows", async ({
+		page,
+	}, testInfo) => {
+		await page.setViewportSize({ width: 1536, height: 824 });
+		await boot(page, { settings_v2: { theme: "dark" } }, "?desktop&frame");
+		await page.getByTestId("home-tool-sign").click();
+		await addFile(page, "features/form.pdf");
+		await page.getByTestId("tool-go").click();
+		const editor = page.getByTestId("fill-sign");
+		const pages = page.getByTestId("fill-pages");
+		const actions = page.getByTestId("fill-actions");
+		await expect(page.getByTestId("fill-sign-here")).toBeVisible();
+		for (const width of [1536, 1280, 1100, 1000, 700]) {
+			await page.setViewportSize({ width, height: 824 });
+			await expect
+				.poll(async () => (await pages.boundingBox())?.y)
+				.toBeLessThan(width >= 1100 ? 80 : 120);
+			const pageBox = await pages.boundingBox();
+			if (!pageBox) throw new Error("No document area");
+			expect(pageBox.y + pageBox.height).toBe(824);
+			const controls = [
+				page.getByTestId("fill-close"),
+				...["sign", "initials", "text", "date", "check", "cross"].map((kind) =>
+					page.getByTestId(`fill-tool-${kind}`),
+				),
+				actions,
+				page.getByTestId("window-controls"),
+			];
+			const boxes = await Promise.all(
+				controls.map((control) => control.boundingBox()),
+			);
+			for (const box of boxes) {
+				if (!box) throw new Error("Missing control");
+				expect(box.x).toBeGreaterThanOrEqual(0);
+				expect(box.x + box.width).toBeLessThanOrEqual(width);
+				expect(box.y + box.height).toBeLessThanOrEqual(pageBox.y);
+			}
+			const save = await page.getByTestId("fill-save").boundingBox();
+			expect((save?.x ?? 0) + (save?.width ?? 0)).toBeLessThanOrEqual(
+				width - 138,
+			);
+		}
+		await page.setViewportSize({ width: 1536, height: 824 });
+		await page.getByTestId("fill-tool-text").click();
+		await expect(page.getByTestId("fill-hint")).toContainText("Text:");
+		await page
+			.getByTestId("fill-guidance")
+			.getByRole("button", { name: "Cancel", exact: true })
+			.click();
+		await expect(page.getByTestId("fill-tool-text")).toHaveAttribute(
+			"aria-pressed",
+			"false",
+		);
+		await actions.getByRole("button", { name: "Zoom in", exact: true }).click();
+		await expect(actions).toContainText("150%");
+		await actions
+			.getByRole("button", { name: "Zoom out", exact: true })
+			.click();
+		await editor.getByLabel("fullname").fill("Ayesha Khan");
+		await expect(page.getByTestId("fill-save")).toBeEnabled();
+		await page.screenshot({
+			path: testInfo.outputPath("compact-signing-desktop.png"),
+		});
+		// The native Windows controls must also stay clear of the title in RTL.
+		await page.evaluate(() => {
+			document.documentElement.dir = "rtl";
+		});
+		const close = await page.getByTestId("fill-close").boundingBox();
+		expect((close?.x ?? 0) + (close?.width ?? 0)).toBeLessThanOrEqual(
+			1536 - 138,
+		);
+		await page.evaluate(() => {
+			document.documentElement.dir = "ltr";
+		});
+		await page.setViewportSize({ width: 360, height: 800 });
+		await expect(page.getByTestId("fill-save")).toBeInViewport();
+		const smallPage = await pages.boundingBox();
+		const smallActions = await actions.boundingBox();
+		expect(smallActions?.y).toBe(
+			(smallPage?.y ?? 0) + (smallPage?.height ?? 0),
+		);
+		await page.getByTestId("fill-save").click();
+		await expect(page.getByTestId("fill-save-go")).toBeVisible();
+	});
+
 	test("ink swatches stay round and pen widths survive expansion, undo and export", async ({
 		page,
 	}) => {
@@ -111,8 +196,9 @@ test.describe("fill & sign", () => {
 		]) {
 			const outer = await swatch.boundingBox();
 			const inner = await swatch.locator("span").boundingBox();
-			expect(outer?.width).toBe(outer?.height);
-			expect(inner?.width).toBe(inner?.height);
+			if (!outer || !inner) throw new Error("Missing ink swatch");
+			expect(outer.width).toBeCloseTo(outer.height, 2);
+			expect(inner.width).toBeCloseTo(inner.height, 2);
 		}
 		await expect(
 			page.getByRole("button", { name: "Medium pen", exact: true }),

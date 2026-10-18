@@ -3,13 +3,15 @@
 	position: fixed;
 	inset: 0;
 	z-index: 55;
-	display: flex;
-	flex-direction: column;
+	display: grid;
+	grid-template-areas: "title" "tools" "hint" "pages" "actions";
+	grid-template-rows: auto auto auto minmax(0, 1fr) auto;
 	background: var(--canvas);
 	color: var(--text);
 	animation: pw-fade-in var(--t-med) var(--ease);
 }
 .fillBar {
+	grid-area: title;
 	display: flex;
 	align-items: center;
 	gap: 8px;
@@ -48,6 +50,7 @@
 	direction: ltr;
 }
 .toolbar {
+	grid-area: tools;
 	display: flex;
 	gap: 8px;
 	padding: 10px max(12px, calc((100% - 960px) / 2));
@@ -79,6 +82,7 @@
 	color: var(--accent);
 }
 .fillHint {
+	grid-area: hint;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -98,7 +102,8 @@
 	font-weight: 750;
 	padding: 6px;
 }
-.fillFooter {
+.fillActions {
+	grid-area: actions;
 	display: flex;
 	align-items: center;
 	gap: 16px;
@@ -108,15 +113,19 @@
 	background: var(--surface);
 	border-top: 1px solid var(--line);
 }
-.fillFooter > button {
+.fillActions > button {
 	margin-inline-start: auto;
 }
 .saveStatus {
-	flex: 1;
+	margin-inline-start: auto;
+	white-space: nowrap;
 	font-size: 13px;
 	color: var(--text-2);
 }
 .fillPages {
+	grid-area: pages;
+	min-width: 0;
+	min-height: 0;
 	flex: 1;
 	display: flex;
 	flex-direction: column;
@@ -143,6 +152,118 @@
 	inset: 0;
 	width: 100%;
 	height: 100%;
+}
+
+/* Match the viewers: desktop actions belong above the document, leaving
+ * its full remaining height for reading. Narrow windows get a second
+ * compact tool row; touch layouts keep the bottom Save action. */
+@media (min-width: 700px) {
+	:global(html.desktop) .fill {
+		grid-template-columns: minmax(160px, 1fr) auto;
+		grid-template-areas: "title actions" "tools tools" "hint hint" "pages pages";
+		grid-template-rows: 44px auto auto minmax(0, 1fr);
+	}
+	:global(html.desktop) .fillBar {
+		min-width: 0;
+		min-height: 0;
+		padding: 4px 8px 4px calc(4px + var(--safe-left) + var(--win-lights));
+	}
+	:global(html.desktop[dir="rtl"]) .fillBar {
+		padding-left: 8px;
+		padding-right: calc(4px + var(--safe-right) + var(--win-controls));
+	}
+	:global(html.desktop) .fillTitle strong {
+		font-size: 13px;
+	}
+	:global(html.desktop) .fillTitle span {
+		font-size: 11px;
+	}
+	:global(html.desktop) .toolbar {
+		min-width: 0;
+		align-items: center;
+		gap: 4px;
+		padding: 4px 12px;
+	}
+	:global(html.desktop) .tool {
+		flex: 0 0 auto;
+		min-height: 32px;
+		padding: 4px 10px;
+		gap: 6px;
+		border-radius: var(--r-s);
+		font-size: 12px;
+	}
+	:global(html.desktop) .tool svg {
+		width: 17px;
+		height: 17px;
+		flex-shrink: 0;
+	}
+	:global(html.desktop) .fillActions {
+		gap: 8px;
+		padding: 4px calc(8px + var(--safe-right) + var(--win-controls)) 4px 8px;
+		border-top: 0;
+		border-bottom: 1px solid var(--line);
+	}
+	:global(html.desktop) .fillActions > button {
+		min-height: 32px;
+		padding-inline: 12px;
+		border-radius: var(--r-s);
+		font-size: 12px;
+	}
+	:global(html.desktop[dir="rtl"]) .fillActions {
+		padding-right: 8px;
+		padding-left: calc(8px + var(--safe-left) + var(--win-lights));
+	}
+	:global(html.desktop) .zoom {
+		gap: 2px;
+		border-radius: var(--r-s);
+		background: var(--surface-2);
+	}
+	:global(html.desktop) .zoom > button {
+		width: 30px;
+		height: 30px;
+	}
+	:global(html.desktop) .zoom > span {
+		min-width: 42px;
+		text-align: center;
+	}
+	:global(html.desktop) .fillHint {
+		justify-content: flex-start;
+		gap: 8px;
+		min-width: 0;
+		min-height: 28px;
+		padding: 3px 12px;
+		background: var(--surface);
+		border-bottom: 1px solid var(--line);
+		color: var(--text-2);
+		font-size: 11px;
+	}
+	:global(html.desktop) .fillHint > svg {
+		width: 14px;
+		height: 14px;
+	}
+	:global(html.desktop) .cancelTool {
+		padding: 2px 6px;
+		color: var(--accent);
+	}
+	:global(html.desktop) .saveStatus {
+		font-size: 11px;
+	}
+	:global(html.desktop) .fillPages {
+		padding: 12px 12px 20px;
+	}
+}
+@media (min-width: 1100px) {
+	:global(html.desktop) .fill {
+		grid-template-columns: minmax(160px, 240px) minmax(0, 1fr) auto;
+		grid-template-areas: "title tools actions" "hint hint hint" "pages pages pages";
+		grid-template-rows: 44px auto minmax(0, 1fr);
+	}
+	:global(html.desktop) .toolbar {
+		padding-inline: 8px;
+	}
+	:global(html.desktop) .fill:not([data-can-mark]) {
+		grid-template-areas: "title title actions" "hint hint hint" "pages pages pages";
+	}
 }
 
 /* The file's own form fields, live over its drawing of them. */
@@ -1103,11 +1224,11 @@
 	.go > button {
 		width: 100%;
 	}
-	.fillFooter {
+	.fillActions {
 		gap: 8px;
 		padding-inline: 12px;
 	}
-	.fillFooter > button {
+	.fillActions > button {
 		padding-inline: 14px;
 		font-size: 14px;
 	}

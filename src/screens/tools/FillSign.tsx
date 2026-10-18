@@ -551,12 +551,13 @@ export function FillSign({
 			aria-modal="true"
 			aria-label={t("Fill & sign")}
 			data-testid="fill-sign"
+			data-can-mark={canMark || undefined}
 		>
 			<header className={s.fillBar} data-tauri-drag-region="deep">
 				<IconButton label={t("Close")} onClick={close} data-testid="fill-close">
 					<ArrowLeft size={22} className="pw-flip" />
 				</IconButton>
-				<div className={s.fillTitle}>
+				<div className={s.fillTitle} title={name}>
 					<strong>{t("Fill & sign")}</strong>
 					<span dir="auto">{name}</span>
 				</div>
@@ -572,6 +573,7 @@ export function FillSign({
 							key={kind}
 							type="button"
 							className={s.tool}
+							title={label}
 							aria-pressed={tool === kind}
 							onClick={() => pick(kind)}
 							data-testid={`fill-tool-${kind}`}
@@ -582,7 +584,34 @@ export function FillSign({
 					))}
 				</div>
 			)}
-			<div className={s.fillHint}>
+			<div className={s.fillActions} data-testid="fill-actions">
+				<div className={s.zoom}>
+					<IconButton
+						label={t("Zoom out")}
+						disabled={zoom === 0}
+						onClick={() => setZoom((z) => Math.max(0, z - 1))}
+					>
+						<Minus size={18} />
+					</IconButton>
+					<span>{Math.round(ZOOMS[zoom] * 100)}%</span>
+					<IconButton
+						label={t("Zoom in")}
+						disabled={zoom === ZOOMS.length - 1}
+						onClick={() => setZoom((z) => Math.min(ZOOMS.length - 1, z + 1))}
+					>
+						<Plus size={18} />
+					</IconButton>
+				</div>
+				<Button
+					onClick={() => setSaving("ask")}
+					disabled={!dirty || saving === "busy"}
+					data-testid="fill-save"
+				>
+					{t("Save a copy")}
+				</Button>
+			</div>
+
+			<div className={s.fillHint} data-testid="fill-guidance">
 				<Info size={17} aria-hidden="true" />
 				<p aria-live="polite" data-testid="fill-hint">
 					{tool
@@ -608,8 +637,18 @@ export function FillSign({
 						{t("Cancel")}
 					</button>
 				)}
+				<p className={s.saveStatus} aria-live="polite">
+					{dirty
+						? t("Changes ready to save")
+						: t("Add your details to get started")}
+				</p>
 			</div>
-			<div ref={scroller} className={s.fillPages} data-tool={tool ?? undefined}>
+			<div
+				ref={scroller}
+				className={s.fillPages}
+				data-tool={tool ?? undefined}
+				data-testid="fill-pages"
+			>
 				{!sizes.length && <Spinner label={t("Opening")} />}
 				{sizes.map(([pw, ph], page) => (
 					<FillPage
@@ -676,38 +715,6 @@ export function FillSign({
 					</FillPage>
 				))}
 			</div>
-
-			<footer className={s.fillFooter}>
-				<div className={s.zoom}>
-					<IconButton
-						label={t("Zoom out")}
-						disabled={zoom === 0}
-						onClick={() => setZoom((z) => Math.max(0, z - 1))}
-					>
-						<Minus size={18} />
-					</IconButton>
-					<span>{Math.round(ZOOMS[zoom] * 100)}%</span>
-					<IconButton
-						label={t("Zoom in")}
-						disabled={zoom === ZOOMS.length - 1}
-						onClick={() => setZoom((z) => Math.min(ZOOMS.length - 1, z + 1))}
-					>
-						<Plus size={18} />
-					</IconButton>
-				</div>
-				<p className={s.saveStatus} aria-live="polite">
-					{dirty
-						? t("Changes ready to save")
-						: t("Add your details to get started")}
-				</p>
-				<Button
-					onClick={() => setSaving("ask")}
-					disabled={!dirty || saving === "busy"}
-					data-testid="fill-save"
-				>
-					{t("Save a copy")}
-				</Button>
-			</footer>
 
 			{chooser && (
 				<Sheet
