@@ -802,4 +802,8 @@ export const zh: Table = {
 	"Something went wrong with this photo.": "这张照片处理出错了。",
 	"All tools": "全部工具",
 	"Exit full screen": "退出全屏",
+	"Pen thickness": "笔画粗细",
+	"Thin pen": "细笔画",
+	"Medium pen": "中等笔画",
+	"Thick pen": "粗笔画",
 };

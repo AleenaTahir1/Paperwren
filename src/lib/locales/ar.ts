@@ -879,4 +879,8 @@ export const ar: Table = {
 	"Something went wrong with this photo.": "حدث خطأ ما في هذه الصورة.",
 	"All tools": "كل الأدوات",
 	"Exit full screen": "الخروج من ملء الشاشة",
+	"Pen thickness": "سُمك القلم",
+	"Thin pen": "قلم رفيع",
+	"Medium pen": "قلم متوسط",
+	"Thick pen": "قلم سميك",
 };

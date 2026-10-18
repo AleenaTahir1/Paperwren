@@ -859,4 +859,8 @@ export const ur: Table = {
 	"Something went wrong with this photo.": "اس تصویر میں کچھ گڑبڑ ہو گئی۔",
 	"All tools": "تمام ٹولز",
 	"Exit full screen": "پوری اسکرین سے نکلیں",
+	"Pen thickness": "قلم کی موٹائی",
+	"Thin pen": "باریک قلم",
+	"Medium pen": "درمیانہ قلم",
+	"Thick pen": "موٹا قلم",
 };

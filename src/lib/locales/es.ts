@@ -869,4 +869,8 @@ export const es: Table = {
 	"Something went wrong with this photo.": "Algo ha fallado con esta foto.",
 	"All tools": "Todas las herramientas",
 	"Exit full screen": "Salir de pantalla completa",
+	"Pen thickness": "Grosor del lápiz",
+	"Thin pen": "Trazo fino",
+	"Medium pen": "Trazo medio",
+	"Thick pen": "Trazo grueso",
 };

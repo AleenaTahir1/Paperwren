@@ -289,9 +289,12 @@
 }
 .padHeading {
 	display: flex;
+	flex-shrink: 0;
+	flex-wrap: wrap;
 	align-items: center;
 	justify-content: space-between;
 	gap: 8px;
+	margin-bottom: 8px;
 	font-size: 13px;
 	text-align: start;
 }
@@ -352,14 +355,64 @@
 	flex-shrink: 0;
 }
 .inkDot {
-	width: 36px;
+	display: grid;
+	place-items: center;
+	flex: 0 0 44px;
+	width: 44px;
 	height: 44px;
-	border: 8px solid var(--surface);
+	padding: 0;
+	border: 1px solid var(--line-strong);
 	border-radius: 50%;
-	box-shadow: 0 0 0 1px var(--line-strong);
+}
+.inkDot > span {
+	display: grid;
+	place-items: center;
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	color: #fff;
 }
 .inkDot[aria-pressed="true"] {
-	box-shadow: 0 0 0 2px var(--accent);
+	border-color: var(--accent);
+	box-shadow: inset 0 0 0 1px var(--accent);
+	background: var(--accent-soft);
+}
+.penWidths {
+	display: flex;
+	align-items: center;
+	flex-shrink: 0;
+	gap: 4px;
+	min-width: 0;
+	margin: 0 0 10px;
+	padding: 0;
+	border: 0;
+	text-align: start;
+}
+.penLabel {
+	flex: 1;
+	min-width: 0;
+	font-size: 12px;
+}
+.penWidth {
+	display: grid;
+	place-items: center;
+	flex: 0 0 44px;
+	width: 44px;
+	height: 44px;
+	padding: 0;
+	border: 1px solid var(--line);
+	border-radius: var(--r-s);
+	color: var(--text-2);
+}
+.penWidth > span {
+	width: 24px;
+	border-radius: 999px;
+	background: currentColor;
+}
+.penWidth[aria-pressed="true"] {
+	border-color: var(--accent);
+	background: var(--accent-soft);
+	color: var(--accent);
 }
 .padTools > button {
 	min-height: 44px;

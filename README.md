@@ -293,7 +293,17 @@ The product and design documentation is in [`docs/`](docs/README.md); `docs/13-r
 
 ## Builds and releases
 
-A push to `main` runs CI (lint, type check, unit tests, Rust tests) and the release pipeline, which bumps the patch version and publishes a Windows installer, an Android APK and a Play bundle. With the upload keystore in the repository's secrets the bundle is signed for Google Play; without it the build falls back to a debug key and is only good for testing. Pull requests run the browser tests as well and build a debug APK and a universal macOS disk image, kept as artifacts for trying out (`validate.yml`).
+A push to `main` runs CI (lint, type check, unit tests, Rust tests). It does **not** bump the version, create a tag or publish a release.
+
+For an installable test build, open [Actions → Test builds](https://github.com/Razee4315/Paperwren/actions/workflows/validate.yml), choose **Run workflow**, select `main` (or the branch to test), and run it. The workflow runs the checks and browser tests, and uploads these downloads under the run's **Artifacts** section:
+
+- `Paperwren-windows-test`: Windows `.exe` and `.msi` installers. Extract the downloaded ZIP and run either installer.
+- `Paperwren-debug-android-arm64`: an APK for an ARM64 Android device. It uses a debug signing key; installing over an app signed with a different key requires uninstalling that app first, which removes its saved data.
+- `Paperwren-macos-universal`: a universal macOS `.dmg`.
+
+Test builds keep the current version and never publish a release or upload to Google Play. The same workflow also runs on pull requests. From the CLI: `gh workflow run validate.yml --ref main`.
+
+Only run [Actions → Release](https://github.com/Razee4315/Paperwren/actions/workflows/release.yml) when a new version is wanted. Select `main` and **Run workflow**, or use `gh workflow run release.yml --ref main`. If the current version is already tagged and there are new commits, it bumps the patch version, then publishes Windows installers, an Android APK and a Play bundle. Other branches cannot release. With the upload keystore in the repository's secrets the bundle is signed for Google Play; without it the build falls back to a debug key and is only good for testing.
 
 The Mac app is not part of that pipeline. It is built on a Mac and added to a release by hand:
 

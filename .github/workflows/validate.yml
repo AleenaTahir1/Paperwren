@@ -1,13 +1,16 @@
-name: Validate
+name: Test builds
 
 # Non-release validation for working branches and PRs (audit
 # section 17.4): frontend lint/type/test, Rust checks, browser
-# integration tests, and an Android APK and a macOS disk image
+# integration tests, Windows installers, an Android APK and a macOS disk image
 # uploaded as artifacts. Never bumps versions, tags, or publishes
 # releases.
 on:
   pull_request:
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
   group: validate-${{ github.ref }}
@@ -108,8 +111,43 @@ jobs:
             playwright-report/
           if-no-files-found: ignore
 
-  # The same build as the release's macOS job, kept as an artifact: a
-  # disk image to try on a Mac before anything is published.
+  windows:
+    name: Windows installers (test build)
+    runs-on: windows-latest
+    needs: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: ./src-tauri -> target
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Generate app icons
+        run: npx tauri icon assets/brand/app-icon.svg --output src-tauri/icons
+
+      - name: Build Windows installers
+        run: npx tauri build --bundles nsis,msi
+
+      - name: Upload Windows installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: Paperwren-windows-test
+          path: |
+            src-tauri/target/release/bundle/nsis/*-setup.exe
+            src-tauri/target/release/bundle/msi/*.msi
+          if-no-files-found: error
+
+  # A disk image to try on a Mac before anything is published.
   macos:
     name: macOS disk image (universal)
     runs-on: macos-latest

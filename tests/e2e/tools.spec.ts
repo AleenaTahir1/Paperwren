@@ -82,6 +82,104 @@ async function saveCopy(page: Page) {
 }
 
 test.describe("fill & sign", () => {
+	test("ink swatches stay round and pen widths survive expansion, undo and export", async ({
+		page,
+	}) => {
+		await page.setViewportSize({ width: 1280, height: 800 });
+		await boot(page, {}, "?desktop");
+		await page.getByTestId("home-tool-sign").click();
+		await addFile(page, "features/form.pdf");
+		await page.getByTestId("tool-go").click();
+		await page.getByTestId("fill-tool-initials").click();
+		const canvas = page.getByTestId("signature-canvas");
+		const drawLine = async (x: number) => {
+			const box = await canvas.boundingBox();
+			if (!box) throw new Error("No signature canvas");
+			await page.mouse.move(box.x + box.width * x, box.y + box.height * 0.3);
+			await page.mouse.down();
+			await page.mouse.move(box.x + box.width * x, box.y + box.height * 0.7, {
+				steps: 12,
+			});
+			await page.mouse.up();
+		};
+		const pixels = () =>
+			canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL());
+		const blue = page.getByRole("button", { name: "Blue ink", exact: true });
+		for (const swatch of [
+			blue,
+			page.getByRole("button", { name: "Black ink", exact: true }),
+		]) {
+			const outer = await swatch.boundingBox();
+			const inner = await swatch.locator("span").boundingBox();
+			expect(outer?.width).toBe(outer?.height);
+			expect(inner?.width).toBe(inner?.height);
+		}
+		await expect(
+			page.getByRole("button", { name: "Medium pen", exact: true }),
+		).toHaveAttribute("aria-pressed", "true");
+		await drawLine(0.2);
+		await page.getByTestId("signature-fullscreen").click();
+		await expect
+			.poll(async () => (await canvas.boundingBox())?.width)
+			.toBeGreaterThan(1000);
+		await drawLine(0.65);
+		await page.getByRole("button", { name: "Thick pen", exact: true }).click();
+		await drawLine(0.85);
+		await page.getByRole("button", { name: "Thin pen", exact: true }).click();
+		await drawLine(0.45);
+		await blue.click();
+		await expect(blue).toHaveAttribute("aria-pressed", "true");
+		const beforeUndo = await pixels();
+		await page.getByTestId("signature-undo").click();
+		expect(await pixels()).not.toBe(beforeUndo);
+		await page.getByTestId("signature-redo").click();
+		expect(await pixels()).toBe(beforeUndo);
+		await page.getByTestId("signature-fullscreen-done").click();
+		await expect(
+			page.getByRole("button", { name: "Thin pen", exact: true }),
+		).toHaveAttribute("aria-pressed", "true");
+		await page.getByTestId("signature-done").click();
+		// Inspect the saved image itself: four separate blue strokes, with the
+		// two medium strokes equally thick despite being drawn at different zooms.
+		const widths = await page.evaluate(async () => {
+			const saved = JSON.parse(
+				localStorage.getItem("paperwren.signatures_v1") ?? "[]",
+			)[0];
+			const image = new Image();
+			image.src = saved.src;
+			await image.decode();
+			const out = document.createElement("canvas");
+			out.width = image.width;
+			out.height = image.height;
+			const ctx = out.getContext("2d");
+			if (!ctx) throw new Error("No canvas context");
+			ctx.drawImage(image, 0, 0);
+			const row = ctx.getImageData(
+				0,
+				Math.floor(out.height / 2),
+				out.width,
+				1,
+			).data;
+			const runs: number[] = [];
+			let length = 0;
+			for (let x = 0; x <= out.width; x++) {
+				if (x < out.width && row[x * 4 + 3] > 128) {
+					if (row[x * 4 + 2] < row[x * 4] * 3)
+						throw new Error("Ink is not blue");
+					length++;
+				} else if (length) {
+					runs.push(length);
+					length = 0;
+				}
+			}
+			return runs;
+		});
+		expect(widths).toHaveLength(4);
+		expect(Math.abs(widths[0] - widths[2])).toBeLessThanOrEqual(1);
+		expect(widths[1]).toBeLessThan(widths[0] * 0.7);
+		expect(widths[3]).toBeGreaterThan(widths[2] * 1.5);
+	});
+
 	test("initials accept touch strokes and the compact dialog stays reachable in landscape", async ({
 		page,
 	}) => {

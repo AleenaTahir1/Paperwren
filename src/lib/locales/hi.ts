@@ -846,4 +846,8 @@ export const hi: Table = {
 	"Something went wrong with this photo.": "इस फ़ोटो में कुछ गड़बड़ हो गई।",
 	"All tools": "सभी टूल",
 	"Exit full screen": "पूरी स्क्रीन से बाहर निकलें",
+	"Pen thickness": "पेन की मोटाई",
+	"Thin pen": "पतला पेन",
+	"Medium pen": "मध्यम पेन",
+	"Thick pen": "मोटा पेन",
 };

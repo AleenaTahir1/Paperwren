@@ -881,4 +881,8 @@ export const fr: Table = {
 		"Un problème est survenu avec cette photo.",
 	"All tools": "Tous les outils",
 	"Exit full screen": "Quitter le plein écran",
+	"Pen thickness": "Épaisseur du stylo",
+	"Thin pen": "Trait fin",
+	"Medium pen": "Trait moyen",
+	"Thick pen": "Trait épais",
 };

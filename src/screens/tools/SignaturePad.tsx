@@ -116,6 +116,7 @@ export function SignaturePad({
 }) {
 	const [way, setWay] = useState<Way>("draw");
 	const [ink, setInk] = useState(INKS[0]);
+	const [penWidth, setPenWidth] = useState(2.6);
 	const [typed, setTyped] = useState("");
 	const [hand, setHand] = useState(0);
 	const [keep, setKeep] = useState(true);
@@ -342,13 +343,16 @@ export function SignaturePad({
 									key={colour}
 									type="button"
 									className={s.inkDot}
-									style={{ background: colour }}
 									aria-pressed={ink === colour}
 									aria-label={
 										colour === INKS[0] ? t("Black ink") : t("Blue ink")
 									}
 									onClick={() => setInk(colour)}
-								/>
+								>
+									<span style={{ background: colour }} aria-hidden="true">
+										{ink === colour && <Check size={14} strokeWidth={2.5} />}
+									</span>
+								</button>
 							))}
 						</div>
 						<button
@@ -365,6 +369,29 @@ export function SignaturePad({
 							{fullScreen ? t("Exit full screen") : t("Full screen")}
 						</button>
 					</div>
+					<fieldset className={s.penWidths}>
+						<legend className="visually-hidden">{t("Pen thickness")}</legend>
+						<span className={s.penLabel} aria-hidden="true">
+							{t("Pen thickness")}
+						</span>
+						{[
+							{ width: 1.4, label: t("Thin pen") },
+							{ width: 2.6, label: t("Medium pen") },
+							{ width: 4.5, label: t("Thick pen") },
+						].map(({ width, label }) => (
+							<button
+								key={width}
+								type="button"
+								className={s.penWidth}
+								aria-label={label}
+								title={label}
+								aria-pressed={penWidth === width}
+								onClick={() => setPenWidth(width)}
+							>
+								<span style={{ height: width }} aria-hidden="true" />
+							</button>
+						))}
+					</fieldset>
 					<div className={s.padSurface}>
 						<canvas
 							ref={pad}
@@ -378,7 +405,9 @@ export function SignaturePad({
 								setCanRedo(false);
 								strokes.current.push({
 									points: [point(e)],
-									width: 2.6 / view.current.scale,
+									// Width lives in the same drawing plane as the points:
+									// expanding the pad must not make new strokes thinner.
+									width: penWidth,
 								});
 								setDrawn(true);
 								redraw();
