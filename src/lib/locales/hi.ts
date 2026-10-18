@@ -807,6 +807,8 @@ export const hi: Table = {
 		other: "{n} पृष्ठ पूरे हो रहे हैं…",
 	},
 	Scan: "स्कैन",
+	"Scan this photo": "इस फ़ोटो को स्कैन करें",
+	"Straighten it and clean it up as a PDF": "इसे सीधा और साफ़ करके PDF बनाएँ",
 	"Check the edges": "किनारे जाँचें",
 	"Choose a look": "रूप चुनें",
 	Edges: "किनारे",

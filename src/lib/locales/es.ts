@@ -830,6 +830,8 @@ export const es: Table = {
 		other: "Terminando {n} páginas…",
 	},
 	Scan: "Escaneo",
+	"Scan this photo": "Escanear esta foto",
+	"Straighten it and clean it up as a PDF": "Enderézala y límpiala como PDF",
 	"Check the edges": "Revisa los bordes",
 	"Choose a look": "Elige un aspecto",
 	Edges: "Bordes",

@@ -15,6 +15,7 @@ import {
 	FlipVertical2,
 	RotateCcw,
 	RotateCw,
+	ScanLine,
 } from "lucide-react";
 import {
 	useContext,
@@ -412,6 +413,19 @@ export default function ImageView({
 								>
 									{t("Mirror top to bottom")}
 								</SheetItem>
+								{!several && context?.openTools && (
+									<SheetItem
+										icon={<ScanLine size={20} />}
+										hint={t("Straighten it and clean it up as a PDF")}
+										onClick={() => {
+											close();
+											context.openTools?.("scan");
+										}}
+										testId="image-scan"
+									>
+										{t("Scan this photo")}
+									</SheetItem>
+								)}
 							</>
 						)
 					: undefined

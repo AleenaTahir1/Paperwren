@@ -840,6 +840,9 @@ export const fr: Table = {
 		other: "Finalisation de {n} pages…",
 	},
 	Scan: "Numérisation",
+	"Scan this photo": "Numériser cette photo",
+	"Straighten it and clean it up as a PDF":
+		"La redresser et la nettoyer en PDF",
 	"Check the edges": "Vérifiez les bords",
 	"Choose a look": "Choisissez un rendu",
 	Edges: "Bords",

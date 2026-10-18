@@ -763,6 +763,8 @@ export const zh: Table = {
 	"Save PDF": "保存 PDF",
 	"Finishing {n} pages…": "正在完成 {n} 页…",
 	Scan: "扫描",
+	"Scan this photo": "扫描这张照片",
+	"Straighten it and clean it up as a PDF": "摆正并清理后存为 PDF",
 	"Check the edges": "检查边缘",
 	"Choose a look": "选择效果",
 	Edges: "边缘",

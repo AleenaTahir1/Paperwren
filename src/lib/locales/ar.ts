@@ -840,6 +840,8 @@ export const ar: Table = {
 		other: "جارٍ إنهاء {n} صفحة…",
 	},
 	Scan: "مسح",
+	"Scan this photo": "مسح هذه الصورة",
+	"Straighten it and clean it up as a PDF": "قوّمها ونظّفها كملف PDF",
 	"Check the edges": "تحقق من الحواف",
 	"Choose a look": "اختر مظهرًا",
 	Edges: "الحواف",

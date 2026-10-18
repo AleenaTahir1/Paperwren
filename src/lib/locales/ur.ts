@@ -819,6 +819,9 @@ export const ur: Table = {
 		other: "{n} صفحات مکمل ہو رہے ہیں…",
 	},
 	Scan: "اسکین",
+	"Scan this photo": "اس تصویر کو اسکین کریں",
+	"Straighten it and clean it up as a PDF":
+		"اسے سیدھا اور صاف کر کے PDF بنائیں",
 	"Check the edges": "کنارے دیکھیں",
 	"Choose a look": "انداز چنیں",
 	Edges: "کنارے",

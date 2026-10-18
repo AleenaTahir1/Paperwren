@@ -41,6 +41,8 @@ ROWS = [
         {"one": "Finalisation de {n} page…", "other": "Finalisation de {n} pages…"},
     ),
     ("Scan", "اسکین", "مسح", "扫描", "स्कैन", "Escaneo", "Numérisation"),
+    ("Scan this photo", "اس تصویر کو اسکین کریں", "مسح هذه الصورة", "扫描这张照片", "इस फ़ोटो को स्कैन करें", "Escanear esta foto", "Numériser cette photo"),
+    ("Straighten it and clean it up as a PDF", "اسے سیدھا اور صاف کر کے PDF بنائیں", "قوّمها ونظّفها كملف PDF", "摆正并清理后存为 PDF", "इसे सीधा और साफ़ करके PDF बनाएँ", "Enderézala y límpiala como PDF", "La redresser et la nettoyer en PDF"),
     # ---- the editor ----
     ("Check the edges", "کنارے دیکھیں", "تحقق من الحواف", "检查边缘", "किनारे जाँचें", "Revisa los bordes", "Vérifiez les bords"),
     ("Choose a look", "انداز چنیں", "اختر مظهرًا", "选择效果", "रूप चुनें", "Elige un aspecto", "Choisissez un rendu"),
